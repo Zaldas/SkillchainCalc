@@ -279,19 +279,19 @@ skills.ChainInfo = T{
 };
 
 -- IMGUI RGB color format {red, green, blue, alpha}
-local colors = {};           -- Color codes by Sammeh
-colors.Light =         { 1.0, 1.0, 1.0, 1.0 }; --'0xFFFFFFFF';
-colors.Dark =          { 0.0, 0.0, 0.8, 1.0 }; --'0x0000CCFF';
-colors.Ice =           { 0.0, 1.0, 1.0, 1.0 }; --'0x00FFFFFF';
-colors.Water =         { 0.0, 1.0, 1.0, 1.0 }; --'0x00FFFFFF';
-colors.Earth =         { 0.6, 0.5, 0.0, 1.0 }; --'0x997600FF';
-colors.Wind =          { 0.4, 1.0, 0.4, 1.0 }; --'0x66FF66FF';
-colors.Fire =          { 1.0, 0.0, 0.0, 1.0 }; --'0xFF0000FF';
-colors.Lightning =     { 1.0, 0.0, 1.0, 1.0 }; --'0xFF00FFFF';
-colors.Gravitation =   { 0.4, 0.2, 0.0, 1.0 }; --'0x663300FF';
-colors.Fragmentation = { 1.0, 0.6, 1.0, 1.0 }; --'0xFA9CF7FF';
-colors.Fusion =        { 1.0, 0.4, 0.4, 1.0 }; --'0xFF6666FF';
-colors.Distortion =    { 0.2, 0.6, 1.0, 1.0 }; --'0x3399FFFF';
+local colors = {};   -- Color codes by Sammeh
+colors.Light =         0xFFFFFFFF;
+colors.Dark =          0x0000CCFF;
+colors.Ice =           0x00FFFFFF;
+colors.Water =         0x00FFFFFF;
+colors.Earth =         0x997600FF;
+colors.Wind =          0x66FF66FF;
+colors.Fire =          0xFF0000FF;
+colors.Lightning =     0xFF00FFFF;
+colors.Gravitation =   0x663300FF;
+colors.Fragmentation = 0xFA9CF7FF;
+colors.Fusion =        0xFF6666FF;
+colors.Distortion =    0x3399FFFF;
 colors.Darkness =      colors.Dark;
 colors.Umbra =         colors.Dark;
 colors.Compression =   colors.Dark;
@@ -303,7 +303,11 @@ colors.Scission =      colors.Earth;
 colors.Detonation =    colors.Wind;
 colors.Liquefaction =  colors.Fire;
 colors.Impaction =     colors.Lightning;
-skills.Colors = colors;
+
+function skills.GetPropertyColor(t)
+    return colors[t];
+end
+
 
 skills.StatusID = {
     AL  = 163, -- Azure Lore
