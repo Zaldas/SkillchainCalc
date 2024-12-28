@@ -104,10 +104,21 @@ local function filterSkillchainsByTier(combinations, filter)
         end
     end
 
+    local highestTierCombos = {};
+
     for _, combo in ipairs(combinations) do
         if includedChains[combo.chain] then
-            table.insert(filteredResults, combo);
+            local key = ('%s>%s'):format(combo.skill1, combo.skill2);
+            if not highestTierCombos[key] then
+                highestTierCombos[key] = combo;
+            elseif tierPriority[combo.chain] and tierPriority[highestTierCombos[key].chain] and tierPriority[combo.chain] < tierPriority[highestTierCombos[key].chain] then
+                highestTierCombos[key] = combo;
+            end
         end
+    end
+
+    for _, combo in pairs(highestTierCombos) do
+        table.insert(filteredResults, combo);
     end
 
     return filteredResults;
