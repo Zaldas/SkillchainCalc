@@ -25,7 +25,6 @@ local displaySettings = {
         corner_rounding = 5,
         fill_color = 0xBF000000,
         outline_color = 0xFFFFFFFF,
-        outline_width = 1,
         z_order = -1,
     },
     anchor = {
@@ -124,6 +123,22 @@ local function filterSkillchainsByTier(combinations, filter)
     return filteredResults;
 end
 
+-- Group skillchains by the skillchain result and opening weapon skill
+local function groupSkillchainsByResultAndOpener(skillchains)
+    local groupedResults = {};
+
+    for _, combo in ipairs(skillchains) do
+        local result = combo.chain;
+        groupedResults[result] = groupedResults[result] or {};
+
+        local opener = combo.skill1;
+        groupedResults[result][opener] = groupedResults[result][opener] or {};
+        table.insert(groupedResults[result][opener], combo);
+    end
+
+    return groupedResults;
+end
+
 -- Update GDI display with skillchains
 local function updateGDI(skillchains)
     clearGDI(); -- Clear previous objects
@@ -131,14 +146,15 @@ local function updateGDI(skillchains)
     gdiObjects.background:set_visible(true);
     gdiObjects.title:set_visible(true);
 
+    local groupedResults = groupSkillchainsByResultAndOpener(skillchains);
     local y_offset = 40;
     local textIndex = 1; -- Track text object index
     local totalHeight = 60; -- Start with a base height for the title and spacing
 
-    for _, tier in ipairs({'t3', 't2', 't1'}) do
-        for _, chainName in ipairs(tierPriority[tier]) do
-            local group = skillchains[chainName];
-            if group and #group.skills > 0 then
+    for tier, chainNames in pairs(tierPriority) do
+        for _, chainName in ipairs(chainNames) do
+            local group = groupedResults[chainName];
+            if group and next(group) then -- Ensure group exists and is not empty
                 -- Display skillchain result header
                 local header = gdiObjects.skillchainTexts[textIndex];
                 if not header then break; end
@@ -154,17 +170,19 @@ local function updateGDI(skillchains)
                 y_offset = y_offset + 20;
                 totalHeight = totalHeight + 20;
 
-                -- Display each weapon combination under the result
-                for _, combo in ipairs(group.skills) do
-                    if textIndex > #gdiObjects.skillchainTexts then break; end
-                    local comboText = gdiObjects.skillchainTexts[textIndex];
-                    comboText:set_text(('%s > %s'):format(combo.skill1 or "Unknown", combo.skill2 or "Unknown"));
-                    comboText:set_position_x(displaySettings.anchor.x + 20); -- Fixed 10px offset for weapon skills
-                    comboText:set_position_y(displaySettings.anchor.y + y_offset);
-                    comboText:set_visible(true);
-                    textIndex = textIndex + 1;
-                    y_offset = y_offset + 20;
-                    totalHeight = totalHeight + 20;
+                -- Display each opener under the result
+                for opener, combos in pairs(group) do
+                    for _, combo in ipairs(combos) do
+                        local comboText = gdiObjects.skillchainTexts[textIndex];
+                        if not comboText then break; end
+                        comboText:set_text(('  %s > %s'):format(opener, combo.skill2));
+                        comboText:set_position_x(displaySettings.anchor.x + 20);
+                        comboText:set_position_y(displaySettings.anchor.y + y_offset);
+                        comboText:set_visible(true);
+                        textIndex = textIndex + 1;
+                        y_offset = y_offset + 20;
+                        totalHeight = totalHeight + 20;
+                    end
                 end
             end
         end
@@ -221,30 +239,9 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Filter combinations by tier or higher
     local filteredCombinations = filterSkillchainsByTier(combinations, filter);
 
-    -- Group combinations by result
-    local groupedResults = {};
-    for _, combo in ipairs(filteredCombinations) do
-        groupedResults[combo.chain] = groupedResults[combo.chain] or { chain = combo.chain, skills = {} };
-        table.insert(groupedResults[combo.chain].skills, combo);
-    end
-
     -- Display results
     if (#filteredCombinations > 0) then
-        if false then
-            print('[SkillchainCalc] Skillchain combinations:');
-            for _, tier in ipairs({'t3', 't2', 't1'}) do
-                for _, chainName in ipairs(tierPriority[tier]) do
-                    local group = groupedResults[chainName];
-                    if group then
-                        print(chainName);
-                        for _, combo in ipairs(group.skills) do
-                            print(('  %s > %s'):format(combo.skill1 or "Unknown", combo.skill2 or "Unknown"));
-                        end
-                    end
-                end
-            end
-        end
-        updateGDI(groupedResults);
+        updateGDI(filteredCombinations);
     else
         print('[SkillchainCalc] No skillchain combinations found for filter ' .. filter .. '.');
         clearGDI();
