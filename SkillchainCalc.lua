@@ -89,7 +89,7 @@ local function filterSkillchainsByTier(combinations, filter)
     local tiersToInclude = {};
 
     if filter == 't3' then
-        tiersToInclude = {'t3', 't2', 't1'};
+        tiersToInclude = {'t3'};
     elseif filter == 't2' then
         tiersToInclude = {'t3', 't2'};
     elseif filter == 't1' then
@@ -109,8 +109,6 @@ local function filterSkillchainsByTier(combinations, filter)
         if includedChains[combo.chain] then
             local key = ('%s>%s'):format(combo.skill1, combo.skill2);
             if not highestTierCombos[key] then
-                highestTierCombos[key] = combo;
-            elseif tierPriority[combo.chain] and tierPriority[highestTierCombos[key].chain] and tierPriority[combo.chain] < tierPriority[highestTierCombos[key].chain] then
                 highestTierCombos[key] = combo;
             end
         end
@@ -151,39 +149,34 @@ local function updateGDI(skillchains)
     local textIndex = 1; -- Track text object index
     local totalHeight = 60; -- Start with a base height for the title and spacing
 
-    for tier, chainNames in pairs(tierPriority) do
-        for _, chainName in ipairs(chainNames) do
-            local group = groupedResults[chainName];
-            if group and next(group) then -- Ensure group exists and is not empty
-                -- Display skillchain result header
-                local header = gdiObjects.skillchainTexts[textIndex];
-                if not header then break; end
-                local chainInfo = skills.ChainInfo[chainName];
-                local burstElements = chainInfo and chainInfo.burst or {};
-                local elementsText = table.concat(burstElements, ', ');
-                header:set_text(('%s [%s]'):format(chainName, elementsText));
+    for result, group in pairs(groupedResults) do
+        -- Display skillchain result header
+        local header = gdiObjects.skillchainTexts[textIndex];
+        if not header then break; end
+        local chainInfo = skills.ChainInfo[result];
+        local burstElements = chainInfo and chainInfo.burst or {};
+        local elementsText = table.concat(burstElements, ', ');
+        header:set_text(('%s [%s]'):format(result, elementsText));
 
-                header:set_position_x(displaySettings.anchor.x + 10);
-                header:set_position_y(displaySettings.anchor.y + y_offset);
-                header:set_visible(true);
+        header:set_position_x(displaySettings.anchor.x + 10);
+        header:set_position_y(displaySettings.anchor.y + y_offset);
+        header:set_visible(true);
+        textIndex = textIndex + 1;
+        y_offset = y_offset + 20;
+        totalHeight = totalHeight + 20;
+
+        -- Display each opener under the result
+        for opener, combos in pairs(group) do
+            for _, combo in ipairs(combos) do
+                local comboText = gdiObjects.skillchainTexts[textIndex];
+                if not comboText then break; end
+                comboText:set_text(('  %s > %s'):format(opener, combo.skill2));
+                comboText:set_position_x(displaySettings.anchor.x + 20);
+                comboText:set_position_y(displaySettings.anchor.y + y_offset);
+                comboText:set_visible(true);
                 textIndex = textIndex + 1;
                 y_offset = y_offset + 20;
                 totalHeight = totalHeight + 20;
-
-                -- Display each opener under the result
-                for opener, combos in pairs(group) do
-                    for _, combo in ipairs(combos) do
-                        local comboText = gdiObjects.skillchainTexts[textIndex];
-                        if not comboText then break; end
-                        comboText:set_text(('  %s > %s'):format(opener, combo.skill2));
-                        comboText:set_position_x(displaySettings.anchor.x + 20);
-                        comboText:set_position_y(displaySettings.anchor.y + y_offset);
-                        comboText:set_visible(true);
-                        textIndex = textIndex + 1;
-                        y_offset = y_offset + 20;
-                        totalHeight = totalHeight + 20;
-                    end
-                end
             end
         end
     end
