@@ -134,7 +134,7 @@ local function updateGDI(skillchains)
                 local chainInfo = skills.ChainInfo[chainName];
                 local burstElements = chainInfo and chainInfo.burst or {};
                 local elementsText = table.concat(burstElements, ', ');
-                header:set_text(('%s (%s)'):format(chainName, elementsText));
+                header:set_text(('%s [%s]'):format(chainName, elementsText));
 
                 header:set_position_x(displaySettings.anchor.x + 10);
                 header:set_position_y(displaySettings.anchor.y + y_offset);
