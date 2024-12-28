@@ -50,7 +50,7 @@ local tierPriority = {
 -- Initialize GDI objects for displaying skillchains
 local function initGDIObjects()
     gdiObjects.title = gdi:create_object(displaySettings.font);
-    gdiObjects.title:set_text('[SkillchainCalc] Combinations');
+    gdiObjects.title:set_text('Skillchain Combinations');
     gdiObjects.title:set_position_x(displaySettings.anchor.x + 10);
     gdiObjects.title:set_position_y(displaySettings.anchor.y + 10);
 
@@ -133,18 +133,9 @@ local function updateGDI(skillchains)
                 if not header then break; end
                 local chainInfo = skills.ChainInfo[chainName];
                 local burstElements = chainInfo and chainInfo.burst or {};
-                local elementTexts = {};
-
-                for _, element in ipairs(burstElements) do
-                    local color = skills.GetPropertyColor(element) or displaySettings.font.font_color;
-                    table.insert(elementTexts, ('%s'):format(element));
-                end
-
-                local elementsText = table.concat(elementTexts, ', ');
+                local elementsText = table.concat(burstElements, ', ');
                 header:set_text(('%s (%s)'):format(chainName, elementsText));
 
-                local color = skills.GetPropertyColor(chainName) or displaySettings.font.font_color;
-                header:set_font_color(color);
                 header:set_position_x(displaySettings.anchor.x + 10);
                 header:set_position_y(displaySettings.anchor.y + y_offset);
                 header:set_visible(true);
