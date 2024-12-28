@@ -11,6 +11,8 @@ require('common');
 local skills = require('skills');
 local gdi = require('gdifonts.include');
 
+local debugMode = false; -- Debug mode flag
+
 local displaySettings = {
     font = {
         font_family = 'Arial',
@@ -85,56 +87,111 @@ end
 
 -- Filter skillchains by tier or higher
 local function filterSkillchainsByTier(combinations, filter)
-    local filteredResults = {};
-    local tiersToInclude = {};
+    local tiersToInclude = {
+        t1 = {'t3', 't2', 't1'},
+        t2 = {'t3', 't2'},
+        t3 = {'t3'}
+    };
 
-    if filter == 't3' then
-        tiersToInclude = {'t3'};
-    elseif filter == 't2' then
-        tiersToInclude = {'t3', 't2'};
-    elseif filter == 't1' then
-        tiersToInclude = {'t3', 't2', 't1'};
-    end
-
+    local includedTiers = tiersToInclude[filter] or {};
     local includedChains = {};
-    for _, tier in ipairs(tiersToInclude) do
+
+    for _, tier in ipairs(includedTiers) do
         for _, chainName in ipairs(tierPriority[tier]) do
             includedChains[chainName] = true;
         end
     end
 
-    local highestTierCombos = {};
-
+    local filteredResults = {};
     for _, combo in ipairs(combinations) do
         if includedChains[combo.chain] then
-            local key = ('%s>%s'):format(combo.skill1, combo.skill2);
-            if not highestTierCombos[key] then
-                highestTierCombos[key] = combo;
-            end
+            table.insert(filteredResults, combo);
         end
-    end
-
-    for _, combo in pairs(highestTierCombos) do
-        table.insert(filteredResults, combo);
     end
 
     return filteredResults;
 end
 
--- Group skillchains by the skillchain result and opening weapon skill
-local function groupSkillchainsByResultAndOpener(skillchains)
-    local groupedResults = {};
+-- Build results into a table
+local function buildSkillchainTable(skillchains)
+    local resultsTable = {};
 
     for _, combo in ipairs(skillchains) do
         local result = combo.chain;
-        groupedResults[result] = groupedResults[result] or {};
+        resultsTable[result] = resultsTable[result] or {};
 
         local opener = combo.skill1;
-        groupedResults[result][opener] = groupedResults[result][opener] or {};
-        table.insert(groupedResults[result][opener], combo);
+        resultsTable[result][opener] = resultsTable[result][opener] or {};
+        table.insert(resultsTable[result][opener], combo.skill2);
     end
 
-    return groupedResults;
+    return resultsTable;
+end
+
+-- Helper function to find the tier of a weapon skill
+local function findSkillTier(skillName)
+    for weaponType, weaponSkills in pairs(skills) do
+        if type(weaponSkills) == 'table' then
+            for _, skill in pairs(weaponSkills) do
+                if skill.en == skillName then
+                    return skill.tier or 0;
+                end
+            end
+        end
+    end
+    return 0; -- Default to 0 if not found
+end
+
+-- Sort results table by skill tier and opening weapon skill
+local function sortSkillchainTable(resultsTable)
+    local sortedResults = {};
+    local orderedResults = {};
+
+    if debugMode then print('[Debug] Starting tier-based sorting'); end
+    -- Sort by tier using skills.ChainInfo
+    for _, tier in ipairs({'t3', 't2', 't1'}) do
+        for _, chainName in ipairs(tierPriority[tier]) do
+            if resultsTable[chainName] then
+                if debugMode then print(('[Debug] Adding chain %s from tier %s'):format(chainName, tier)); end
+                sortedResults[chainName] = resultsTable[chainName];
+                table.insert(orderedResults, chainName);
+            end
+        end
+    end
+
+    -- Sort opening weapon skills within each tier by their skill tier
+    for result, openers in pairs(sortedResults) do
+        local sortedOpeners = {};
+        if debugMode then print(('[Debug] Sorting openers for chain %s'):format(result)); end
+        for opener, closers in pairs(openers) do
+            local openerTier = findSkillTier(opener);
+            if debugMode then print(('[Debug] Found opener %s with tier %d'):format(opener, openerTier)); end
+
+            -- Sort closers by tier
+            table.sort(closers, function(a, b)
+                local closerTierA = findSkillTier(a);
+                local closerTierB = findSkillTier(b);
+                if debugMode then print(('[Debug] Comparing closer %s (Tier %d) with closer %s (Tier %d)'):format(a, closerTierA, b, closerTierB)); end
+                return closerTierA > closerTierB;
+            end);
+
+            table.insert(sortedOpeners, {
+                opener = opener,
+                closers = closers,
+                tier = openerTier
+            });
+        end
+
+        table.sort(sortedOpeners, function(a, b)
+            if debugMode then print(('[Debug] Comparing opener %s (Tier %d) with opener %s (Tier %d)'):format(a.opener, a.tier, b.opener, b.tier)); end
+            return a.tier > b.tier;
+        end);
+
+        sortedResults[result] = sortedOpeners;
+    end
+
+    if debugMode then print('[Debug] Sorting completed'); end
+    return sortedResults, orderedResults;
 end
 
 -- Update GDI display with skillchains
@@ -144,12 +201,14 @@ local function updateGDI(skillchains)
     gdiObjects.background:set_visible(true);
     gdiObjects.title:set_visible(true);
 
-    local groupedResults = groupSkillchainsByResultAndOpener(skillchains);
+    local resultsTable = buildSkillchainTable(skillchains);
+    local sortedResults, orderedResults = sortSkillchainTable(resultsTable);
     local y_offset = 40;
     local textIndex = 1; -- Track text object index
     local totalHeight = 60; -- Start with a base height for the title and spacing
 
-    for result, group in pairs(groupedResults) do
+    for _, result in ipairs(orderedResults) do
+        local openers = sortedResults[result];
         -- Display skillchain result header
         local header = gdiObjects.skillchainTexts[textIndex];
         if not header then break; end
@@ -165,12 +224,12 @@ local function updateGDI(skillchains)
         y_offset = y_offset + 20;
         totalHeight = totalHeight + 20;
 
-        -- Display each opener under the result
-        for opener, combos in pairs(group) do
-            for _, combo in ipairs(combos) do
+        -- Display each opener and each closer on a separate line
+        for _, openerData in ipairs(openers) do
+            for _, closer in ipairs(openerData.closers) do
                 local comboText = gdiObjects.skillchainTexts[textIndex];
                 if not comboText then break; end
-                comboText:set_text(('  %s > %s'):format(opener, combo.skill2));
+                comboText:set_text(('  %s > %s'):format(openerData.opener, closer));
                 comboText:set_position_x(displaySettings.anchor.x + 20);
                 comboText:set_position_y(displaySettings.anchor.y + y_offset);
                 comboText:set_visible(true);
@@ -204,6 +263,12 @@ ashita.events.register('command', 'command_cb', function(e)
 
     if (#args == 2 and args[2] == 'clear') then
         clearGDI();
+        return;
+    end
+
+    if (#args == 2 and args[2] == 'debug') then
+        debugMode = not debugMode;
+        print('[SkillchainCalc] Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
         return;
     end
 

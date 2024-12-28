@@ -1,186 +1,199 @@
 local skills = {};
 
-skills.h2h = { --Hand-to-Hand
-    [1] = {en='Combo',skillchain={'Impaction'}},
-    [2] = {en='Shoulder Tackle',skillchain={'Reverberation','Impaction'}},
-    [3] = {en='One Inch Punch',skillchain={'Compression'}},
-    [4] = {en='Backhand Blow',skillchain={'Detonation'}},
-    [5] = {en='Raging Fists',skillchain={'Impaction'}},
-    [6] = {en='Spinning Attack',skillchain={'Liquefaction','Impaction'}},
-    [7] = {en='Howling Fist',skillchain={'Transfixion','Impaction'}},
-    [8] = {en='Dragon Kick',skillchain={'Fragmentation'}},
-    [9] = {en='Asuran Fists',skillchain={'Gravitation','Liquefaction'}},
-    [10] = {en='Final Heaven',skillchain={'Light','Fusion'}},
+skills.h2h = { -- Hand-to-Hand
+    [1] = {en='Combo',skillchain={'Impaction'},tier=1},
+    [2] = {en='Shoulder Tackle',skillchain={'Reverberation','Impaction'},tier=2},
+    [3] = {en='One Inch Punch',skillchain={'Compression'},tier=3},
+    [4] = {en='Backhand Blow',skillchain={'Detonation'},tier=4},
+    [5] = {en='Raging Fists',skillchain={'Impaction'},tier=5},
+    [6] = {en='Spinning Attack',skillchain={'Liquefaction','Impaction'},tier=6},
+    [7] = {en='Howling Fist',skillchain={'Transfixion','Impaction'},tier=7},
+    [8] = {en='Dragon Kick',skillchain={'Fragmentation'},tier=8},
+    [9] = {en='Asuran Fists',skillchain={'Gravitation','Liquefaction'},tier=9},
+    [10] = {en='Final Heaven',skillchain={'Light','Fusion'},tier=10},
 };
-skills.dagger = { --Dagger
-    [16] = {en='Wasp Sting',skillchain={'Scission'}},
-    [17] = {en='Viper Bite',skillchain={'Scission'}},
-    [18] = {en='Shadowstitch',skillchain={'Reverberation'}},    -- HorizonXI
-    [19] = {en='Gust Slash',skillchain={'Detonation'}},
-    [20] = {en='Cyclone',skillchain={'Detonation','Impaction'}},
-    [23] = {en='Dancing Edge',skillchain={'Scission','Detonation'}},
-    [24] = {en='Shark Bite',skillchain={'Fragmentation'}},
-    [25] = {en='Evisceration',skillchain={'Gravitation','Transfixion'}},
-    [26] = {en='Mercy Stroke',skillchain={'Darkness','Gravitation'}},
+
+skills.dagger = { -- Dagger
+    [16] = {en='Wasp Sting',skillchain={'Scission'},tier=1},
+    [17] = {en='Viper Bite',skillchain={'Scission'},tier=2},
+    [18] = {en='Shadowstitch',skillchain={'Reverberation'},tier=3},    -- HorizonXI
+    [19] = {en='Gust Slash',skillchain={'Detonation'},tier=4},
+    [20] = {en='Cyclone',skillchain={'Detonation','Impaction'},tier=5},
+    [23] = {en='Dancing Edge',skillchain={'Scission','Detonation'},tier=6},
+    [24] = {en='Shark Bite',skillchain={'Fragmentation'},tier=7},
+    [25] = {en='Evisceration',skillchain={'Gravitation','Transfixion'},tier=8},
+    [26] = {en='Mercy Stroke',skillchain={'Darkness','Gravitation'},tier=9},
 };
-skills.sword = { --Sword
-    [32] = {en='Fast Blade',skillchain={'Scission'}},
-    [33] = {en='Burning Blade',skillchain={'Liquefaction'}},
-    [34] = {en='Red Lotus Blade',skillchain={'Liquefaction','Detonation'}},
-    [35] = {en='Flat Blade',skillchain={'Impaction'}},
-    [36] = {en='Shining Blade',skillchain={'Scission'}},
-    [37] = {en='Seraph Blade',skillchain={'Scission','Transfixion'}},
-    [38] = {en='Circle Blade',skillchain={'Reverberation','Impaction'}},
-    [40] = {en='Vorpal Blade',skillchain={'Scission','Impaction'}},
-    [41] = {en='Swift Blade',skillchain={'Gravitation'}},
-    [42] = {en='Savage Blade',skillchain={'Fragmentation','Scission'}},
-    [43] = {en='Knights of Round',skillchain={'Light','Fusion'}},
+
+skills.sword = { -- Sword
+    [32] = {en='Fast Blade',skillchain={'Scission'},tier=1},
+    [33] = {en='Burning Blade',skillchain={'Liquefaction'},tier=2},
+    [34] = {en='Red Lotus Blade',skillchain={'Liquefaction','Detonation'},tier=3},
+    [35] = {en='Flat Blade',skillchain={'Impaction'},tier=4},
+    [36] = {en='Shining Blade',skillchain={'Scission'},tier=5},
+    [37] = {en='Seraph Blade',skillchain={'Scission','Transfixion'},tier=6},
+    [38] = {en='Circle Blade',skillchain={'Reverberation','Impaction'},tier=7},
+    [40] = {en='Vorpal Blade',skillchain={'Scission','Impaction'},tier=8},
+    [41] = {en='Swift Blade',skillchain={'Gravitation'},tier=9},
+    [42] = {en='Savage Blade',skillchain={'Fragmentation','Scission'},tier=10},
+    [43] = {en='Knights of Round',skillchain={'Light','Fusion'},tier=11},
 };
-skills.gs = { --Great Sword
-    [48] = {en='Hard Slash',skillchain={'Scission'}},
-    [49] = {en='Power Slash',skillchain={'Transfixion'}},
-    [50] = {en='Frostbite',skillchain={'Induration'}},
-    [51] = {en='Freezebite',skillchain={'Induration','Detonation'}},
-    [52] = {en='Shockwave',skillchain={'Reverberation'}},
-    [53] = {en='Crescent Moon',skillchain={'Scission'}},
-    [54] = {en='Sickle Moon',skillchain={'Scission','Impaction'}},
-    [55] = {en='Spinning Slash',skillchain={'Fragmentation'}},
-    [56] = {en='Ground Strike',skillchain={'Fragmentation','Distortion'}},
-    [57] = {en='Scourge',skillchain={'Light','Fusion'}},
+
+skills.gs = { -- Great Sword
+    [48] = {en='Hard Slash',skillchain={'Scission'},tier=1},
+    [49] = {en='Power Slash',skillchain={'Transfixion'},tier=2},
+    [50] = {en='Frostbite',skillchain={'Induration'},tier=3},
+    [51] = {en='Freezebite',skillchain={'Induration','Detonation'},tier=4},
+    [52] = {en='Shockwave',skillchain={'Reverberation'},tier=5},
+    [53] = {en='Crescent Moon',skillchain={'Scission'},tier=6},
+    [54] = {en='Sickle Moon',skillchain={'Scission','Impaction'},tier=7},
+    [55] = {en='Spinning Slash',skillchain={'Fragmentation'},tier=8},
+    [56] = {en='Ground Strike',skillchain={'Fragmentation','Distortion'},tier=9},
+    [57] = {en='Scourge',skillchain={'Light','Fusion'},tier=10},
 };
-skills.axe = { --Axe
-    [64] = {en='Raging Axe',skillchain={'Detonation','Impaction'}},
-    [65] = {en='Smash Axe',skillchain={'Induration','Reverberation'}},
-    [66] = {en='Gale Axe',skillchain={'Detonation'}},
-    [67] = {en='Avalanche Axe',skillchain={'Induration'}},  -- HorizonXI
-    [68] = {en='Spinning Axe',skillchain={'Liquefaction','Scission'}},  -- HorizonXI
-    [69] = {en='Rampage',skillchain={'Scission'}},
-    [70] = {en='Calamity',skillchain={'Scission','Impaction'}},
-    [71] = {en='Mistral Axe',skillchain={'Fusion'}},
-    [72] = {en='Decimation',skillchain={'Fusion','Detonation'}},
-    [73] = {en='Onslaught',skillchain={'Darkness','Gravitation'}},
+
+skills.axe = { -- Axe
+    [64] = {en='Raging Axe',skillchain={'Detonation','Impaction'},tier=1},
+    [65] = {en='Smash Axe',skillchain={'Induration','Reverberation'},tier=2},
+    [66] = {en='Gale Axe',skillchain={'Detonation'},tier=3},
+    [67] = {en='Avalanche Axe',skillchain={'Induration'},tier=4},  -- HorizonXI
+    [68] = {en='Spinning Axe',skillchain={'Liquefaction','Scission'},tier=5},  -- HorizonXI
+    [69] = {en='Rampage',skillchain={'Scission'},tier=6},
+    [70] = {en='Calamity',skillchain={'Scission','Impaction'},tier=7},
+    [71] = {en='Mistral Axe',skillchain={'Fusion'},tier=8},
+    [72] = {en='Decimation',skillchain={'Fusion','Detonation'},tier=9},
+    [73] = {en='Onslaught',skillchain={'Darkness','Gravitation'},tier=10},
 };
-skills.ga = { --Great Axe
-    [80] = {en='Shield Break',skillchain={'Impaction'}},
-    [81] = {en='Iron Tempest',skillchain={'Scission'}},
-    [82] = {en='Sturmwind',skillchain={'Reverberation','Scission'}},
-    [83] = {en='Armor Break',skillchain={'Impaction'}},
-    [84] = {en='Keen Edge',skillchain={'Compression'}},
-    [85] = {en='Weapon Break',skillchain={'Impaction'}},
-    [86] = {en='Raging Rush',skillchain={'Induration','Reverberation'}},
-    [87] = {en='Full Break',skillchain={'Distortion'}},
-    [88] = {en='Steel Cyclone',skillchain={'Distortion','Detonation'}},
-    [89] = {en='Metatron Torment',skillchain={'Light','Fusion'}},
+
+skills.ga = { -- Great Axe
+    [80] = {en='Shield Break',skillchain={'Impaction'},tier=1},
+    [81] = {en='Iron Tempest',skillchain={'Scission'},tier=2},
+    [82] = {en='Sturmwind',skillchain={'Reverberation','Scission'},tier=3},
+    [83] = {en='Armor Break',skillchain={'Impaction'},tier=4},
+    [84] = {en='Keen Edge',skillchain={'Compression'},tier=5},
+    [85] = {en='Weapon Break',skillchain={'Impaction'},tier=6},
+    [86] = {en='Raging Rush',skillchain={'Induration','Reverberation'},tier=7},
+    [87] = {en='Full Break',skillchain={'Distortion'},tier=8},
+    [88] = {en='Steel Cyclone',skillchain={'Distortion','Detonation'},tier=9},
+    [89] = {en='Metatron Torment',skillchain={'Light','Fusion'},tier=10},
 };
-skills.scythe = { --Scythe
-    [96] = {en='Slice',skillchain={'Scission'}},
-    [97] = {en='Dark Harvest',skillchain={'Compression'}},  -- HorizonXI
-    [98] = {en='Shadow of Death',skillchain={'Induration','Reverberation'}}, 
-    [99] = {en='Nightmare Scythe',skillchain={'Compression','Scission'}},
-    [100] = {en='Spinning Scythe',skillchain={'Reverberation','Scission'}},
-    [101] = {en='Vorpal Scythe',skillchain={'Transfixion','Scission'}},
-    [102] = {en='Guillotine',skillchain={'Induration'}},
-    [103] = {en='Cross Reaper',skillchain={'Distortion'}},
-    [104] = {en='Spiral Hell',skillchain={'Gravitation','Compression'}}, -- HorizonXI
-    [105] = {en='Catastrophe',skillchain={'Fusion','Compression'}},
+
+skills.scythe = { -- Scythe
+    [96] = {en='Slice',skillchain={'Scission'},tier=1},
+    [97] = {en='Dark Harvest',skillchain={'Compression'},tier=2},  -- HorizonXI
+    [98] = {en='Shadow of Death',skillchain={'Induration','Reverberation'},tier=3}, 
+    [99] = {en='Nightmare Scythe',skillchain={'Compression','Scission'},tier=4},
+    [100] = {en='Spinning Scythe',skillchain={'Reverberation','Scission'},tier=5},
+    [101] = {en='Vorpal Scythe',skillchain={'Transfixion','Scission'},tier=6},
+    [102] = {en='Guillotine',skillchain={'Induration'},tier=7},
+    [103] = {en='Cross Reaper',skillchain={'Distortion'},tier=8},
+    [104] = {en='Spiral Hell',skillchain={'Gravitation','Compression'},tier=9}, -- HorizonXI
+    [105] = {en='Catastrophe',skillchain={'Fusion','Compression'},tier=10},
 };
-skills.polearm = { --Polearm
-    [112] = {en='Double Thrust',skillchain={'Transfixion'}},
-    [113] = {en='Thunder Thrust',skillchain={'Transfixion','Impaction'}},
-    [114] = {en='Raiden Thrust',skillchain={'Transfixion','Impaction'}},
-    [115] = {en='Leg Sweep',skillchain={'Impaction'}},
-    [116] = {en='Penta Thrust',skillchain={'Compression'}},
-    [117] = {en='Vorpal Thrust',skillchain={'Reverberation','Transfixion'}},
-    [118] = {en='Skewer',skillchain={'Transfixion','Impaction'}},
-    [119] = {en='Wheeling Thrust',skillchain={'Fusion'}},
-    [120] = {en='Impulse Drive',skillchain={'Gravitation','Induration'}},
-    [121] = {en='Geirskogul',skillchain={'Light','Distortion'}},
+
+skills.polearm = { -- Polearm
+    [112] = {en='Double Thrust',skillchain={'Transfixion'},tier=1},
+    [113] = {en='Thunder Thrust',skillchain={'Transfixion','Impaction'},tier=2},
+    [114] = {en='Raiden Thrust',skillchain={'Transfixion','Impaction'},tier=3},
+    [115] = {en='Leg Sweep',skillchain={'Impaction'},tier=4},
+    [116] = {en='Penta Thrust',skillchain={'Compression'},tier=5},
+    [117] = {en='Vorpal Thrust',skillchain={'Reverberation','Transfixion'},tier=6},
+    [118] = {en='Skewer',skillchain={'Transfixion','Impaction'},tier=7},
+    [119] = {en='Wheeling Thrust',skillchain={'Fusion'},tier=8},
+    [120] = {en='Impulse Drive',skillchain={'Gravitation','Induration'},tier=9},
+    [121] = {en='Geirskogul',skillchain={'Light','Distortion'},tier=10},
 };
-skills.katana = { --Katana
-    [128] = {en='Blade: Rin',skillchain={'Transfixion'}},
-    [129] = {en='Blade: Retsu',skillchain={'Scission'}},
-    [130] = {en='Blade: Teki',skillchain={'Reverberation'}},
-    [131] = {en='Blade: To',skillchain={'Induration','Detonation'}},
-    [132] = {en='Blade: Chi',skillchain={'Transfixion','Impaction'}},
-    [133] = {en='Blade: Ei',skillchain={'Compression'}},
-    [134] = {en='Blade: Jin',skillchain={'Detonation','Impaction'}},
-    [135] = {en='Blade: Ten',skillchain={'Gravitation'}},
-    [136] = {en='Blade: Ku',skillchain={'Gravitation','Transfixion'}},
-    [137] = {en='Blade: Metsu',skillchain={'Darkness','Fragmentation'}},
+
+skills.katana = { -- Katana
+    [128] = {en='Blade: Rin',skillchain={'Transfixion'},tier=1},
+    [129] = {en='Blade: Retsu',skillchain={'Scission'},tier=2},
+    [130] = {en='Blade: Teki',skillchain={'Reverberation'},tier=3},
+    [131] = {en='Blade: To',skillchain={'Induration','Detonation'},tier=4},
+    [132] = {en='Blade: Chi',skillchain={'Transfixion','Impaction'},tier=5},
+    [133] = {en='Blade: Ei',skillchain={'Compression'},tier=6},
+    [134] = {en='Blade: Jin',skillchain={'Detonation','Impaction'},tier=7},
+    [135] = {en='Blade: Ten',skillchain={'Gravitation'},tier=8},
+    [136] = {en='Blade: Ku',skillchain={'Gravitation','Transfixion'},tier=9},
+    [137] = {en='Blade: Metsu',skillchain={'Darkness','Fragmentation'},tier=10},
 };
-skills.gkt = { --Great Katana
-    [144] = {en='Tachi: Enpi',skillchain={'Transfixion','Scission'}},
-    [145] = {en='Tachi: Hobaku',skillchain={'Induration'}},
-    [146] = {en='Tachi: Goten',skillchain={'Transfixion','Impaction'}},
-    [147] = {en='Tachi: Kagero',skillchain={'Liquefaction'}},
-    [148] = {en='Tachi: Jinpu',skillchain={'Scission','Detonation'}},
-    [149] = {en='Tachi: Koki',skillchain={'Reverberation','Impaction'}},
-    [150] = {en='Tachi: Yukikaze',skillchain={'Induration','Detonation'}},
-    [151] = {en='Tachi: Gekko',skillchain={'Distortion','Reverberation'}},
-    [152] = {en='Tachi: Kasha',skillchain={'Fusion','Compression'}},
-    [153] = {en='Tachi: Kaiten',skillchain={'Light','Fragmentation'}},
+
+skills.gkt = { -- Great Katana
+    [144] = {en='Tachi: Enpi',skillchain={'Transfixion','Scission'},tier=1},
+    [145] = {en='Tachi: Hobaku',skillchain={'Induration'},tier=2},
+    [146] = {en='Tachi: Goten',skillchain={'Transfixion','Impaction'},tier=3},
+    [147] = {en='Tachi: Kagero',skillchain={'Liquefaction'},tier=4},
+    [148] = {en='Tachi: Jinpu',skillchain={'Scission','Detonation'},tier=5},
+    [149] = {en='Tachi: Koki',skillchain={'Reverberation','Impaction'},tier=6},
+    [150] = {en='Tachi: Yukikaze',skillchain={'Induration','Detonation'},tier=7},
+    [151] = {en='Tachi: Gekko',skillchain={'Distortion','Reverberation'},tier=8},
+    [152] = {en='Tachi: Kasha',skillchain={'Fusion','Compression'},tier=9},
+    [153] = {en='Tachi: Kaiten',skillchain={'Light','Fragmentation'},tier=10},
 };
-skills.club = { --Club
-    [160] = {en='Shining Strike',skillchain={'Transfixion'}},
-    [161] = {en='Seraph Strike',skillchain={'Scission'}},
-    [162] = {en='Brainshaker',skillchain={'Reverberation'}},
-    [165] = {en='Skullbreaker',skillchain={'Induration','Reverberation'}},
-    [166] = {en='True Strike',skillchain={'Detonation','Impaction'}},
-    [167] = {en='Judgment',skillchain={'Impaction'}},
-    [168] = {en='Hexa Strike',skillchain={'Fusion'}},
-    [169] = {en='Black Halo',skillchain={'Fragmentation','Compression'}},
-    [170] = {en='Randgrith',skillchain={'Light','Fragmentation'}},
+
+skills.club = { -- Club
+    [160] = {en='Shining Strike',skillchain={'Transfixion'},tier=1},
+    [161] = {en='Seraph Strike',skillchain={'Scission'},tier=2},
+    [162] = {en='Brainshaker',skillchain={'Reverberation'},tier=3},
+    [165] = {en='Skullbreaker',skillchain={'Induration','Reverberation'},tier=4},
+    [166] = {en='True Strike',skillchain={'Detonation','Impaction'},tier=5},
+    [167] = {en='Judgment',skillchain={'Impaction'},tier=6},
+    [168] = {en='Hexa Strike',skillchain={'Fusion'},tier=7},
+    [169] = {en='Black Halo',skillchain={'Fragmentation','Compression'},tier=8},
+    [170] = {en='Randgrith',skillchain={'Light','Fragmentation'},tier=9},
 };
-skills.staff = { --Staff
-    [176] = {en='Heavy Swing',skillchain={'Impaction'}},
-    [177] = {en='Rock Crusher',skillchain={'Impaction'}},
-    [178] = {en='Earth Crusher',skillchain={'Detonation','Impaction'}},
-    [179] = {en='Starburst',skillchain={'Compression','Transfixion'}},
-    [180] = {en='Sunburst',skillchain={'Transfixion','Reverberation'}},
-    [181] = {en='Shell Crusher',skillchain={'Detonation'}},
-    [182] = {en='Full Swing',skillchain={'Liquefaction','Impaction'}},
-    [184] = {en='Retribution',skillchain={'Gravitation','Reverberation'}},
-    [185] = {en='Gate of Tartarus',skillchain={'Darkness','Distortion'}},
+
+skills.staff = { -- Staff
+    [176] = {en='Heavy Swing',skillchain={'Impaction'},tier=1},
+    [177] = {en='Rock Crusher',skillchain={'Impaction'},tier=2},
+    [178] = {en='Earth Crusher',skillchain={'Detonation','Impaction'},tier=3},
+    [179] = {en='Starburst',skillchain={'Compression','Transfixion'},tier=4},
+    [180] = {en='Sunburst',skillchain={'Transfixion','Reverberation'},tier=5},
+    [181] = {en='Shell Crusher',skillchain={'Detonation'},tier=6},
+    [182] = {en='Full Swing',skillchain={'Liquefaction','Impaction'},tier=7},
+    [184] = {en='Retribution',skillchain={'Gravitation','Reverberation'},tier=8},
+    [185] = {en='Gate of Tartarus',skillchain={'Darkness','Distortion'},tier=9},
 };
-skills.archery = { --Archery
-    [192] = {en='Flaming Arrow',skillchain={'Liquefaction','Transfixion'}},
-    [193] = {en='Piercing Arrow',skillchain={'Induration','Transfixion'}},  -- HorizonXI
-    [194] = {en='Dulling Arrow',skillchain={'Liquefaction','Transfixion'}},
-    [196] = {en='Sidewinder',skillchain={'Reverberation','Transfixion','Detonation'}},
-    [197] = {en='Blast Arrow',skillchain={'Induration','Transfixion'}},
-    [198] = {en='Arching Arrow',skillchain={'Fusion'}},
-    [199] = {en='Empyreal Arrow',skillchain={'Fusion','Transfixion'}},
-    [200] = {en='Namas Arrow',skillchain={'Light','Distortion'}},
+
+skills.archery = { -- Archery
+    [192] = {en='Flaming Arrow',skillchain={'Liquefaction','Transfixion'},tier=1},
+    [193] = {en='Piercing Arrow',skillchain={'Induration','Transfixion'},tier=2},  -- HorizonXI
+    [194] = {en='Dulling Arrow',skillchain={'Liquefaction','Transfixion'},tier=3},
+    [196] = {en='Sidewinder',skillchain={'Reverberation','Transfixion','Detonation'},tier=4},
+    [197] = {en='Blast Arrow',skillchain={'Induration','Transfixion'},tier=5},
+    [198] = {en='Arching Arrow',skillchain={'Fusion'},tier=6},
+    [199] = {en='Empyreal Arrow',skillchain={'Fusion','Transfixion'},tier=7},
+    [200] = {en='Namas Arrow',skillchain={'Light','Distortion'},tier=8},
 };
-skills.mm = { --Marksmanship
-    [208] = {en='Hot Shot',skillchain={'Liquefaction','Transfixion'}},
-    [209] = {en='Split Shot',skillchain={'Reverberation','Transfixion'}},
-    [210] = {en='Sniper Shot',skillchain={'Liquefaction','Transfixion'}},
-    [212] = {en='Slug Shot',skillchain={'Reverberation','Transfixion','Detonation'}},
-    [213] = {en='Blast Shot',skillchain={'Induration','Transfixion'}},
-    [214] = {en='Heavy Shot',skillchain={'Fusion'}},
-    [215] = {en='Detonator',skillchain={'Fusion','Transfixion'}},
-    [216] = {en='Coronach',skillchain={'Darkness','Fragmentation'}},
+
+skills.mm = { -- Marksmanship
+    [208] = {en='Hot Shot',skillchain={'Liquefaction','Transfixion'},tier=1},
+    [209] = {en='Split Shot',skillchain={'Reverberation','Transfixion'},tier=2},
+    [210] = {en='Sniper Shot',skillchain={'Liquefaction','Transfixion'},tier=3},
+    [212] = {en='Slug Shot',skillchain={'Reverberation','Transfixion','Detonation'},tier=4},
+    [213] = {en='Blast Shot',skillchain={'Induration','Transfixion'},tier=5},
+    [214] = {en='Heavy Shot',skillchain={'Fusion'},tier=6},
+    [215] = {en='Detonator',skillchain={'Fusion','Transfixion'},tier=7},
+    [216] = {en='Coronach',skillchain={'Darkness','Fragmentation'},tier=8},
 };
 
 -- Pet skills as triggered by player.
 -- Separated from skills as triggered by pet to ease support for private servers
 skills.smn = { -- BST/SMN Player Pet Skills
-    [513] = {en='Poison Nails',skillchain={'Transfixion'}},
-    [528] = {en='Moonlit Charge',skillchain={'Compression'}},
-    [529] = {en='Crescent Fang',skillchain={'Transfixion'}},
-    [544] = {en='Punch',skillchain={'Liquefaction'}},
-    [546] = {en='Burning Strike',skillchain={'Impaction'}},
-    [547] = {en='Double Punch',skillchain={'Compression'}},
-    [560] = {en='Rock Throw',skillchain={'Scission'}},
-    [562] = {en='Rock Buster',skillchain={'Reverberation'}},
-    [563] = {en='Megalith Throw',skillchain={'Induration'}},
-    [576] = {en='Barracuda Dive',skillchain={'Reverberation'}},
-    [578] = {en='Tail Whip',skillchain={'Detonation'}},
-    [592] = {en='Claw',skillchain={'Detonation'}},
-    [608] = {en='Axe Kick',skillchain={'Induration'}},
-    [612] = {en='Double Slap',skillchain={'Scission'}},
-    [624] = {en='Shock Strike',skillchain={'Impaction'}},
+    [513] = {en='Poison Nails',skillchain={'Transfixion'},tier=1},
+    [528] = {en='Moonlit Charge',skillchain={'Compression'},tier=2},
+    [529] = {en='Crescent Fang',skillchain={'Transfixion'},tier=3},
+    [544] = {en='Punch',skillchain={'Liquefaction'},tier=4},
+    [546] = {en='Burning Strike',skillchain={'Impaction'},tier=5},
+    [547] = {en='Double Punch',skillchain={'Compression'},tier=6},
+    [560] = {en='Rock Throw',skillchain={'Scission'},tier=7},
+    [562] = {en='Rock Buster',skillchain={'Reverberation'},tier=8},
+    [563] = {en='Megalith Throw',skillchain={'Induration'},tier=9},
+    [576] = {en='Barracuda Dive',skillchain={'Reverberation'},tier=10},
+    [578] = {en='Tail Whip',skillchain={'Detonation'},tier=11},
+    [592] = {en='Claw',skillchain={'Detonation'},tier=12},
+    [608] = {en='Axe Kick',skillchain={'Induration'},tier=13},
+    [612] = {en='Double Slap',skillchain={'Scission'},tier=14},
+    [624] = {en='Shock Strike',skillchain={'Impaction'},tier=15},
 };
 
 -- static information on skillchains
