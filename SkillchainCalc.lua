@@ -25,7 +25,7 @@ local displaySettings = {
         font_family = 'Times New Roman',
         font_height = 24,
         font_color = 0xFF0049B9,
-        outline_color = 0xFF000000,
+        outline_color = 0xFF48494B,
         outline_width = 2,
     },
     bg = {
@@ -131,7 +131,23 @@ local function buildSkillchainTable(skillchains)
 
         local opener = combo.skill1;
         resultsTable[result][opener] = resultsTable[result][opener] or {};
-        table.insert(resultsTable[result][opener], combo.skill2);
+        
+        local existingCloser = nil;
+        local existingLevel = 0;
+
+        for _, closer in ipairs(resultsTable[result][opener]) do
+            local closerLevel = findChainLevel(combo.chain);
+            if closer == combo.skill2 then
+                existingCloser = closer;
+                existingLevel = closerLevel;
+                break;
+            end
+        end
+
+        local newLevel = findChainLevel(combo.chain);
+        if not existingCloser or newLevel > existingLevel then
+            resultsTable[result][opener] = { combo.skill2 };
+        end
     end
 
     return resultsTable;
