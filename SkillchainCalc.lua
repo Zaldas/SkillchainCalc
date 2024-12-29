@@ -22,7 +22,8 @@ local displaySettings = {
         outline_width = 1,
     },
     title_font = {
-        font_family = 'Times New Roman',
+        font_family = 'Jupiter Pro',
+        --font_family = 'Times New Roman',
         font_height = 24,
         font_color = 0xFF739BD0,
         outline_color = 0xFF000000,
