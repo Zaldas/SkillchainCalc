@@ -10,9 +10,9 @@ addon.link      = '';
 require('common');
 local skills = require('skills');
 local gdi = require('gdifonts.include');
+--local settings = require('settings');
 
 local debugMode = false; -- Debug mode flag
-
 local displaySettings = {
     font = {
         font_family = 'Arial',
@@ -22,7 +22,7 @@ local displaySettings = {
         outline_width = 1,
     },
     title_font = {
-        font_family = 'Jupiter Pro',
+        font_family = 'Times New Roman',
         font_height = 24,
         font_color = 0xFF739BD0,
         outline_color = 0xFF000000,
@@ -90,6 +90,20 @@ local function clearGDI()
     gdiObjects.title:set_visible(false);
     for _, text in ipairs(gdiObjects.skillchainTexts) do
         text:set_visible(false);
+    end
+end
+
+-- Move GDI Anchor
+local function moveGDIAnchor()
+    gdiObjects.title:set_position_x(displaySettings.anchor.x + 5);
+    gdiObjects.title:set_position_y(displaySettings.anchor.y);
+
+    gdiObjects.background:set_position_x(displaySettings.anchor.x);
+    gdiObjects.background:set_position_y(displaySettings.anchor.y);
+
+    for _, text in ipairs(gdiObjects.skillchainTexts) do
+        text:set_position_x(displaySettings.anchor.x);
+        text:set_position_y(displaySettings.anchor.y);
     end
 end
 
@@ -247,10 +261,46 @@ end
 
 -- Event handler for addon loading
 ashita.events.register('load', 'load_cb', function()
-    print('[SkillchainCalc] Addon loaded. Use /scc <weaponType1> <weaponType2> [level] to calculate skillchains.');
+    --print('[SkillchainCalc] Addon loaded.');
+    --settings.load(displaySettings);
     initGDIObjects();
     clearGDI();
+
+    --[[
+    settings.register('settings', 'settings_update', function(s)
+        if (s ~= nil) then
+            displaySettings = s;
+        end
+    end)
+    ]]
 end);
+
+-- Calculates all possible skillchains between two sets of skills
+local function calculateSkillchains(skills1, skills2)
+    local results = {};
+
+    for _, skill1 in pairs(skills1) do
+        for _, skill2 in pairs(skills2) do
+            for _, chain1 in pairs(skill1.skillchain or {}) do
+                for _, chain2 in pairs(skill2.skillchain or {}) do
+                    local chainInfo = skills.ChainInfo[chain1];
+                    if chainInfo and chainInfo[chain2] then
+                        table.insert(results, {
+                            skill1 = skill1.en,
+                            skill2 = skill2.en,
+                            chain = chainInfo[chain2].skillchain
+                        });
+                    end
+                end
+            end
+        end
+    end
+
+    return results;
+end
+
+local function CalculateSkllchains(wt1, wt2, l)
+end
 
 -- Event handler for commands
 ashita.events.register('command', 'command_cb', function(e)
@@ -261,6 +311,30 @@ ashita.events.register('command', 'command_cb', function(e)
 
     -- Block the command to prevent further processing
     e.blocked = true;
+
+    --[[
+    if (#args > 2 and args[2]:any('setx', 'sety')) then
+        local value = tonumber(args[3]);
+        if value and value >= 0 then
+            print(args[2] .. ': ' .. tostring(args[3]));
+
+            if args[2]:any('setx') then
+                displaySettings.anchor.x = value;
+            end
+
+            if args[2]:any('sety') then
+                displaySettings.anchor.y = value;
+            end
+
+            -- Update the GDI objects to reflect the new position
+            moveGDIAnchor();
+            settings.save();
+        else
+            print('[SkillchainCalc] Invalid value for setx or sety. Must be a non-negative number.');
+        end
+        return;
+    end
+    ]]
 
     if (#args == 2 and args[2] == 'clear') then
         clearGDI();
@@ -312,30 +386,6 @@ ashita.events.register('command', 'command_cb', function(e)
         clearGDI();
     end
 end);
-
--- Calculates all possible skillchains between two sets of skills
-function calculateSkillchains(skills1, skills2)
-    local results = {};
-
-    for _, skill1 in pairs(skills1) do
-        for _, skill2 in pairs(skills2) do
-            for _, chain1 in pairs(skill1.skillchain or {}) do
-                for _, chain2 in pairs(skill2.skillchain or {}) do
-                    local chainInfo = skills.ChainInfo[chain1];
-                    if chainInfo and chainInfo[chain2] then
-                        table.insert(results, {
-                            skill1 = skill1.en,
-                            skill2 = skill2.en,
-                            chain = chainInfo[chain2].skillchain
-                        });
-                    end
-                end
-            end
-        end
-    end
-
-    return results;
-end
 
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
