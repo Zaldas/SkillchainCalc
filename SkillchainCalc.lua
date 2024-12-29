@@ -10,22 +10,21 @@ addon.link      = '';
 require('common');
 local skills = require('skills');
 local gdi = require('gdifonts.include');
---local settings = require('settings');
+local settings = require('settings');
 
 local debugMode = false; -- Debug mode flag
 local displaySettings = {
     font = {
         font_family = 'Arial',
         font_height = 16,
-        font_color = 0xFFD3D3D3,
+        font_color = 0xFFAFAFAF,
         outline_color = 0xFF000000,
         outline_width = 1,
     },
     title_font = {
-        font_family = 'Jupiter Pro',
-        --font_family = 'Times New Roman',
+        font_family = 'Times New Roman',
         font_height = 24,
-        font_color = 0xFF739BD0,
+        font_color = 0xFF0049B9,
         outline_color = 0xFF000000,
         outline_width = 2,
     },
@@ -49,6 +48,12 @@ local gdiObjects = {
     title = nil,
     background = nil,
     skillchainTexts = {},
+};
+
+local cache = {
+    wt1 = nil,
+    wt2 = nil,
+    level = nil,
 };
 
 -- Helper function to find the level of a skillchain
@@ -101,11 +106,6 @@ local function moveGDIAnchor()
 
     gdiObjects.background:set_position_x(displaySettings.anchor.x);
     gdiObjects.background:set_position_y(displaySettings.anchor.y);
-
-    for _, text in ipairs(gdiObjects.skillchainTexts) do
-        text:set_position_x(displaySettings.anchor.x);
-        text:set_position_y(displaySettings.anchor.y);
-    end
 end
 
 -- Filter skillchains by level or higher
@@ -221,9 +221,10 @@ local function updateGDI(skillchains)
     local sortedResults, orderedResults = sortSkillchainTable(resultsTable);
     local y_offset = 40;
     local textIndex = 1; -- Track text object index
-    local totalHeight = 60; -- Start with a base height for the title and spacing
+    local totalHeight = 50; -- Start with a base height for the title and spacing
 
     for _, result in ipairs(orderedResults) do
+        print('Result: ' .. result);
         local openers = sortedResults[result];
         -- Display skillchain result header
         local header = gdiObjects.skillchainTexts[textIndex];
@@ -231,8 +232,9 @@ local function updateGDI(skillchains)
         local chainInfo = skills.ChainInfo[result];
         local burstElements = chainInfo and chainInfo.burst or {};
         local elementsText = table.concat(burstElements, ', ');
+        local color = skills.GetPropertyColor(result);
         header:set_text(('%s [%s]'):format(result, elementsText));
-
+        header:set_font_color(color);
         header:set_position_x(displaySettings.anchor.x + 10);
         header:set_position_y(displaySettings.anchor.y + y_offset);
         header:set_visible(true);
@@ -263,17 +265,15 @@ end
 -- Event handler for addon loading
 ashita.events.register('load', 'load_cb', function()
     --print('[SkillchainCalc] Addon loaded.');
-    --settings.load(displaySettings);
+    displaySettings = settings.load(displaySettings);
     initGDIObjects();
     clearGDI();
 
-    --[[
     settings.register('settings', 'settings_update', function(s)
         if (s ~= nil) then
             displaySettings = s;
         end
     end)
-    ]]
 end);
 
 -- Calculates all possible skillchains between two sets of skills
@@ -300,7 +300,33 @@ local function calculateSkillchains(skills1, skills2)
     return results;
 end
 
-local function CalculateSkllchains(wt1, wt2, l)
+local function ParseSkillchains()
+    if not cache.wt1 or not cache.wt2 then
+        return;
+    end
+
+    -- Validate weapon types
+    local weapon1Skills = skills[cache.wt1];
+    local weapon2Skills = skills[cache.wt2];
+
+    if not weapon1Skills or not weapon2Skills then
+        print('[SkillchainCalc] Invalid weapon types provided.');
+        return;
+    end
+
+    -- Calculate combinations
+    local combinations = calculateSkillchains(weapon1Skills, weapon2Skills);
+
+    -- Filter combinations by level or higher
+    local filteredCombinations = filterSkillchainsByLevel(combinations, cache.level);
+
+    -- Display results
+    if (#filteredCombinations > 0) then
+        updateGDI(filteredCombinations);
+    else
+        print('[SkillchainCalc] No skillchain combinations found for filter level ' .. cache.level .. '.');
+        clearGDI();
+    end
 end
 
 -- Event handler for commands
@@ -313,12 +339,9 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Block the command to prevent further processing
     e.blocked = true;
 
-    --[[
     if (#args > 2 and args[2]:any('setx', 'sety')) then
         local value = tonumber(args[3]);
         if value and value >= 0 then
-            print(args[2] .. ': ' .. tostring(args[3]));
-
             if args[2]:any('setx') then
                 displaySettings.anchor.x = value;
             end
@@ -328,17 +351,22 @@ ashita.events.register('command', 'command_cb', function(e)
             end
 
             -- Update the GDI objects to reflect the new position
-            moveGDIAnchor();
             settings.save();
+            moveGDIAnchor();
+            ParseSkillchains();
+
+            print('New Anchor: x = ' .. displaySettings.anchor.x .. ', y = ' .. displaySettings.anchor.y);
         else
             print('[SkillchainCalc] Invalid value for setx or sety. Must be a non-negative number.');
         end
         return;
     end
-    ]]
 
     if (#args == 2 and args[2] == 'clear') then
         clearGDI();
+        cache.wt1 = nil;
+        cache.wt2 = nil;
+        cache.level = 1;
         return;
     end
 
@@ -349,50 +377,32 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     if (#args == 2 and args[2] == 'help') then
-        print('[SkillchainCalc] Usage: /scc <weaponType1> <weaponType2> [level]');
-        print('[SkillchainCalc]  Valid weaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
-        print('[SkillchainCalc]  [level] is optional value that filters skillchain tier, i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
-        print('[SkillchainCalc] Usage: /scc clear -- clear out window');
-        print('[SkillchainCalc] Usage: /scc debug -- enable debugging');
+        print('Usage: /scc <weaponType1> <weaponType2> [level]');
+        print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
+        print(' [level] is optional value that filters skillchain tier, i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
+        print('Usage: /scc setx # -- set x anchor');
+        print('Usage: /scc sety # -- set y anchor');
+        print('Usage: /scc clear -- clear out window');
+        print('Usage: /scc debug -- enable debugging');
         return;
     end
 
     -- Ensure we have the necessary arguments
     if (#args < 3) then
-        print('[SkillchainCalc] Usage: /scc <weaponType1> <weaponType2> [level]');
+        print('/scc help -- for usage help');
         return;
     end
 
-    local weaponType1 = args[2];
-    local weaponType2 = args[3];
-    local filterLevel = tonumber(args[4]) or 1; -- Default to level 1 if no level is provided
+    cache.wt1 = args[2];
+    cache.wt2 = args[3];
+    cache.level = tonumber(args[4]) or 1; -- Default to level 1 if no level is provided
 
-    -- Validate weapon types
-    local weapon1Skills = skills[weaponType1];
-    local weapon2Skills = skills[weaponType2];
-
-    if not weapon1Skills or not weapon2Skills then
-        print('[SkillchainCalc] Invalid weapon types provided.');
-        return;
-    end
-
-    -- Calculate combinations
-    local combinations = calculateSkillchains(weapon1Skills, weapon2Skills);
-
-    -- Filter combinations by level or higher
-    local filteredCombinations = filterSkillchainsByLevel(combinations, filterLevel);
-
-    -- Display results
-    if (#filteredCombinations > 0) then
-        updateGDI(filteredCombinations);
-    else
-        print('[SkillchainCalc] No skillchain combinations found for filter level ' .. filterLevel .. '.');
-        clearGDI();
-    end
+    ParseSkillchains();
 end);
 
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
-    print('[SkillchainCalc] Addon unloaded.');
+    --print('[SkillchainCalc] Addon unloaded.');
+    settings.save();
     destroyGDIObjects();
 end);
