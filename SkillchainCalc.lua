@@ -17,16 +17,25 @@ local displaySettings = {
     font = {
         font_family = 'Arial',
         font_height = 16,
-        font_color = 0xFFFFFFFF,
+        font_color = 0xFFD3D3D3,
         outline_color = 0xFF000000,
         outline_width = 1,
     },
+    title_font = {
+        font_family = 'Jupiter Pro',
+        font_height = 24,
+        font_color = 0xFF739BD0,
+        outline_color = 0xFF000000,
+        outline_width = 2,
+    },
     bg = {
-        width = 400,
+        width = 350,
         height = 600,
         corner_rounding = 5,
         fill_color = 0xBF000000,
         outline_color = 0xFFFFFFFF,
+        gradient_style = gdi.Gradient.TopToBottom,
+        gradient_color = 0x59010640,
         z_order = -1,
     },
     anchor = {
@@ -49,10 +58,10 @@ end
 
 -- Initialize GDI objects for displaying skillchains
 local function initGDIObjects()
-    gdiObjects.title = gdi:create_object(displaySettings.font);
-    gdiObjects.title:set_text('Skillchain Combinations');
-    gdiObjects.title:set_position_x(displaySettings.anchor.x + 10);
-    gdiObjects.title:set_position_y(displaySettings.anchor.y + 10);
+    gdiObjects.title = gdi:create_object(displaySettings.title_font);
+    gdiObjects.title:set_text('Skillchains');
+    gdiObjects.title:set_position_x(displaySettings.anchor.x + 5);
+    gdiObjects.title:set_position_y(displaySettings.anchor.y);
 
     gdiObjects.background = gdi:create_rect(displaySettings.bg);
     gdiObjects.background:set_position_x(displaySettings.anchor.x);
