@@ -224,7 +224,7 @@ local function updateGDI(skillchains)
     local totalHeight = 50; -- Start with a base height for the title and spacing
 
     for _, result in ipairs(orderedResults) do
-        print('Result: ' .. result);
+        if debugMode then print('[Debug] Result: ' .. result); end
         local openers = sortedResults[result];
         -- Display skillchain result header
         local header = gdiObjects.skillchainTexts[textIndex];
