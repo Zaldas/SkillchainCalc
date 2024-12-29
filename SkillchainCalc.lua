@@ -349,7 +349,10 @@ ashita.events.register('command', 'command_cb', function(e)
 
     if (#args == 2 and args[2] == 'help') then
         print('[SkillchainCalc] Usage: /scc <weaponType1> <weaponType2> [level]');
-        print('[SkillchainCalc] Valid weaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
+        print('[SkillchainCalc]  Valid weaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
+        print('[SkillchainCalc]  [level] is optional value that filters skillchain tier, i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
+        print('[SkillchainCalc] Usage: /scc clear -- clear out window');
+        print('[SkillchainCalc] Usage: /scc debug -- enable debugging');
         return;
     end
 
