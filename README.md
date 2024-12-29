@@ -4,10 +4,9 @@ Skillchain Calculator
 Display skillchains possible given an opening weapon type and closing weapon type.  
 
 Usage:  
-/scc <weapon1> <weapon2> [level]  
-&ensp;WeaponTypes: h2h, dagger, sword, gs, axe,  
-&ensp;&ensp;ga, scythe, polearm, katana, gkt, club,  
-&ensp;&ensp;staff, archery, mm, smn  
+/scc weapon1 weapon2 [level]  
+&ensp;Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe,  
+&ensp;&ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
 &ensp;[level] is optional value that filters skillchain tier  
 &ensp;i.e. 2 only shows tier 2 and 3 skillchains.  
 &ensp;1 or empty is default all.  
@@ -28,4 +27,8 @@ Files:
   
 This is adjusted for HorizonXI.  
 No plans to support for retail.  
+
+Note:  
+&ensp;Used Custom font Jupiter Pro for Skillchain header  
+&ensp;Default is Times New Roman
 
