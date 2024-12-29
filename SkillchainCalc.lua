@@ -266,13 +266,7 @@ ashita.events.register('command', 'command_cb', function(e)
 
     if (#args == 2 and args[2] == 'help') then
         print('[SkillchainCalc] Usage: /scc <weaponType1> <weaponType2> [level]');
-        local weaponTypes = {};
-        for weaponType, _ in pairs(skills) do
-            if type(skills[weaponType]) == 'table' then
-                table.insert(weaponTypes, weaponType);
-            end
-        end
-        print('[SkillchainCalc] Valid weapon types: ' .. table.concat(weaponTypes, ', '));
+        print('[SkillchainCalc] Valid weaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
         return;
     end
 
