@@ -4,8 +4,8 @@ Skillchain Calculator
 Display skillchains possible given an opening weapon type and closing weapon type.  
 
 Usage:  
-/scc <weapon1> <weapon2> [level]  
-&ensp;WeaponTypes: h2h, dagger, sword, gs, axe,  
+/scc weapon1 weapon2 [level]  
+&ensp;Weapon Types: h2h, dagger, sword, gs, axe,  
 &ensp;&ensp;ga, scythe, polearm, katana, gkt, club,  
 &ensp;&ensp;staff, archery, mm, smn  
 &ensp;[level] is optional value that filters skillchain tier  
