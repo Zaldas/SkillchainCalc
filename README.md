@@ -9,7 +9,7 @@ Usage:
 &ensp;i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.  
   
 Example: -- Results of Picture  
-&ensp;/scc katana h2h 2
+&ensp;/scc katana h2h  
   
 Commands:  
 &ensp;/scc help -- to see all commands  
