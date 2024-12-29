@@ -53,7 +53,8 @@ local gdiObjects = {
 local cache = {
     wt1 = nil,
     wt2 = nil,
-    level = nil,
+    level = 1,
+    settings = displaySettings;
 };
 
 -- Helper function to find the level of a skillchain
@@ -64,17 +65,17 @@ end
 
 -- Initialize GDI objects for displaying skillchains
 local function initGDIObjects()
-    gdiObjects.title = gdi:create_object(displaySettings.title_font);
+    gdiObjects.title = gdi:create_object(cache.settings.title_font);
     gdiObjects.title:set_text('Skillchains');
-    gdiObjects.title:set_position_x(displaySettings.anchor.x + 5);
-    gdiObjects.title:set_position_y(displaySettings.anchor.y);
+    gdiObjects.title:set_position_x(cache.settings.anchor.x + 5);
+    gdiObjects.title:set_position_y(cache.settings.anchor.y);
 
-    gdiObjects.background = gdi:create_rect(displaySettings.bg);
-    gdiObjects.background:set_position_x(displaySettings.anchor.x);
-    gdiObjects.background:set_position_y(displaySettings.anchor.y);
+    gdiObjects.background = gdi:create_rect(cache.settings.bg);
+    gdiObjects.background:set_position_x(cache.settings.anchor.x);
+    gdiObjects.background:set_position_y(cache.settings.anchor.y);
 
     for i = 1, 100 do -- Increased limit to accommodate more lines
-        local text = gdi:create_object(displaySettings.font);
+        local text = gdi:create_object(cache.settings.font);
         text:set_visible(false);
         table.insert(gdiObjects.skillchainTexts, text);
     end
@@ -101,11 +102,11 @@ end
 
 -- Move GDI Anchor
 local function moveGDIAnchor()
-    gdiObjects.title:set_position_x(displaySettings.anchor.x + 5);
-    gdiObjects.title:set_position_y(displaySettings.anchor.y);
+    gdiObjects.title:set_position_x(cache.settings.anchor.x + 5);
+    gdiObjects.title:set_position_y(cache.settings.anchor.y);
 
-    gdiObjects.background:set_position_x(displaySettings.anchor.x);
-    gdiObjects.background:set_position_y(displaySettings.anchor.y);
+    gdiObjects.background:set_position_x(cache.settings.anchor.x);
+    gdiObjects.background:set_position_y(cache.settings.anchor.y);
 end
 
 -- Filter skillchains by level or higher
@@ -235,8 +236,8 @@ local function updateGDI(skillchains)
         local color = skills.GetPropertyColor(result);
         header:set_text(('%s [%s]'):format(result, elementsText));
         header:set_font_color(color);
-        header:set_position_x(displaySettings.anchor.x + 10);
-        header:set_position_y(displaySettings.anchor.y + y_offset);
+        header:set_position_x(cache.settings.anchor.x + 10);
+        header:set_position_y(cache.settings.anchor.y + y_offset);
         header:set_visible(true);
         textIndex = textIndex + 1;
         y_offset = y_offset + 20;
@@ -248,9 +249,9 @@ local function updateGDI(skillchains)
                 local comboText = gdiObjects.skillchainTexts[textIndex];
                 if not comboText then break; end
                 comboText:set_text(('  %s > %s'):format(openerData.opener, closer));
-                comboText:set_font_color(displaySettings.font.font_color);
-                comboText:set_position_x(displaySettings.anchor.x + 20);
-                comboText:set_position_y(displaySettings.anchor.y + y_offset);
+                comboText:set_font_color(cache.settings.font.font_color);
+                comboText:set_position_x(cache.settings.anchor.x + 20);
+                comboText:set_position_y(cache.settings.anchor.y + y_offset);
                 comboText:set_visible(true);
                 textIndex = textIndex + 1;
                 y_offset = y_offset + 20;
@@ -266,13 +267,13 @@ end
 -- Event handler for addon loading
 ashita.events.register('load', 'load_cb', function()
     --print('[SkillchainCalc] Addon loaded.');
-    displaySettings = settings.load(displaySettings);
+    cache.settings = settings.load(displaySettings);
     initGDIObjects();
     clearGDI();
 
     settings.register('settings', 'settings_update', function(s)
         if (s ~= nil) then
-            displaySettings = s;
+            cache.settings = s;
         end
     end)
 end);
@@ -344,11 +345,11 @@ ashita.events.register('command', 'command_cb', function(e)
         local value = tonumber(args[3]);
         if value and value >= 0 then
             if args[2]:any('setx') then
-                displaySettings.anchor.x = value;
+                cache.settings.anchor.x = value;
             end
 
             if args[2]:any('sety') then
-                displaySettings.anchor.y = value;
+                cache.settings.anchor.y = value;
             end
 
             -- Update the GDI objects to reflect the new position
@@ -356,7 +357,7 @@ ashita.events.register('command', 'command_cb', function(e)
             moveGDIAnchor();
             ParseSkillchains();
 
-            print('New Anchor: x = ' .. displaySettings.anchor.x .. ', y = ' .. displaySettings.anchor.y);
+            print('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
         else
             print('[SkillchainCalc] Invalid value for setx or sety. Must be a non-negative number.');
         end
