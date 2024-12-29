@@ -248,6 +248,7 @@ local function updateGDI(skillchains)
                 local comboText = gdiObjects.skillchainTexts[textIndex];
                 if not comboText then break; end
                 comboText:set_text(('  %s > %s'):format(openerData.opener, closer));
+                comboText:set_font_color(displaySettings.font.font_color);
                 comboText:set_position_x(displaySettings.anchor.x + 20);
                 comboText:set_position_y(displaySettings.anchor.y + y_offset);
                 comboText:set_visible(true);
