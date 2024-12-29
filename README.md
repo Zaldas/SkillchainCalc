@@ -9,7 +9,7 @@ Usage:
 &ensp;&ensp;ga, scythe, polearm, katana, gkt, club,  
 &ensp;&ensp;staff, archery, mm, smn  
 &ensp;[level] is optional value that filters skillchain tier  
-&ensp;i.e. 2 only shows tier 2 and 3 skillchains. 
+&ensp;i.e. 2 only shows tier 2 and 3 skillchains.  
 &ensp;1 or empty is default all.  
   
 Example: -- Results of Picture  
