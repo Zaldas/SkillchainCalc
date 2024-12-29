@@ -28,3 +28,7 @@ Files:
 This is adjusted for HorizonXI.  
 No plans to support for retail.  
 
+Note:  
+&ensp;Used Custom font Jupiter Pro for Skillchain header  
+&ensp;Default is Times New Roman
+
