@@ -29,7 +29,7 @@ local displaySettings = {
         outline_width = 2,
     },
     bg = {
-        width = 350,
+        width = 300,
         height = 600,
         corner_rounding = 5,
         fill_color = 0xBF000000,
