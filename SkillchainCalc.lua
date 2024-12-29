@@ -23,7 +23,7 @@ local displaySettings = {
     },
     bg = {
         width = 400,
-        height = 300,
+        height = 600,
         corner_rounding = 5,
         fill_color = 0xBF000000,
         outline_color = 0xFFFFFFFF,
@@ -41,12 +41,11 @@ local gdiObjects = {
     skillchainTexts = {},
 };
 
--- Tier priorities
-local tierPriority = {
-    t3 = {'Light', 'Darkness'},
-    t2 = {'Distortion', 'Fragmentation', 'Fusion', 'Gravitation'},
-    t1 = {'Compression', 'Liquefaction', 'Induration', 'Reverberation', 'Transfixion', 'Scission', 'Detonation', 'Impaction'}
-};
+-- Helper function to find the level of a skillchain
+local function findChainLevel(chainName)
+    local chainInfo = skills.ChainInfo[chainName];
+    return chainInfo and chainInfo.level or 0;
+end
 
 -- Initialize GDI objects for displaying skillchains
 local function initGDIObjects()
@@ -85,30 +84,15 @@ local function clearGDI()
     end
 end
 
--- Filter skillchains by tier or higher
-local function filterSkillchainsByTier(combinations, filter)
-    local tiersToInclude = {
-        t1 = {'t3', 't2', 't1'},
-        t2 = {'t3', 't2'},
-        t3 = {'t3'}
-    };
-
-    local includedTiers = tiersToInclude[filter] or {};
-    local includedChains = {};
-
-    for _, tier in ipairs(includedTiers) do
-        for _, chainName in ipairs(tierPriority[tier]) do
-            includedChains[chainName] = true;
-        end
-    end
-
+-- Filter skillchains by level or higher
+local function filterSkillchainsByLevel(combinations, filterLevel)
     local filteredResults = {};
     for _, combo in ipairs(combinations) do
-        if includedChains[combo.chain] then
+        local chainLevel = findChainLevel(combo.chain);
+        if chainLevel >= filterLevel then
             table.insert(filteredResults, combo);
         end
     end
-
     return filteredResults;
 end
 
@@ -128,8 +112,8 @@ local function buildSkillchainTable(skillchains)
     return resultsTable;
 end
 
--- Helper function to find the tier of a weapon skill
-local function findSkillTier(skillName)
+-- Helper function to find the level of a weapon skill
+local function findSkillLevel(skillName)
     for weaponType, weaponSkills in pairs(skills) do
         if type(weaponSkills) == 'table' then
             for _, skill in pairs(weaponSkills) do
@@ -142,49 +126,57 @@ local function findSkillTier(skillName)
     return 0; -- Default to 0 if not found
 end
 
--- Sort results table by skill tier and opening weapon skill
+-- Sort results table by skillchain level and opening weapon skill
 local function sortSkillchainTable(resultsTable)
     local sortedResults = {};
     local orderedResults = {};
 
-    if debugMode then print('[Debug] Starting tier-based sorting'); end
-    -- Sort by tier using skills.ChainInfo
-    for _, tier in ipairs({'t3', 't2', 't1'}) do
-        for _, chainName in ipairs(tierPriority[tier]) do
-            if resultsTable[chainName] then
-                if debugMode then print(('[Debug] Adding chain %s from tier %s'):format(chainName, tier)); end
-                sortedResults[chainName] = resultsTable[chainName];
-                table.insert(orderedResults, chainName);
-            end
-        end
+    if debugMode then print('[Debug] Starting level-based sorting'); end
+    -- Sort by skillchain level using skills.ChainInfo
+    local chainLevels = {};
+    for chainName, _ in pairs(resultsTable) do
+        table.insert(chainLevels, {
+            chain = chainName,
+            level = findChainLevel(chainName)
+        });
     end
 
-    -- Sort opening weapon skills within each tier by their skill tier
+    table.sort(chainLevels, function(a, b)
+        return a.level > b.level;
+    end);
+
+    for _, chainData in ipairs(chainLevels) do
+        local chainName = chainData.chain;
+        sortedResults[chainName] = resultsTable[chainName];
+        table.insert(orderedResults, chainName);
+    end
+
+    -- Sort opening weapon skills within each skillchain level by their weapon skill level
     for result, openers in pairs(sortedResults) do
         local sortedOpeners = {};
         if debugMode then print(('[Debug] Sorting openers for chain %s'):format(result)); end
         for opener, closers in pairs(openers) do
-            local openerTier = findSkillTier(opener);
-            if debugMode then print(('[Debug] Found opener %s with tier %d'):format(opener, openerTier)); end
+            local openerLevel = findSkillLevel(opener);
+            if debugMode then print(('[Debug] Found opener %s with level %d'):format(opener, openerLevel)); end
 
-            -- Sort closers by tier
+            -- Sort closers by weapon skill level
             table.sort(closers, function(a, b)
-                local closerTierA = findSkillTier(a);
-                local closerTierB = findSkillTier(b);
-                if debugMode then print(('[Debug] Comparing closer %s (Tier %d) with closer %s (Tier %d)'):format(a, closerTierA, b, closerTierB)); end
-                return closerTierA > closerTierB;
+                local closerLevelA = findSkillLevel(a);
+                local closerLevelB = findSkillLevel(b);
+                if debugMode then print(('[Debug] Comparing closer %s (Level %d) with closer %s (Level %d)'):format(a, closerLevelA, b, closerLevelB)); end
+                return closerLevelA > closerLevelB;
             end);
 
             table.insert(sortedOpeners, {
                 opener = opener,
                 closers = closers,
-                tier = openerTier
+                level = openerLevel
             });
         end
 
         table.sort(sortedOpeners, function(a, b)
-            if debugMode then print(('[Debug] Comparing opener %s (Tier %d) with opener %s (Tier %d)'):format(a.opener, a.tier, b.opener, b.tier)); end
-            return a.tier > b.tier;
+            if debugMode then print(('[Debug] Comparing opener %s (Level %d) with opener %s (Level %d)'):format(a.opener, a.level, b.opener, b.level)); end
+            return a.level > b.level;
         end);
 
         sortedResults[result] = sortedOpeners;
@@ -246,7 +238,7 @@ end
 
 -- Event handler for addon loading
 ashita.events.register('load', 'load_cb', function()
-    print('[SkillchainCalc] Addon loaded. Use /scc <weaponType1> <weaponType2> [tier] to calculate skillchains.');
+    print('[SkillchainCalc] Addon loaded. Use /scc <weaponType1> <weaponType2> [level] to calculate skillchains.');
     initGDIObjects();
     clearGDI();
 end);
@@ -274,13 +266,13 @@ ashita.events.register('command', 'command_cb', function(e)
 
     -- Ensure we have the necessary arguments
     if (#args < 3) then
-        print('[SkillchainCalc] Usage: /scc <weaponType1> <weaponType2> [tier]');
+        print('[SkillchainCalc] Usage: /scc <weaponType1> <weaponType2> [level]');
         return;
     end
 
     local weaponType1 = args[2];
     local weaponType2 = args[3];
-    local filter = args[4] or 't1'; -- Default to t1 if no filter is provided
+    local filterLevel = tonumber(args[4]) or 1; -- Default to level 1 if no level is provided
 
     -- Validate weapon types
     local weapon1Skills = skills[weaponType1];
@@ -294,14 +286,14 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Calculate combinations
     local combinations = calculateSkillchains(weapon1Skills, weapon2Skills);
 
-    -- Filter combinations by tier or higher
-    local filteredCombinations = filterSkillchainsByTier(combinations, filter);
+    -- Filter combinations by level or higher
+    local filteredCombinations = filterSkillchainsByLevel(combinations, filterLevel);
 
     -- Display results
     if (#filteredCombinations > 0) then
         updateGDI(filteredCombinations);
     else
-        print('[SkillchainCalc] No skillchain combinations found for filter ' .. filter .. '.');
+        print('[SkillchainCalc] No skillchain combinations found for filter level ' .. filterLevel .. '.');
         clearGDI();
     end
 end);
