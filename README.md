@@ -1,4 +1,5 @@
-<img align="right" src="https://github.com/user-attachments/assets/c255f08a-88ae-41d3-afc2-a2dca7ad17a3">  
+<img align="right" src="https://github.com/user-attachments/assets/58272611-8b28-425e-9206-dec2618219b7">  
+
 
 Skillchain Calculator  
   
