@@ -13,7 +13,7 @@ local gdi = require('gdifonts.include');
 local settings = require('settings');
 
 local debugMode = false; -- Debug mode flag
-local displaySettings = {
+local displaySettings = T{
     font = {
         font_family = 'Arial',
         font_height = 16,
@@ -23,10 +23,10 @@ local displaySettings = {
     },
     title_font = {
         font_family = 'Times New Roman',
-        font_height = 24,
+        font_height = 28,
         font_color = 0xFF0049B9,
         outline_color = 0xFF48494B,
-        outline_width = 2,
+        outline_width = 1,
     },
     bg = {
         width = 300,
@@ -126,28 +126,53 @@ local function buildSkillchainTable(skillchains)
     local resultsTable = {};
 
     for _, combo in ipairs(skillchains) do
-        local result = combo.chain;
-        resultsTable[result] = resultsTable[result] or {};
-
         local opener = combo.skill1;
-        resultsTable[result][opener] = resultsTable[result][opener] or {};
-        
-        local existingCloser = nil;
-        local existingLevel = 0;
+        local closer = combo.skill2;
+        local chainLevel = findChainLevel(combo.chain);
 
-        for _, closer in ipairs(resultsTable[result][opener]) do
-            local closerLevel = findChainLevel(combo.chain);
-            if closer == combo.skill2 then
-                existingCloser = closer;
-                existingLevel = closerLevel;
-                break;
+        -- Check if the opener/closer pair already exists
+        local existingEntry = nil;
+        for chain, openers in pairs(resultsTable) do
+            if openers[opener] then
+                for _, entry in ipairs(openers[opener]) do
+                    if entry.closer == closer then
+                        existingEntry = { chain = chain, entry = entry };
+                        break;
+                    end
+                end
+            end
+            if existingEntry then break; end
+        end
+
+        if existingEntry then
+            local existingLevel = findChainLevel(existingEntry.chain);
+            if chainLevel > existingLevel then
+                -- Remove the lower-level chain entry
+                local openers = resultsTable[existingEntry.chain];
+                for i, entry in ipairs(openers[opener]) do
+                    if entry.closer == closer then
+                        table.remove(openers[opener], i);
+                        break;
+                    end
+                end
+                if #openers[opener] == 0 then
+                    openers[opener] = nil;
+                end
+                if not next(openers) then
+                    resultsTable[existingEntry.chain] = nil;
+                end
+            else
+                -- Skip adding this chain since a higher-level one exists
+                goto continue;
             end
         end
 
-        local newLevel = findChainLevel(combo.chain);
-        if not existingCloser or newLevel > existingLevel then
-            resultsTable[result][opener] = { combo.skill2 };
-        end
+        -- Add the new chain
+        resultsTable[combo.chain] = resultsTable[combo.chain] or {};
+        resultsTable[combo.chain][opener] = resultsTable[combo.chain][opener] or {};
+        table.insert(resultsTable[combo.chain][opener], { closer = closer });
+
+        ::continue::
     end
 
     return resultsTable;
@@ -202,9 +227,9 @@ local function sortSkillchainTable(resultsTable)
 
             -- Sort closers by weapon skill level
             table.sort(closers, function(a, b)
-                local closerLevelA = findSkillLevel(a);
-                local closerLevelB = findSkillLevel(b);
-                if debugMode then print(('[Debug] Comparing closer %s (Level %d) with closer %s (Level %d)'):format(a, closerLevelA, b, closerLevelB)); end
+                local closerLevelA = findSkillLevel(a.closer);
+                local closerLevelB = findSkillLevel(b.closer);
+                if debugMode then print(('[Debug] Comparing closer %s (Level %d) with closer %s (Level %d)'):format(a.closer, closerLevelA, b.closer, closerLevelB)); end
                 return closerLevelA > closerLevelB;
             end);
 
@@ -261,10 +286,10 @@ local function updateGDI(skillchains)
 
         -- Display each opener and each closer on a separate line
         for _, openerData in ipairs(openers) do
-            for _, closer in ipairs(openerData.closers) do
+            for _, closerData in ipairs(openerData.closers) do
                 local comboText = gdiObjects.skillchainTexts[textIndex];
                 if not comboText then break; end
-                comboText:set_text(('  %s > %s'):format(openerData.opener, closer));
+                comboText:set_text(('  %s > %s'):format(openerData.opener, closerData.closer));
                 comboText:set_font_color(cache.settings.font.font_color);
                 comboText:set_position_x(cache.settings.anchor.x + 20);
                 comboText:set_position_y(cache.settings.anchor.y + y_offset);
