@@ -261,13 +261,25 @@ local function updateGDI(skillchains)
 
     local resultsTable = buildSkillchainTable(skillchains);
     local sortedResults, orderedResults = sortSkillchainTable(resultsTable);
-    local y_offset = 40;
+    local y_offset = 40; -- Starting y-offset
     local textIndex = 1; -- Track text object index
-    local totalHeight = 50; -- Start with a base height for the title and spacing
+    local columnOffset = 0; -- Track horizontal offset for new columns
+    local entriesInColumn = 0; -- Track lines in the current column
+    local maxColumnHeight = 0; -- Track the tallest column height
+    local columnWidth = 300; -- Width of each column
 
     for _, result in ipairs(orderedResults) do
         if debugMode then print('[Debug] Result: ' .. result); end
         local openers = sortedResults[result];
+
+        -- Check if starting this header will exceed the soft cap
+        if entriesInColumn + #openers + 1 > 30 then -- +1 accounts for the header
+            maxColumnHeight = math.max(maxColumnHeight, y_offset); -- Update max column height
+            columnOffset = columnOffset + columnWidth; -- Shift to the next column
+            y_offset = 40; -- Reset y-offset for the new column
+            entriesInColumn = 0; -- Reset entry count for the new column
+        end
+
         -- Display skillchain result header
         local header = gdiObjects.skillchainTexts[textIndex];
         if not header then break; end
@@ -277,32 +289,36 @@ local function updateGDI(skillchains)
         local color = skills.GetPropertyColor(result);
         header:set_text(('%s [%s]'):format(result, elementsText));
         header:set_font_color(color);
-        header:set_position_x(cache.settings.anchor.x + 10);
+        header:set_position_x(cache.settings.anchor.x + 10 + columnOffset);
         header:set_position_y(cache.settings.anchor.y + y_offset);
         header:set_visible(true);
         textIndex = textIndex + 1;
         y_offset = y_offset + 20;
-        totalHeight = totalHeight + 20;
+        entriesInColumn = entriesInColumn + 1;
 
-        -- Display each opener and each closer on a separate line
+        -- Display each opener and each closer
         for _, openerData in ipairs(openers) do
             for _, closerData in ipairs(openerData.closers) do
                 local comboText = gdiObjects.skillchainTexts[textIndex];
                 if not comboText then break; end
                 comboText:set_text(('  %s > %s'):format(openerData.opener, closerData.closer));
                 comboText:set_font_color(cache.settings.font.font_color);
-                comboText:set_position_x(cache.settings.anchor.x + 20);
+                comboText:set_position_x(cache.settings.anchor.x + 20 + columnOffset);
                 comboText:set_position_y(cache.settings.anchor.y + y_offset);
                 comboText:set_visible(true);
                 textIndex = textIndex + 1;
                 y_offset = y_offset + 20;
-                totalHeight = totalHeight + 20;
+                entriesInColumn = entriesInColumn + 1;
             end
         end
     end
 
-    -- Adjust background height to fit the text
-    gdiObjects.background:set_height(totalHeight);
+    -- Ensure maxColumnHeight accounts for the last column
+    maxColumnHeight = math.max(maxColumnHeight, y_offset);
+
+    -- Adjust background dimensions
+    gdiObjects.background:set_height(maxColumnHeight + 5);
+    gdiObjects.background:set_width(columnOffset + columnWidth); -- Adjust width based on total columns
 end
 
 -- Event handler for addon loading
