@@ -41,6 +41,10 @@ local displaySettings = T{
     anchor = {
         x = 200,
         y = 100,
+    },
+    layout = {
+        columnWidth = 300,
+        entriesPerColumn = 30,
     }
 };
 
@@ -266,16 +270,15 @@ local function updateGDI(skillchains)
     local columnOffset = 0; -- Track horizontal offset for new columns
     local entriesInColumn = 0; -- Track lines in the current column
     local maxColumnHeight = 0; -- Track the tallest column height
-    local columnWidth = 300; -- Width of each column
 
     for _, result in ipairs(orderedResults) do
         if debugMode then print('[Debug] Result: ' .. result); end
         local openers = sortedResults[result];
 
         -- Check if starting this header will exceed the soft cap
-        if entriesInColumn + #openers + 1 > 30 then -- +1 accounts for the header
+        if entriesInColumn + #openers + 1 > cache.settings.layout.entriesPerColumn then -- +1 accounts for the header
             maxColumnHeight = math.max(maxColumnHeight, y_offset); -- Update max column height
-            columnOffset = columnOffset + columnWidth; -- Shift to the next column
+            columnOffset = columnOffset + cache.settings.layout.columnWidth; -- Shift to the next column
             y_offset = 40; -- Reset y-offset for the new column
             entriesInColumn = 0; -- Reset entry count for the new column
         end
@@ -318,7 +321,7 @@ local function updateGDI(skillchains)
 
     -- Adjust background dimensions
     gdiObjects.background:set_height(maxColumnHeight + 5);
-    gdiObjects.background:set_width(columnOffset + columnWidth); -- Adjust width based on total columns
+    gdiObjects.background:set_width(columnOffset + cache.settings.layout.columnWidth); -- Adjust width based on total columns
 end
 
 -- Event handler for addon loading
@@ -462,6 +465,6 @@ end);
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
     --print('[SkillchainCalc] Addon unloaded.');
-    settings.save();
+    --settings.save();
     destroyGDIObjects();
 end);
