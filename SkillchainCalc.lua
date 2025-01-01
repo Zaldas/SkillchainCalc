@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '1.0';
+addon.version   = '1.8';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = '';
 
@@ -334,6 +334,8 @@ ashita.events.register('load', 'load_cb', function()
     settings.register('settings', 'settings_update', function(s)
         if (s ~= nil) then
             cache.settings = s;
+            initGDIObjects();
+            clearGDI();
         end
     end)
 end);
@@ -341,19 +343,33 @@ end);
 -- Calculates all possible skillchains between two sets of skills
 local function calculateSkillchains(skills1, skills2)
     local results = {};
+    local parsedPairs = {}; -- Tracks parsed opener/closer pairs to avoid redundant processing
 
     for _, skill1 in pairs(skills1) do
         for _, skill2 in pairs(skills2) do
-            for _, chain1 in pairs(skill1.skillchain or {}) do
-                for _, chain2 in pairs(skill2.skillchain or {}) do
-                    local chainInfo = skills.ChainInfo[chain1];
-                    if chainInfo and chainInfo[chain2] then
-                        table.insert(results, {
-                            skill1 = skill1.en,
-                            skill2 = skill2.en,
-                            chain = chainInfo[chain2].skillchain
-                        });
+            local pairKey = skill1.en .. ">" .. skill2.en;
+
+            -- Skip this pair if it's already processed
+            if not parsedPairs[pairKey] then
+                parsedPairs[pairKey] = true;
+
+                -- Parse properties in priority order
+                local parsed = false;
+                for _, chain1 in ipairs(skill1.skillchain or {}) do
+                    for _, chain2 in ipairs(skill2.skillchain or {}) do
+                        local chainInfo = skills.ChainInfo[chain1];
+                        if chainInfo and chainInfo[chain2] then
+                            -- Record the skillchain and stop parsing further for this pair
+                            table.insert(results, {
+                                skill1 = skill1.en,
+                                skill2 = skill2.en,
+                                chain = chainInfo[chain2].skillchain
+                            });
+                            parsed = true;
+                            break;
+                        end
                     end
+                    if parsed then break; end
                 end
             end
         end
@@ -361,6 +377,7 @@ local function calculateSkillchains(skills1, skills2)
 
     return results;
 end
+
 
 local function ParseSkillchains()
     if not cache.wt1 or not cache.wt2 then
