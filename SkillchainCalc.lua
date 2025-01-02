@@ -264,6 +264,7 @@ local function updateGDI(skillchains)
     gdiObjects.background:set_visible(true);
     gdiObjects.title:set_visible(true);
 
+    local layout = cache.settings.layout;
     local resultsTable = buildSkillchainTable(skillchains);
     local sortedResults, orderedResults = sortSkillchainTable(resultsTable);
     local y_offset = 40; -- Starting y-offset
@@ -273,13 +274,12 @@ local function updateGDI(skillchains)
     local maxColumnHeight = 0; -- Track the tallest column height
 
     for _, result in ipairs(orderedResults) do
-        if debugMode then print('[Debug] Result: ' .. result); end
         local openers = sortedResults[result];
 
-        -- Check if starting this header will exceed the soft cap
-        if entriesInColumn + #openers + 1 > cache.settings.layout.entriesPerColumn then -- +1 accounts for the header
-            maxColumnHeight = math.max(maxColumnHeight, y_offset); -- Update max column height
-            columnOffset = columnOffset + cache.settings.layout.columnWidth; -- Shift to the next column
+        -- Move to the next column if the first line of this header would exceed the limit
+        if entriesInColumn + 1 > layout.entriesPerColumn then
+            maxColumnHeight = math.max(maxColumnHeight, y_offset); -- Update max height for the current column
+            columnOffset = columnOffset + layout.columnWidth; -- Shift to the next column
             y_offset = 40; -- Reset y-offset for the new column
             entriesInColumn = 0; -- Reset entry count for the new column
         end
@@ -321,8 +321,8 @@ local function updateGDI(skillchains)
     maxColumnHeight = math.max(maxColumnHeight, y_offset);
 
     -- Adjust background dimensions
-    gdiObjects.background:set_height(maxColumnHeight + 5);
-    gdiObjects.background:set_width(columnOffset + cache.settings.layout.columnWidth); -- Adjust width based on total columns
+    gdiObjects.background:set_height(maxColumnHeight + 5); -- Add padding to the height
+    gdiObjects.background:set_width(columnOffset + layout.columnWidth); -- Adjust width based on total columns
 end
 
 -- Event handler for addon loading
