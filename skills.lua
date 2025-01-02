@@ -9,8 +9,8 @@ skills.h2h = { -- Hand-to-Hand
     [6] = {en='Spinning Attack',skillchain={'Liquefaction','Impaction'},tier=6},
     [7] = {en='Howling Fist',skillchain={'Transfixion','Impaction'},tier=7},
     [8] = {en='Dragon Kick',skillchain={'Fragmentation'},tier=8},
-    [9] = {en='Asuran Fists',skillchain={'Gravitation','Liquefaction'},tier=9},
-    [10] = {en='Final Heaven',skillchain={'Light','Fusion'},tier=10},
+    [9] = {en='Asuran Fists¹',skillchain={'Gravitation','Liquefaction'},tier=9},
+    [10] = {en='Final Heaven²',skillchain={'Light','Fusion'},tier=10},
 };
 
 skills.dagger = { -- Dagger
@@ -21,8 +21,8 @@ skills.dagger = { -- Dagger
     [20] = {en='Cyclone',skillchain={'Detonation','Impaction'},tier=5},
     [23] = {en='Dancing Edge',skillchain={'Scission','Detonation'},tier=6},
     [24] = {en='Shark Bite',skillchain={'Fragmentation'},tier=7},
-    [25] = {en='Evisceration',skillchain={'Gravitation','Transfixion'},tier=8},
-    [26] = {en='Mercy Stroke',skillchain={'Darkness','Gravitation'},tier=9},
+    [25] = {en='Evisceration¹',skillchain={'Gravitation','Transfixion'},tier=8},
+    [26] = {en='Mercy Stroke²',skillchain={'Darkness','Gravitation'},tier=9},
 };
 
 skills.sword = { -- Sword
@@ -35,8 +35,8 @@ skills.sword = { -- Sword
     [38] = {en='Circle Blade',skillchain={'Reverberation','Impaction'},tier=7},
     [40] = {en='Vorpal Blade',skillchain={'Scission','Impaction'},tier=8},
     [41] = {en='Swift Blade',skillchain={'Gravitation'},tier=9},
-    [42] = {en='Savage Blade',skillchain={'Fragmentation','Scission'},tier=10},
-    [43] = {en='Knights of Round',skillchain={'Light','Fusion'},tier=11},
+    [42] = {en='Savage Blade¹',skillchain={'Fragmentation','Scission'},tier=10},
+    [43] = {en='Knights of Round²',skillchain={'Light','Fusion'},tier=11},
 };
 
 skills.gs = { -- Great Sword
@@ -48,8 +48,8 @@ skills.gs = { -- Great Sword
     [53] = {en='Crescent Moon',skillchain={'Scission'},tier=6},
     [54] = {en='Sickle Moon',skillchain={'Scission','Impaction'},tier=7},
     [55] = {en='Spinning Slash',skillchain={'Fragmentation'},tier=8},
-    [56] = {en='Ground Strike',skillchain={'Fragmentation','Distortion'},tier=9},
-    [57] = {en='Scourge',skillchain={'Light','Fusion'},tier=10},
+    [56] = {en='Ground Strike¹',skillchain={'Fragmentation','Distortion'},tier=9},
+    [57] = {en='Scourge²',skillchain={'Light','Fusion'},tier=10},
 };
 
 skills.axe = { -- Axe
@@ -61,8 +61,8 @@ skills.axe = { -- Axe
     [69] = {en='Rampage',skillchain={'Scission'},tier=6},
     [70] = {en='Calamity',skillchain={'Scission','Impaction'},tier=7},
     [71] = {en='Mistral Axe',skillchain={'Fusion'},tier=8},
-    [72] = {en='Decimation',skillchain={'Fusion','Detonation'},tier=9},
-    [73] = {en='Onslaught',skillchain={'Darkness','Gravitation'},tier=10},
+    [72] = {en='Decimation¹',skillchain={'Fusion','Detonation'},tier=9},
+    [73] = {en='Onslaught²',skillchain={'Darkness','Gravitation'},tier=10},
 };
 
 skills.ga = { -- Great Axe
@@ -74,8 +74,8 @@ skills.ga = { -- Great Axe
     [85] = {en='Weapon Break',skillchain={'Impaction'},tier=6},
     [86] = {en='Raging Rush',skillchain={'Induration','Reverberation'},tier=7},
     [87] = {en='Full Break',skillchain={'Distortion'},tier=8},
-    [88] = {en='Steel Cyclone',skillchain={'Distortion','Detonation'},tier=9},
-    [89] = {en='Metatron Torment',skillchain={'Light','Fusion'},tier=10},
+    [88] = {en='Steel Cyclone¹',skillchain={'Distortion','Detonation'},tier=9},
+    [89] = {en='Metatron Torment²',skillchain={'Light','Fusion'},tier=10},
 };
 
 skills.scythe = { -- Scythe
@@ -87,8 +87,8 @@ skills.scythe = { -- Scythe
     [101] = {en='Vorpal Scythe',skillchain={'Transfixion','Scission'},tier=6},
     [102] = {en='Guillotine',skillchain={'Induration'},tier=7},
     [103] = {en='Cross Reaper',skillchain={'Distortion'},tier=8},
-    [104] = {en='Spiral Hell',skillchain={'Gravitation','Compression'},tier=9}, -- HorizonXI
-    [105] = {en='Catastrophe',skillchain={'Fusion','Compression'},tier=10},
+    [104] = {en='Spiral Hell¹',skillchain={'Gravitation','Compression'},tier=9}, -- HorizonXI
+    [105] = {en='Catastrophe²',skillchain={'Fusion','Compression'},tier=10},
 };
 
 skills.polearm = { -- Polearm
@@ -100,8 +100,8 @@ skills.polearm = { -- Polearm
     [117] = {en='Vorpal Thrust',skillchain={'Reverberation','Transfixion'},tier=6},
     [118] = {en='Skewer',skillchain={'Transfixion','Impaction'},tier=7},
     [119] = {en='Wheeling Thrust',skillchain={'Fusion'},tier=8},
-    [120] = {en='Impulse Drive',skillchain={'Gravitation','Induration'},tier=9},
-    [121] = {en='Geirskogul',skillchain={'Light','Distortion'},tier=10},
+    [120] = {en='Impulse Drive¹',skillchain={'Gravitation','Induration'},tier=9},
+    [121] = {en='Geirskogul²',skillchain={'Light','Distortion'},tier=10},
 };
 
 skills.katana = { -- Katana
@@ -113,8 +113,8 @@ skills.katana = { -- Katana
     [133] = {en='Blade: Ei',skillchain={'Compression'},tier=6},
     [134] = {en='Blade: Jin',skillchain={'Detonation','Impaction'},tier=7},
     [135] = {en='Blade: Ten',skillchain={'Gravitation'},tier=8},
-    [136] = {en='Blade: Ku',skillchain={'Gravitation','Transfixion'},tier=9},
-    [137] = {en='Blade: Metsu',skillchain={'Darkness','Fragmentation'},tier=10},
+    [136] = {en='Blade: Ku¹',skillchain={'Gravitation','Transfixion'},tier=9},
+    [137] = {en='Blade: Metsu²',skillchain={'Darkness','Fragmentation'},tier=10},
 };
 
 skills.gkt = { -- Great Katana
@@ -126,8 +126,8 @@ skills.gkt = { -- Great Katana
     [149] = {en='Tachi: Koki',skillchain={'Reverberation','Impaction'},tier=6},
     [150] = {en='Tachi: Yukikaze',skillchain={'Induration','Detonation'},tier=7},
     [151] = {en='Tachi: Gekko',skillchain={'Distortion','Reverberation'},tier=8},
-    [152] = {en='Tachi: Kasha',skillchain={'Fusion','Compression'},tier=9},
-    [153] = {en='Tachi: Kaiten',skillchain={'Light','Fragmentation'},tier=10},
+    [152] = {en='Tachi: Kasha¹',skillchain={'Fusion','Compression'},tier=9},
+    [153] = {en='Tachi: Kaiten²',skillchain={'Light','Fragmentation'},tier=10},
 };
 
 skills.club = { -- Club
@@ -138,8 +138,8 @@ skills.club = { -- Club
     [166] = {en='True Strike',skillchain={'Detonation','Impaction'},tier=5},
     [167] = {en='Judgment',skillchain={'Impaction'},tier=6},
     [168] = {en='Hexa Strike',skillchain={'Fusion'},tier=7},
-    [169] = {en='Black Halo',skillchain={'Fragmentation','Compression'},tier=8},
-    [170] = {en='Randgrith',skillchain={'Light','Fragmentation'},tier=9},
+    [169] = {en='Black Halo¹',skillchain={'Fragmentation','Compression'},tier=8},
+    [170] = {en='Randgrith²',skillchain={'Light','Fragmentation'},tier=9},
 };
 
 skills.staff = { -- Staff
@@ -150,8 +150,8 @@ skills.staff = { -- Staff
     [180] = {en='Sunburst',skillchain={'Transfixion','Reverberation'},tier=5},
     [181] = {en='Shell Crusher',skillchain={'Detonation'},tier=6},
     [182] = {en='Full Swing',skillchain={'Liquefaction','Impaction'},tier=7},
-    [184] = {en='Retribution',skillchain={'Gravitation','Reverberation'},tier=8},
-    [185] = {en='Gate of Tartarus',skillchain={'Darkness','Distortion'},tier=9},
+    [184] = {en='Retribution¹',skillchain={'Gravitation','Reverberation'},tier=8},
+    [185] = {en='Gate of Tartarus²',skillchain={'Darkness','Distortion'},tier=9},
 };
 
 skills.archery = { -- Archery
@@ -161,8 +161,8 @@ skills.archery = { -- Archery
     [196] = {en='Sidewinder',skillchain={'Reverberation','Transfixion','Detonation'},tier=4},
     [197] = {en='Blast Arrow',skillchain={'Induration','Transfixion'},tier=5},
     [198] = {en='Arching Arrow',skillchain={'Fusion'},tier=6},
-    [199] = {en='Empyreal Arrow',skillchain={'Fusion','Transfixion'},tier=7},
-    [200] = {en='Namas Arrow',skillchain={'Light','Distortion'},tier=8},
+    [199] = {en='Empyreal Arrow¹',skillchain={'Fusion','Transfixion'},tier=7},
+    [200] = {en='Namas Arrow²',skillchain={'Light','Distortion'},tier=8},
 };
 
 skills.mm = { -- Marksmanship
@@ -172,8 +172,8 @@ skills.mm = { -- Marksmanship
     [212] = {en='Slug Shot',skillchain={'Reverberation','Transfixion','Detonation'},tier=4},
     [213] = {en='Blast Shot',skillchain={'Induration','Transfixion'},tier=5},
     [214] = {en='Heavy Shot',skillchain={'Fusion'},tier=6},
-    [215] = {en='Detonator',skillchain={'Fusion','Transfixion'},tier=7},
-    [216] = {en='Coronach',skillchain={'Darkness','Fragmentation'},tier=8},
+    [215] = {en='Detonator¹',skillchain={'Fusion','Transfixion'},tier=7},
+    [216] = {en='Coronach²',skillchain={'Darkness','Fragmentation'},tier=8},
 };
 
 -- Pet skills as triggered by player.
