@@ -1,20 +1,21 @@
-<img align="right" src="https://github.com/user-attachments/assets/58272611-8b28-425e-9206-dec2618219b7">  
-
-
-Skillchain Calculator  
+<img align="right" src="https://github.com/user-attachments/assets/9e77ac04-f4b2-45cb-ae6d-ef319ed87ef4">  
+  
+Skillchain Calculator v1.10  
   
 Display skillchains possible given an opening weapon type and closing weapon type.  
 
 Usage:  
-/scc weapon1 weapon2 [level]  
+/scc weapon1 weapon2 [level] [both]  
 &ensp;Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe,  
 &ensp;&ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
 &ensp;[level] is optional value that filters skillchain tier  
-&ensp;i.e. 2 only shows tier 2 and 3 skillchains.  
-&ensp;1 or empty is default all.  
+&ensp;&ensp;i.e. 2 only shows tier 2 and 3 skillchains.  
+&ensp;&ensp;1 or empty is default all.  
+&ensp;[both] is optional keyword to calculate skillchains in both directions  
+&ensp;Optional arguments have no order
   
 Example: -- Results of Picture  
-&ensp;/scc katana h2h  
+&ensp;/scc katana h2h both 2  
   
 Commands:  
 &ensp;/scc help -- to see all commands  
@@ -31,6 +32,7 @@ This is adjusted for HorizonXI.
 No plans to support for retail.  
 
 Note:  
-&ensp;Used Custom font Jupiter Pro for Skillchain header  
-&ensp;Default is Times New Roman
+&ensp;Superscript 1/2 denote quested/relic weaponskills  
+&ensp;Image uses font Jupiter Pro for Skillchain header  
+&ensp;Default header font is Times New Roman  
 
