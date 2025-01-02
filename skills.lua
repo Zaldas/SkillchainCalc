@@ -224,7 +224,7 @@ skills.ChainInfo = T{
         Fragmentation = T{level = 3, skillchain = 'Light'},
         Gravitation   = T{level = 2, skillchain = 'Gravitation'},
     },
-    Compression = T{level = 1, burst = T{'Darkness'},
+    Compression = T{level = 1, burst = T{'Dark'},
         Transfixion = T{level = 1, skillchain = 'Transfixion'},
         Detonation  = T{level = 1, skillchain = 'Detonation'},
     },
