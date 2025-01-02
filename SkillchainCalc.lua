@@ -300,12 +300,20 @@ local function updateGDI(skillchains)
         y_offset = y_offset + 20;
         entriesInColumn = entriesInColumn + 1;
 
-        -- Display each opener and each closer
+        -- Display each opener and closer
         for _, openerData in ipairs(openers) do
             for _, closerData in ipairs(openerData.closers) do
                 local comboText = gdiObjects.skillchainTexts[textIndex];
                 if not comboText then break; end
-                comboText:set_text(('  %s > %s'):format(openerData.opener, closerData.closer));
+
+                -- Check for level 3 skillchains (Light or Darkness)
+                local isReversible = (result == 'Light' or result == 'Darkness');
+                if isReversible and cache.both then
+                    comboText:set_text(('  %s <> %s'):format(openerData.opener, closerData.closer));
+                else
+                    comboText:set_text(('  %s > %s'):format(openerData.opener, closerData.closer));
+                end
+
                 comboText:set_font_color(cache.settings.font.font_color);
                 comboText:set_position_x(cache.settings.anchor.x + 20 + columnOffset);
                 comboText:set_position_y(cache.settings.anchor.y + y_offset);
@@ -342,21 +350,29 @@ ashita.events.register('load', 'load_cb', function()
 end);
 
 -- Calculates all possible skillchains between two sets of skills
-local function parseSkillchain(skill1, skill2, results, parsedPairs)
+local function parseSkillchain(skill1, skill2, results, parsedPairs, suppress)
     local pairKey = skill1.en .. ">" .. skill2.en
-    if not parsedPairs[pairKey] then
-        parsedPairs[pairKey] = true
-        for _, chain1 in ipairs(skill1.skillchain or {}) do
-            for _, chain2 in ipairs(skill2.skillchain or {}) do
-                local chainInfo = skills.ChainInfo[chain1]
-                if chainInfo and chainInfo[chain2] then
-                    table.insert(results, {
-                        skill1 = skill1.en,
-                        skill2 = skill2.en,
-                        chain = chainInfo[chain2].skillchain,
-                    })
-                    break
+    suppress = suppress or false -- Default to false if not provided
+
+    -- Iterate over skillchains of skill1 and skill2
+    for _, chain1 in ipairs(skill1.skillchain or {}) do
+        for _, chain2 in ipairs(skill2.skillchain or {}) do
+            local chainInfo = skills.ChainInfo[chain1]
+
+            if chainInfo and chainInfo[chain2] and not parsedPairs[pairKey] then
+                -- Suppress insertion if the resulting chain is Light or Darkness
+                if suppress and (chainInfo[chain2].skillchain == "Light" or chainInfo[chain2].skillchain == "Darkness") then
+                    return -- Skip this entry
                 end
+
+                -- Insert into results if suppression is not active or chain is valid
+                parsedPairs[pairKey] = true
+                table.insert(results, {
+                    skill1 = skill1.en,
+                    skill2 = skill2.en,
+                    chain = chainInfo[chain2].skillchain,
+                })
+                break -- Exit the inner loop once a match is found
             end
         end
     end
@@ -377,7 +393,7 @@ local function calculateSkillchains(skills1, skills2, both)
     if cache.both then
         for _, skill2 in pairs(skills2) do
             for _, skill1 in pairs(skills1) do
-                parseSkillchain(skill2, skill1, results, parsedPairs)
+                parseSkillchain(skill2, skill1, results, parsedPairs, true) -- Suppresses Light/Darkness as they are reversable
             end
         end
     end
@@ -415,64 +431,6 @@ local function ParseSkillchains()
 end
 
 -- Event handler for commands
-ashita.events.register('command', 'command_cb', function(e)
-    local args = e.command:args()
-    if (#args == 0 or args[1] ~= '/scc') then
-        return
-    end
-
-    e.blocked = true -- Block the command to prevent further processing
-
-    if (#args < 3) then
-        print('/scc help -- for usage help')
-        return
-    end
-
-    cache.wt1 = args[2]
-    cache.wt2 = args[3]
-
-    -- Default values for optional arguments
-    local level = 1
-    local both = false
-
-    -- Parse optional arguments
-    for i = 4, #args do
-        if tonumber(args[i]) then
-            level = tonumber(args[i])
-        elseif args[i] == 'both' then
-            both = true
-        else
-            print('[SkillchainCalc] Invalid argument: ' .. args[i])
-            return
-        end
-    end
-
-    cache.level = level
-
-    -- Validate weapon types
-    local weapon1Skills = skills[cache.wt1]
-    local weapon2Skills = skills[cache.wt2]
-    if not weapon1Skills or not weapon2Skills then
-        print('[SkillchainCalc] Invalid weapon types provided.')
-        return
-    end
-
-    -- Calculate combinations
-    local combinations = calculateSkillchains(weapon1Skills, weapon2Skills, both)
-
-    -- Filter combinations by level or higher
-    local filteredCombinations = filterSkillchainsByLevel(combinations, cache.level)
-
-    -- Display results
-    if #filteredCombinations > 0 then
-        updateGDI(filteredCombinations)
-    else
-        print('[SkillchainCalc] No skillchain combinations found for filter level ' .. cache.level .. '.')
-        clearGDI()
-    end
-end)
-
-
 ashita.events.register('command', 'command_cb', function(e)
     local args = e.command:args();
     if (#args == 0 or args[1] ~= '/scc') then
@@ -521,9 +479,12 @@ ashita.events.register('command', 'command_cb', function(e)
 
     if (#args == 2 and args[2] == 'help') then
         print('Usage: /scc <weaponType1> <weaponType2> [#] [both]');
-        print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
-        print(' [#] is optional integer value that filters skillchain tier, i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
-        print(' [both] keyword is optional parameter to calculate skillchain in both directions. e.g. /scc gs gkt both');
+        print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm');
+        print('              katana, gkt, club, staff, archery, mm, smn');
+        print(' [#] is optional integer value that filters skillchain tier')
+        print('  i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
+        print(' [both] keyword is optional parameter to calculate skillchain in both directions.');
+        print('  e.g. /scc gs gkt both');
         print('Usage: /scc setx # -- set x anchor');
         print('Usage: /scc sety # -- set y anchor');
         print('Usage: /scc clear -- clear out window');
@@ -550,6 +511,11 @@ ashita.events.register('command', 'command_cb', function(e)
             print('/scc help -- for usage help');
             return;
         end
+    end
+
+    -- Optimization: If the weapon types are the same, set 'both' to false
+    if args[2] == args[3] then
+        both = false;
     end
 
     cache.wt1 = args[2];
