@@ -179,21 +179,21 @@ skills.mm = { -- Marksmanship
 -- Pet skills as triggered by player.
 -- Separated from skills as triggered by pet to ease support for private servers
 skills.smn = { -- BST/SMN Player Pet Skills
-    [513] = {en='Poison Nails',skillchain={'Transfixion'},tier=1},
-    [528] = {en='Moonlit Charge',skillchain={'Compression'},tier=2},
-    [529] = {en='Crescent Fang',skillchain={'Transfixion'},tier=3},
-    [544] = {en='Punch',skillchain={'Liquefaction'},tier=4},
-    [546] = {en='Burning Strike',skillchain={'Impaction'},tier=5},
-    [547] = {en='Double Punch',skillchain={'Compression'},tier=6},
-    [560] = {en='Rock Throw',skillchain={'Scission'},tier=7},
-    [562] = {en='Rock Buster',skillchain={'Reverberation'},tier=8},
-    [563] = {en='Megalith Throw',skillchain={'Induration'},tier=9},
-    [576] = {en='Barracuda Dive',skillchain={'Reverberation'},tier=10},
-    [578] = {en='Tail Whip',skillchain={'Detonation'},tier=11},
-    [592] = {en='Claw',skillchain={'Detonation'},tier=12},
-    [608] = {en='Axe Kick',skillchain={'Induration'},tier=13},
-    [612] = {en='Double Slap',skillchain={'Scission'},tier=14},
-    [624] = {en='Shock Strike',skillchain={'Impaction'},tier=15},
+    [513] = {en='[C]Poison Nails',skillchain={'Transfixion'},tier=1},
+    [528] = {en='[F]Moonlit Charge',skillchain={'Compression'},tier=2},
+    [529] = {en='[F]Crescent Fang',skillchain={'Transfixion'},tier=3},
+    [544] = {en='[I]Punch',skillchain={'Liquefaction'},tier=4},
+    [546] = {en='[I]Burning Strike',skillchain={'Impaction'},tier=5},
+    [547] = {en='[I]Double Punch',skillchain={'Compression'},tier=6},
+    [560] = {en='[T]Rock Throw',skillchain={'Scission'},tier=7},
+    [562] = {en='[T]Rock Buster',skillchain={'Reverberation'},tier=8},
+    [563] = {en='[T]Megalith Throw',skillchain={'Induration'},tier=9},
+    [576] = {en='[L]Barracuda Dive',skillchain={'Reverberation'},tier=10},
+    [578] = {en='[L]Tail Whip',skillchain={'Detonation'},tier=11},
+    [592] = {en='[G]Claw',skillchain={'Detonation'},tier=12},
+    [608] = {en='[S]Axe Kick',skillchain={'Induration'},tier=13},
+    [612] = {en='[S]Double Slap',skillchain={'Scission'},tier=14},
+    [624] = {en='[R]Shock Strike',skillchain={'Impaction'},tier=15},
 };
 
 -- static information on skillchains
@@ -291,4 +291,19 @@ function skills.GetPropertyColor(t)
     return colors[t];
 end
 
-return skills
+local displayOrder = {
+    'Light', 'Darkness',
+    'Fragmentation', 'Distortion', 'Fusion', 'Gravitation',
+    'Impaction', 'Induration', 'Liquefaction', 'Detonation', 'Reverberation', 'Scission', 'Transfixion', 'Compression'
+};
+
+function skills.GetDisplayIndex(chain)
+    for i, v in ipairs(displayOrder) do
+        if v == chain then
+            return i
+        end
+    end
+    return #displayOrder + 1 -- Default to the end if not found
+end
+
+return skills;
