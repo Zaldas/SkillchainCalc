@@ -5,7 +5,7 @@ addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
 addon.version   = '1.10';
 addon.desc      = 'Skillchain combination calculator';
-addon.link      = '';
+addon.link      = 'https://github.com/Zaldas/skillchaincalc';
 
 require('common');
 local skills = require('skills');
