@@ -28,11 +28,9 @@ Files:
 &ensp;skillchaincalc.lua -- main addon  
 &ensp;skills.lua -- weaponskill data and colors  
   
-This is adjusted for HorizonXI.  
-No plans to support for retail.  
-
-Note:  
+Notes:  
+&ensp;This is adjusted for HorizonXI. No plans to support for retail.  
 &ensp;Superscript 1/2 denote quested/relic weaponskills  
-&ensp;Image uses font Jupiter Pro for Skillchain header  
-&ensp;Default header font is Times New Roman  
+&ensp;Image uses font Jupiter Pro for Skillchain title  
+&ensp;Default title font is Times New Roman  
 
