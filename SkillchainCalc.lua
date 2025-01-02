@@ -212,8 +212,8 @@ local function sortSkillchainTable(resultsTable)
     end
 
     table.sort(chainLevels, function(a, b)
-        return a.level > b.level;
-    end);
+        return skills.GetDisplayIndex(a.chain) < skills.GetDisplayIndex(b.chain)
+    end)
 
     for _, chainData in ipairs(chainLevels) do
         local chainName = chainData.chain;
