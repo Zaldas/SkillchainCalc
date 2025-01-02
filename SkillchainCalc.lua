@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '1.8';
+addon.version   = '1.10';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = '';
 
@@ -58,6 +58,7 @@ local cache = {
     wt1 = nil,
     wt2 = nil,
     level = 1,
+    both = false,
     settings = displaySettings;
 };
 
@@ -341,43 +342,48 @@ ashita.events.register('load', 'load_cb', function()
 end);
 
 -- Calculates all possible skillchains between two sets of skills
-local function calculateSkillchains(skills1, skills2)
-    local results = {};
-    local parsedPairs = {}; -- Tracks parsed opener/closer pairs to avoid redundant processing
-
-    for _, skill1 in pairs(skills1) do
-        for _, skill2 in pairs(skills2) do
-            local pairKey = skill1.en .. ">" .. skill2.en;
-
-            -- Skip this pair if it's already processed
-            if not parsedPairs[pairKey] then
-                parsedPairs[pairKey] = true;
-
-                -- Parse properties in priority order
-                local parsed = false;
-                for _, chain1 in ipairs(skill1.skillchain or {}) do
-                    for _, chain2 in ipairs(skill2.skillchain or {}) do
-                        local chainInfo = skills.ChainInfo[chain1];
-                        if chainInfo and chainInfo[chain2] then
-                            -- Record the skillchain and stop parsing further for this pair
-                            table.insert(results, {
-                                skill1 = skill1.en,
-                                skill2 = skill2.en,
-                                chain = chainInfo[chain2].skillchain
-                            });
-                            parsed = true;
-                            break;
-                        end
-                    end
-                    if parsed then break; end
+local function parseSkillchain(skill1, skill2, results, parsedPairs)
+    local pairKey = skill1.en .. ">" .. skill2.en
+    if not parsedPairs[pairKey] then
+        parsedPairs[pairKey] = true
+        for _, chain1 in ipairs(skill1.skillchain or {}) do
+            for _, chain2 in ipairs(skill2.skillchain or {}) do
+                local chainInfo = skills.ChainInfo[chain1]
+                if chainInfo and chainInfo[chain2] then
+                    table.insert(results, {
+                        skill1 = skill1.en,
+                        skill2 = skill2.en,
+                        chain = chainInfo[chain2].skillchain,
+                    })
+                    break
                 end
             end
         end
     end
-
-    return results;
 end
 
+local function calculateSkillchains(skills1, skills2, both)
+    local results = {}
+    local parsedPairs = {}
+
+    -- Normal calculation (skills1 -> skills2)
+    for _, skill1 in pairs(skills1) do
+        for _, skill2 in pairs(skills2) do
+            parseSkillchain(skill1, skill2, results, parsedPairs)
+        end
+    end
+
+    -- If `both` is specified, add reversed calculation (skills2 -> skills1)
+    if cache.both then
+        for _, skill2 in pairs(skills2) do
+            for _, skill1 in pairs(skills1) do
+                parseSkillchain(skill2, skill1, results, parsedPairs)
+            end
+        end
+    end
+
+    return results
+end
 
 local function ParseSkillchains()
     if not cache.wt1 or not cache.wt2 then
@@ -409,6 +415,64 @@ local function ParseSkillchains()
 end
 
 -- Event handler for commands
+ashita.events.register('command', 'command_cb', function(e)
+    local args = e.command:args()
+    if (#args == 0 or args[1] ~= '/scc') then
+        return
+    end
+
+    e.blocked = true -- Block the command to prevent further processing
+
+    if (#args < 3) then
+        print('/scc help -- for usage help')
+        return
+    end
+
+    cache.wt1 = args[2]
+    cache.wt2 = args[3]
+
+    -- Default values for optional arguments
+    local level = 1
+    local both = false
+
+    -- Parse optional arguments
+    for i = 4, #args do
+        if tonumber(args[i]) then
+            level = tonumber(args[i])
+        elseif args[i] == 'both' then
+            both = true
+        else
+            print('[SkillchainCalc] Invalid argument: ' .. args[i])
+            return
+        end
+    end
+
+    cache.level = level
+
+    -- Validate weapon types
+    local weapon1Skills = skills[cache.wt1]
+    local weapon2Skills = skills[cache.wt2]
+    if not weapon1Skills or not weapon2Skills then
+        print('[SkillchainCalc] Invalid weapon types provided.')
+        return
+    end
+
+    -- Calculate combinations
+    local combinations = calculateSkillchains(weapon1Skills, weapon2Skills, both)
+
+    -- Filter combinations by level or higher
+    local filteredCombinations = filterSkillchainsByLevel(combinations, cache.level)
+
+    -- Display results
+    if #filteredCombinations > 0 then
+        updateGDI(filteredCombinations)
+    else
+        print('[SkillchainCalc] No skillchain combinations found for filter level ' .. cache.level .. '.')
+        clearGDI()
+    end
+end)
+
+
 ashita.events.register('command', 'command_cb', function(e)
     local args = e.command:args();
     if (#args == 0 or args[1] ~= '/scc') then
@@ -456,9 +520,10 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     if (#args == 2 and args[2] == 'help') then
-        print('Usage: /scc <weaponType1> <weaponType2> [level]');
+        print('Usage: /scc <weaponType1> <weaponType2> [#] [both]');
         print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm, katana, gkt, club, staff, archery, mm, smn');
-        print(' [level] is optional value that filters skillchain tier, i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
+        print(' [#] is optional integer value that filters skillchain tier, i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
+        print(' [both] keyword is optional parameter to calculate skillchain in both directions. e.g. /scc gs gkt both');
         print('Usage: /scc setx # -- set x anchor');
         print('Usage: /scc sety # -- set y anchor');
         print('Usage: /scc clear -- clear out window');
@@ -472,9 +537,25 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
+    -- Parse optional arguments
+    local level = 1;
+    local both = false;
+    for i = 4, #args do
+        if tonumber(args[i]) then
+            level = tonumber(args[i]);
+        elseif args[i] == 'both' then
+            both = true;
+        else
+            print('[SkillchainCalc] Invalid argument: ' .. args[i])
+            print('/scc help -- for usage help');
+            return;
+        end
+    end
+
     cache.wt1 = args[2];
     cache.wt2 = args[3];
-    cache.level = tonumber(args[4]) or 1; -- Default to level 1 if no level is provided
+    cache.level = level;
+    cache.both = both;
 
     ParseSkillchains();
 end);
