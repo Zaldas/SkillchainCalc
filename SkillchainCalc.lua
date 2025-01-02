@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '1.10';
+addon.version   = '1.11';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/skillchaincalc';
 
@@ -309,9 +309,9 @@ local function updateGDI(skillchains)
                 -- Check for level 3 skillchains (Light or Darkness)
                 local isReversible = (result == 'Light' or result == 'Darkness');
                 if isReversible and cache.both then
-                    comboText:set_text(('  %s <> %s'):format(openerData.opener, closerData.closer));
+                    comboText:set_text(('  %s ↔ %s'):format(openerData.opener, closerData.closer));
                 else
-                    comboText:set_text(('  %s > %s'):format(openerData.opener, closerData.closer));
+                    comboText:set_text(('  %s → %s'):format(openerData.opener, closerData.closer));
                 end
 
                 comboText:set_font_color(cache.settings.font.font_color);
