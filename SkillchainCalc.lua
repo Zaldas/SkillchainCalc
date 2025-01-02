@@ -24,7 +24,7 @@ local displaySettings = T{
     title_font = {
         font_family = 'Times New Roman',
         font_height = 28,
-        font_color = 0xFF0049B9,
+        font_color = 0xFFC1A100,
         outline_color = 0xFF48494B,
         outline_width = 1,
     },
