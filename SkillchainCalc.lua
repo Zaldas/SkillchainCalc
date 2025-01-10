@@ -342,6 +342,7 @@ ashita.events.register('load', 'load_cb', function()
 
     settings.register('settings', 'settings_update', function(s)
         if (s ~= nil) then
+            destroyGDIObjects();
             cache.settings = s;
             initGDIObjects();
             clearGDI();
@@ -529,6 +530,5 @@ end);
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
     --print('[SkillchainCalc] Addon unloaded.');
-    --settings.save();
     destroyGDIObjects();
 end);
