@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '1.12';
+addon.version   = '1.13';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
