@@ -1,6 +1,6 @@
 <img align="right" src="https://github.com/user-attachments/assets/cd05ba75-dd09-444a-a0ea-aaf4b4eecd20">  
   
-Skillchain Calculator v1.11  
+Skillchain Calculator
   
 Display skillchains possible given an opening weapon type and closing weapon type.  
 
