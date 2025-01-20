@@ -15,9 +15,9 @@ skills.h2h = { -- Hand-to-Hand
 
 skills.dagger = { -- Dagger
     [16] = {en='Wasp Sting',skillchain={'Scission'},tier=1},
-    [17] = {en='Viper Bite',skillchain={'Scission'},tier=2},
+    [19] = {en='Gust Slash',skillchain={'Detonation'},tier=2},
     [18] = {en='Shadowstitch',skillchain={'Reverberation'},tier=3},    -- HorizonXI
-    [19] = {en='Gust Slash',skillchain={'Detonation'},tier=4},
+    [17] = {en='Viper Bite',skillchain={'Scission'},tier=4},
     [20] = {en='Cyclone',skillchain={'Detonation','Impaction'},tier=5},
     [23] = {en='Dancing Edge',skillchain={'Scission','Detonation'},tier=6},
     [24] = {en='Shark Bite',skillchain={'Fragmentation'},tier=7},
@@ -132,8 +132,8 @@ skills.gkt = { -- Great Katana
 
 skills.club = { -- Club
     [160] = {en='Shining Strike',skillchain={'Transfixion'},tier=1},
-    [161] = {en='Seraph Strike',skillchain={'Scission'},tier=2},
-    [162] = {en='Brainshaker',skillchain={'Reverberation'},tier=3},
+    [162] = {en='Brainshaker',skillchain={'Reverberation'},tier=2},
+    [161] = {en='Seraph Strike',skillchain={'Scission'},tier=3},
     [165] = {en='Skullbreaker',skillchain={'Induration','Reverberation'},tier=4},
     [166] = {en='True Strike',skillchain={'Detonation','Impaction'},tier=5},
     [167] = {en='Judgment',skillchain={'Impaction'},tier=6},
