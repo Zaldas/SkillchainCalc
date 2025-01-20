@@ -88,7 +88,7 @@ skills.scythe = { -- Scythe
     [102] = {en='Guillotine',skillchain={'Induration'},tier=7},
     [103] = {en='Cross Reaper',skillchain={'Distortion'},tier=8},
     [104] = {en='Spiral Hell¹',skillchain={'Gravitation','Compression'},tier=9}, -- HorizonXI
-    [105] = {en='Catastrophe²',skillchain={'Fusion','Compression'},tier=10},
+    [105] = {en='Catastrophe²',skillchain={'Darkness','Gravitation'},tier=10},
 };
 
 skills.polearm = { -- Polearm
