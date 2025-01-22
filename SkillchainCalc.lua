@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '1.13';
+addon.version   = '1.14';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
@@ -13,7 +13,7 @@ local gdi = require('gdifonts.include');
 local settings = require('settings');
 
 local debugMode = false; -- Debug mode flag
-local displaySettings = T{
+local sccSettings = T{
     font = {
         font_family = 'Arial',
         font_height = 16,
@@ -29,8 +29,6 @@ local displaySettings = T{
         outline_width = 1,
     },
     bg = {
-        width = 300,
-        height = 600,
         corner_rounding = 5,
         fill_color = 0xBF000000,
         outline_color = 0xFFFFFFFF,
@@ -43,9 +41,13 @@ local displaySettings = T{
         y = 100,
     },
     layout = {
-        columnWidth = 300,
+        columnWidth = 310,
         entriesPerColumn = 30,
-    }
+    },
+    default = {
+        level = 1,
+        both = false
+    },
 };
 
 local gdiObjects = {
@@ -59,8 +61,10 @@ local cache = {
     wt2 = nil,
     level = 1,
     both = false,
-    settings = displaySettings;
+    settings = sccSettings;
 };
+
+local isVisible = false;
 
 -- Helper function to find the level of a skillchain
 local function findChainLevel(chainName)
@@ -98,6 +102,7 @@ end
 
 -- Clear GDI text objects
 local function clearGDI()
+    isVisible = false;
     gdiObjects.background:set_visible(false);
     gdiObjects.title:set_visible(false);
     for _, text in ipairs(gdiObjects.skillchainTexts) do
@@ -260,6 +265,7 @@ end
 -- Update GDI display with skillchains
 local function updateGDI(skillchains)
     clearGDI(); -- Clear previous objects
+    isVisible = true;
 
     gdiObjects.background:set_visible(true);
     gdiObjects.title:set_visible(true);
@@ -336,7 +342,7 @@ end
 -- Event handler for addon loading
 ashita.events.register('load', 'load_cb', function()
     --print('[SkillchainCalc] Addon loaded.');
-    cache.settings = settings.load(displaySettings);
+    cache.settings = settings.load(sccSettings);
     initGDIObjects();
     clearGDI();
 
@@ -441,27 +447,54 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Block the command to prevent further processing
     e.blocked = true;
 
-    if (#args > 2 and args[2]:any('setx', 'sety')) then
-        local value = tonumber(args[3]);
-        if value and value >= 0 then
-            if args[2]:any('setx') then
-                cache.settings.anchor.x = value;
+    local validCommand = false;
+    if #args > 2 then
+        if (args[2]:any('setx', 'sety')) then
+            local value = tonumber(args[3]);
+            if value and value >= 0 then
+                if args[2]:any('setx') then
+                    cache.settings.anchor.x = value;
+                end
+
+                if args[2]:any('sety') then
+                    cache.settings.anchor.y = value;
+                end
+                -- Update the GDI objects to reflect the new position
+                moveGDIAnchor();
+                print('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for setx or sety. Must be a non-negative number.');
             end
-
-            if args[2]:any('sety') then
-                cache.settings.anchor.y = value;
+        elseif (args[2] == 'setlevel') then
+            if (args[3]:any('1', '2', '3')) then
+                local l = tonumber(args[3]);
+                cache.settings.default.level = l;
+                cache.level = l;
+                print('[SkillchainCalc] Set default level: ' .. args[3]);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for setlevel. Must be a 1, 2, or 3.');
             end
-
-            -- Update the GDI objects to reflect the new position
-            settings.save();
-            moveGDIAnchor();
-            ParseSkillchains();
-
-            print('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
-        else
-            print('[SkillchainCalc] Invalid value for setx or sety. Must be a non-negative number.');
+        elseif (args[2] == 'setboth') then
+            if (args[3]:any('true', 'false')) then
+                local b = args[3] == 'true';
+                cache.settings.default.both = b;
+                cache.both = b;
+                print('[SkillchainCalc] Set parameter \'both\' = ' .. args[3]);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for setboth. Must be true or false.');
+            end
         end
-        return;
+
+        if validCommand then
+            settings.save();
+            if isVisible then
+                ParseSkillchains();
+            end
+            return;
+        end
     end
 
     if (#args == 2 and args[2] == 'clear') then
@@ -488,6 +521,8 @@ ashita.events.register('command', 'command_cb', function(e)
         print('  e.g. /scc gs gkt both');
         print('Usage: /scc setx # -- set x anchor');
         print('Usage: /scc sety # -- set y anchor');
+        print('Usage: /scc setlevel # -- set default level filter; 1, 2, or 3');
+        print('Usage: /scc setboth <bool> -- set default for \'both\' param; true or false');
         print('Usage: /scc clear -- clear out window');
         print('Usage: /scc debug -- enable debugging');
         return;
@@ -500,8 +535,8 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     -- Parse optional arguments
-    local level = 1;
-    local both = false;
+    local level = nil;
+    local both = nil;
     for i = 4, #args do
         if tonumber(args[i]) then
             level = tonumber(args[i]);
@@ -514,15 +549,15 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    -- Optimization: If the weapon types are the same, set 'both' to false
+    -- Optimization: If the weapon types are the same, set 'both' to nil
     if args[2] == args[3] then
-        both = false;
+        both = nil;
     end
 
     cache.wt1 = args[2];
     cache.wt2 = args[3];
-    cache.level = level;
-    cache.both = both;
+    cache.level = level or cache.settings.default.level;
+    cache.both = both or cache.settings.default.both;
 
     ParseSkillchains();
 end);
