@@ -397,7 +397,7 @@ local function calculateSkillchains(skills1, skills2, both)
     end
 
     -- If `both` is specified, add reversed calculation (skills2 -> skills1)
-    if cache.both then
+    if (cache.both) then
         for _, skill2 in pairs(skills2) do
             for _, skill1 in pairs(skills1) do
                 parseSkillchain(skill2, skill1, results, parsedPairs, true) -- Suppresses Light/Darkness as they are reversable
@@ -409,7 +409,7 @@ local function calculateSkillchains(skills1, skills2, both)
 end
 
 local function ParseSkillchains()
-    if not cache.wt1 or not cache.wt2 then
+    if (not cache.wt1 or not cache.wt2) then
         return;
     end
 
@@ -417,7 +417,7 @@ local function ParseSkillchains()
     local weapon1Skills = skills[cache.wt1];
     local weapon2Skills = skills[cache.wt2];
 
-    if not weapon1Skills or not weapon2Skills then
+    if (not weapon1Skills or not weapon2Skills) then
         print('[SkillchainCalc] Invalid weapon types provided.');
         return;
     end
@@ -452,11 +452,9 @@ ashita.events.register('command', 'command_cb', function(e)
         if (args[2]:any('setx', 'sety')) then
             local value = tonumber(args[3]);
             if value and value >= 0 then
-                if args[2]:any('setx') then
+                if (args[2] == 'setx') then
                     cache.settings.anchor.x = value;
-                end
-
-                if args[2]:any('sety') then
+                else --if args[2] == 'sety' then
                     cache.settings.anchor.y = value;
                 end
                 -- Update the GDI objects to reflect the new position
@@ -488,44 +486,48 @@ ashita.events.register('command', 'command_cb', function(e)
             end
         end
 
-        if validCommand then
+        if (validCommand) then
             settings.save();
-            if isVisible then
+            if (isVisible) then
                 ParseSkillchains();
             end
             return;
         end
     end
 
-    if (#args == 2 and args[2] == 'clear') then
-        clearGDI();
-        cache.wt1 = nil;
-        cache.wt2 = nil;
-        cache.level = 1;
-        return;
-    end
-
-    if (#args == 2 and args[2] == 'debug') then
-        debugMode = not debugMode;
-        print('[SkillchainCalc] Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
-        return;
-    end
-
-    if (#args == 2 and args[2] == 'help') then
-        print('Usage: /scc <weaponType1> <weaponType2> [#] [both]');
-        print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm');
-        print('              katana, gkt, club, staff, archery, mm, smn');
-        print(' [#] is optional integer value that filters skillchain tier')
-        print('  i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
-        print(' [both] keyword is optional parameter to calculate skillchain in both directions.');
-        print('  e.g. /scc gs gkt both');
-        print('Usage: /scc setx # -- set x anchor');
-        print('Usage: /scc sety # -- set y anchor');
-        print('Usage: /scc setlevel # -- set default level filter; 1, 2, or 3');
-        print('Usage: /scc setboth <bool> -- set default for \'both\' param; true or false');
-        print('Usage: /scc clear -- clear out window');
-        print('Usage: /scc debug -- enable debugging');
-        return;
+    if (#args == 2) then
+        if (args[2] == 'clear') then
+            clearGDI();
+            cache.wt1 = nil;
+            cache.wt2 = nil;
+            cache.level = 1;
+            return;
+        elseif (args[2] == 'debug') then
+            debugMode = not debugMode;
+            print('[SkillchainCalc] Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
+            return;
+        elseif (args[2] == 'status') then
+            print('Status of Default Filter:');
+            print(' Skillchain Level: Skillchains Level ' .. cache.settings.default.level .. ' or higher.')
+            print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
+            return;
+        elseif (args[2] == 'help') then
+            print('Usage: /scc <weaponType1> <weaponType2> [#] [both]');
+            print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm');
+            print('              katana, gkt, club, staff, archery, mm, smn');
+            print(' [#] is optional integer value that filters skillchain tier')
+            print('  i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
+            print(' [both] keyword is optional parameter to calculate skillchain in both directions.');
+            print('  e.g. /scc gs gkt both');
+            print('Usage: /scc setx # -- set x anchor');
+            print('Usage: /scc sety # -- set y anchor');
+            print('Usage: /scc setlevel # -- set default level filter; 1, 2, or 3');
+            print('Usage: /scc setboth <bool> -- set default for \'both\' param; true or false');
+            print('Usage: /scc clear -- clear out window');
+            print('Usage: /scc debug -- enable debugging');
+            print('Usage: /scc status -- show default filter status');
+            return;
+        end
     end
 
     -- Ensure we have the necessary arguments
@@ -538,7 +540,7 @@ ashita.events.register('command', 'command_cb', function(e)
     local level = nil;
     local both = nil;
     for i = 4, #args do
-        if tonumber(args[i]) then
+        if args[i]:any('1', '2', '3') then
             level = tonumber(args[i]);
         elseif args[i] == 'both' then
             both = true;
