@@ -120,11 +120,11 @@ local function moveGDIAnchor()
 end
 
 -- Filter skillchains by level or higher
-local function filterSkillchainsByLevel(combinations, filterLevel)
+local function filterSkillchainsByLevel(combinations)
     local filteredResults = {};
     for _, combo in ipairs(combinations) do
         local chainLevel = findChainLevel(combo.chain);
-        if chainLevel >= filterLevel then
+        if chainLevel >= cache.level then
             table.insert(filteredResults, combo);
         end
     end
@@ -426,7 +426,7 @@ local function ParseSkillchains()
     local combinations = calculateSkillchains(weapon1Skills, weapon2Skills);
 
     -- Filter combinations by level or higher
-    local filteredCombinations = filterSkillchainsByLevel(combinations, cache.level);
+    local filteredCombinations = filterSkillchainsByLevel(combinations);
 
     -- Display results
     if (#filteredCombinations > 0) then
