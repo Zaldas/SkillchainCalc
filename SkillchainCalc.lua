@@ -41,7 +41,7 @@ local sccSettings = T{
         y = 100,
     },
     layout = {
-        columnWidth = 310,
+        columnWidth = 315,
         entriesPerColumn = 30,
     },
     default = {
