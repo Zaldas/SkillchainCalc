@@ -158,7 +158,7 @@ skills.archery = { -- Archery
     [192] = {en='Flaming Arrow',skillchain={'Liquefaction','Transfixion'},tier=1},
     [193] = {en='Piercing Arrow',skillchain={'Reverberation','Transfixion'},tier=2},  -- HorizonXI
     [194] = {en='Dulling Arrow',skillchain={'Transfixion','Liquefaction'},tier=3},
-    [196] = {en='Sidewinder',skillchain={'Reverberation','Transfixion'},tier=4},
+    [196] = {en='Sidewinder',skillchain={'Reverberation','Transfixion','Detonation'},tier=4},
     [197] = {en='Blast Arrow',skillchain={'Transfixion','Induration'},tier=5},
     [198] = {en='Arching Arrow',skillchain={'Fusion'},tier=6},
     [199] = {en='Empyreal Arrow¹',skillchain={'Fusion','Transfixion'},tier=7},
@@ -169,7 +169,7 @@ skills.mm = { -- Marksmanship
     [208] = {en='Hot Shot',skillchain={'Liquefaction','Transfixion'},tier=1},
     [209] = {en='Split Shot',skillchain={'Reverberation','Transfixion'},tier=2},
     [210] = {en='Sniper Shot',skillchain={'Transfixion','Liquefaction'},tier=3},
-    [212] = {en='Slug Shot',skillchain={'Reverberation','Transfixion'},tier=4},
+    [212] = {en='Slug Shot',skillchain={'Reverberation','Transfixion','Detonation'},tier=4},
     [213] = {en='Blast Shot',skillchain={'Transfixion','Induration'},tier=5},
     [214] = {en='Heavy Shot',skillchain={'Fusion'},tier=6},
     [215] = {en='Detonator¹',skillchain={'Fusion','Transfixion'},tier=7},
