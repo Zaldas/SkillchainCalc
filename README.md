@@ -12,7 +12,8 @@ Usage:
 &ensp;&ensp;i.e. 2 only shows tier 2 and 3 skillchains.  
 &ensp;&ensp;1 or empty is default all.  
 &ensp;[both] is optional keyword to calculate skillchains in both directions  
-&ensp;Optional arguments have no order
+&ensp;Optional arguments have no order  
+&ensp;Optional arguments will use default values if not explicitly stated    
   
 Example: -- Results of Picture  
 &ensp;/scc katana h2h both 2  
@@ -21,8 +22,11 @@ Commands:
 &ensp;/scc help -- to see all commands  
 &ensp;/scc setx # -- set x anchor  
 &ensp;/scc sety # -- set y anchor  
+&ensp;/scc setlevel # -- set default level filter; 1, 2, or 3  
+&ensp;/scc setboth bool -- set default for 'both' param; true or false  
 &ensp;/scc clear -- clear out window  
 &ensp;/scc debug -- enable debugging  
+&ensp;/scc status -- show default filter status  
   
 Files:  
 &ensp;skillchaincalc.lua -- main addon  
