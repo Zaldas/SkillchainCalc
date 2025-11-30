@@ -33,7 +33,7 @@ Primary Weapon Auto-Limit:
 [both]  
 &ensp;Optional keyword to calculate skillchains in both directions  
 
-[sc:<element>]
+[sc:element]
 &ensp;Optional filter that limits results to skillchains whose burst table contains the given element  
 &ensp;e.g. `/scc thf war sc:ice` will show only SCs with Ice as a burst element  
 &ensp;Case-insensitive (`sc:ice`, `sc:Ice`, `SC:ICE` etc.)  
@@ -43,7 +43,7 @@ Examples:
 &ensp;/scc thf war  
 &ensp;/scc thf:sword war:ga  
 &ensp;/scc thf war sc:ice  
-&ensp;/scc nin:katana drk:scythe level=2 both  
+&ensp;/scc nin:katana drk:scythe 2 both  
 
 Commands:  
 &ensp;/scc help -- show all commands  
