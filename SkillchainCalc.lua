@@ -9,8 +9,11 @@ addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
 require('common');
 local skills = require('skills');
+local core = require('skillchain_core');
 local gdi = require('gdifonts.include');
 local settings = require('settings');
+
+local jobWeapons = {};
 
 local debugMode = false; -- Debug mode flag
 local sccSettings = T{
@@ -65,6 +68,41 @@ local cache = {
 };
 
 local isVisible = false;
+
+-- Resolve a weapon or job argument into a list of weapon types
+local function resolveWeapons(input)
+    return core.resolve_weapons(input, skills, jobWeapons);
+end
+
+local function formatWeaponList(weapons)
+    local names = {}
+
+    for _, weapon in ipairs(weapons or {}) do
+        if (type(weapon) == 'table') then
+            table.insert(names, weapon.name)
+        else
+            table.insert(names, weapon)
+        end
+    end
+
+    return table.concat(names, ', ')
+end
+
+-- Load job -> weapon mappings from jobs.xml
+local function loadJobMappings()
+    local file = io.open('jobs.xml', 'r');
+    if (not file) then
+        print('[SkillchainCalc] jobs.xml not found. Job shortcuts unavailable.');
+        return;
+    end
+
+    local content = file:read('*all');
+    file:close();
+
+    jobWeapons = core.parse_job_mappings(content, skills, function(message)
+        print('[SkillchainCalc] ' .. message);
+    end);
+end
 
 -- Helper function to find the level of a skillchain
 local function findChainLevel(chainName)
@@ -121,14 +159,7 @@ end
 
 -- Filter skillchains by level or higher
 local function filterSkillchainsByLevel(combinations)
-    local filteredResults = {};
-    for _, combo in ipairs(combinations) do
-        local chainLevel = findChainLevel(combo.chain);
-        if chainLevel >= cache.level then
-            table.insert(filteredResults, combo);
-        end
-    end
-    return filteredResults;
+    return core.filter_skillchains_by_level(combinations, cache.level, skills.ChainInfo);
 end
 
 -- Build results into a table
@@ -343,6 +374,7 @@ end
 ashita.events.register('load', 'load_cb', function()
     --print('[SkillchainCalc] Addon loaded.');
     cache.settings = settings.load(sccSettings);
+    loadJobMappings();
     initGDIObjects();
     clearGDI();
 
@@ -386,26 +418,7 @@ local function parseSkillchain(skill1, skill2, results, parsedPairs, suppress)
 end
 
 local function calculateSkillchains(skills1, skills2, both)
-    local results = {}
-    local parsedPairs = {}
-
-    -- Normal calculation (skills1 -> skills2)
-    for _, skill1 in pairs(skills1) do
-        for _, skill2 in pairs(skills2) do
-            parseSkillchain(skill1, skill2, results, parsedPairs)
-        end
-    end
-
-    -- If `both` is specified, add reversed calculation (skills2 -> skills1)
-    if (cache.both) then
-        for _, skill2 in pairs(skills2) do
-            for _, skill1 in pairs(skills1) do
-                parseSkillchain(skill2, skill1, results, parsedPairs, true) -- Suppresses Light/Darkness as they are reversable
-            end
-        end
-    end
-
-    return results
+    return core.calculate_skillchains(skills1, skills2, both, skills.ChainInfo);
 end
 
 local function ParseSkillchains()
@@ -413,17 +426,7 @@ local function ParseSkillchains()
         return;
     end
 
-    -- Validate weapon types
-    local weapon1Skills = skills[cache.wt1];
-    local weapon2Skills = skills[cache.wt2];
-
-    if (not weapon1Skills or not weapon2Skills) then
-        print('[SkillchainCalc] Invalid weapon types provided.');
-        return;
-    end
-
-    -- Calculate combinations
-    local combinations = calculateSkillchains(weapon1Skills, weapon2Skills);
+    local combinations = core.build_combinations(cache.wt1, cache.wt2, skills, skills.ChainInfo, cache.both);
 
     -- Filter combinations by level or higher
     local filteredCombinations = filterSkillchainsByLevel(combinations);
@@ -512,9 +515,10 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             return;
         elseif (args[2] == 'help') then
-            print('Usage: /scc <weaponType1> <weaponType2> [#] [both]');
+            print('Usage: /scc <weaponType1|job1> <weaponType2|job2> [#] [both]');
             print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm');
             print('              katana, gkt, club, staff, archery, mm, smn');
+            print(' Jobs: defined in jobs.xml (e.g., drk -> scythe, gs)');
             print(' [#] is optional integer value that filters skillchain tier')
             print('  i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
             print(' [both] keyword is optional parameter to calculate skillchain in both directions.');
@@ -545,21 +549,42 @@ ashita.events.register('command', 'command_cb', function(e)
         elseif args[i] == 'both' then
             both = true;
         else
-            print('[SkillchainCalc] Invalid argument: ' .. args[i])
+            print('[SkillchainCalc] Invalid argument: ' .. args[i]);
             print('/scc help -- for usage help');
             return;
         end
     end
 
+    local wt1, wt1IsJob = resolveWeapons(args[2]);
+    local wt2, wt2IsJob = resolveWeapons(args[3]);
+
+    if (not wt1) then
+        print('[SkillchainCalc] Invalid weapon or job: ' .. args[2]);
+        return;
+    end
+
+    if (not wt2) then
+        print('[SkillchainCalc] Invalid weapon or job: ' .. args[3]);
+        return;
+    end
+
     -- Optimization: If the weapon types are the same, set 'both' to nil
-    if args[2] == args[3] then
+    if (args[2]:lower() == args[3]:lower()) then
         both = nil;
     end
 
-    cache.wt1 = args[2];
-    cache.wt2 = args[3];
+    cache.wt1 = wt1;
+    cache.wt2 = wt2;
     cache.level = level or cache.settings.default.level;
     cache.both = both or cache.settings.default.both;
+
+    if (wt1IsJob) then
+        print(('[SkillchainCalc] %s resolved to weapons: %s'):format(args[2], formatWeaponList(wt1)));
+    end
+
+    if (wt2IsJob) then
+        print(('[SkillchainCalc] %s resolved to weapons: %s'):format(args[3], formatWeaponList(wt2)));
+    end
 
     ParseSkillchains();
 end);
