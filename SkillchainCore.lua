@@ -3,7 +3,7 @@
 
 require('common');
 local skills = require('skills');
-local jobs   = require('jobs');   -- NEW
+local jobs   = require('jobs');
 
 local SkillchainCore = {};
 
@@ -26,6 +26,48 @@ function SkillchainCore.getJobIdFromToken(token)
     return nil;
 end
 
+-- NEW: parse "job:weapon1,weapon2" style tokens
+local function parseJobWeaponToken(token)
+    if not token or type(token) ~= 'string' then
+        return nil;
+    end
+
+    local jobPart, weaponPart = token:match('^([^:]+):(.+)$');
+    if not jobPart or not weaponPart then
+        return nil;
+    end
+
+    local jobId = SkillchainCore.getJobIdFromToken(jobPart);
+    if not jobId then
+        return nil;
+    end
+
+    local job = jobs[jobId];
+    if not job or not job.weapons then
+        return nil;
+    end
+
+    local allowedWeapons = {};
+
+    -- weaponPart can be "sword" or "ga,polearm" etc.
+    for w in weaponPart:gmatch('[^,]+') do
+        local key = w:lower():gsub('%s+', ''); -- trim spaces
+        if key ~= '' then
+            -- validate against job capability and skills table
+            if job.weapons[key] and skills[key] then
+                allowedWeapons[key] = true;
+            end
+        end
+    end
+
+    if not next(allowedWeapons) then
+        -- nothing valid for this job, treat as invalid token
+        return nil;
+    end
+
+    return jobId, allowedWeapons;
+end
+
 function SkillchainCore.isJobAllowedForWs(ws, jobId)
     local allowedJobs = ws.jobRestrictions;
     if not allowedJobs then
@@ -42,23 +84,35 @@ function SkillchainCore.isJobAllowedForWs(ws, jobId)
     return false;
 end
 
-function SkillchainCore.buildSkillListForJob(jobId)
+-- allow optional weapon filter set
+function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons)
     local job = jobs[jobId];
     if not job or not job.weapons then
         return nil;
     end
 
+    -- If no explicit weapons given, fall back to job.primaryWeapons (if any)
+    local weaponFilter = allowedWeapons;
+    if not weaponFilter and job.primaryWeapons and #job.primaryWeapons > 0 then
+        weaponFilter = {};
+        for _, w in ipairs(job.primaryWeapons) do
+            weaponFilter[w] = true;
+        end
+    end
+
     local result = {};
 
     for weaponKey, cfg in pairs(job.weapons) do
-        local maxSkill     = cfg.maxSkill or 999;
-        local weaponSkills = skills[weaponKey];
+        if (not weaponFilter) or weaponFilter[weaponKey] then
+            local maxSkill     = cfg.maxSkill or 999;
+            local weaponSkills = skills[weaponKey];
 
-        if weaponSkills then
-            for _, ws in pairs(weaponSkills) do
-                local wsSkill = ws.skill or 0;   -- **skill only**
-                if wsSkill <= maxSkill and SkillchainCore.isJobAllowedForWs(ws, jobId) then
-                    table.insert(result, ws);
+            if weaponSkills then
+                for _, ws in pairs(weaponSkills) do
+                    local wsSkill = ws.skill or 0;
+                    if wsSkill <= maxSkill and SkillchainCore.isJobAllowedForWs(ws, jobId) then
+                        table.insert(result, ws);
+                    end
                 end
             end
         end
@@ -75,15 +129,21 @@ function SkillchainCore.resolveTokenToSkills(token)
     local raw   = token;
     local lower = token:lower();
 
+    -- 0) Job+weapon filter, e.g. "thf:sword", "war:ga,polearm"
+    local jobId, allowedWeapons = parseJobWeaponToken(raw);
+    if jobId then
+        return SkillchainCore.buildSkillListForJob(jobId, allowedWeapons);
+    end
+
     -- 1) Weapon type direct, e.g. "katana", "scythe"
     if skills[lower] ~= nil then
         return skills[lower];
     end
 
     -- 2) Job name / abbreviation, e.g. "nin", "ninja", "drk"
-    local jobId = SkillchainCore.getJobIdFromToken(raw);
-    if jobId then
-        return SkillchainCore.buildSkillListForJob(jobId);
+    local plainJobId = SkillchainCore.getJobIdFromToken(raw);
+    if plainJobId then
+        return SkillchainCore.buildSkillListForJob(plainJobId);
     end
 
     return nil;

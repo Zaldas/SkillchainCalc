@@ -79,7 +79,7 @@ local function initGDIObjects()
     gdiObjects.background:set_position_x(cache.settings.anchor.x);
     gdiObjects.background:set_position_y(cache.settings.anchor.y);
 
-    for i = 1, 200 do -- Increased limit to accommodate more lines
+    for i = 1, 150 do -- Increased limit to accommodate more lines
         local text = gdi:create_object(cache.settings.font);
         text:set_visible(false);
         table.insert(gdiObjects.skillchainTexts, text);
@@ -118,6 +118,7 @@ end
 -- Update GDI display with skillchains
 local function updateGDI(skillchains)
     clearGDI(); -- Clear previous objects
+
     isVisible = true;
 
     gdiObjects.background:set_visible(true);
@@ -182,6 +183,17 @@ local function updateGDI(skillchains)
                 entriesInColumn = entriesInColumn + 1;
             end
         end
+    end
+
+    -- If results exceeded available text objects, show a truncation notice.
+    local textLimit = #gdiObjects.skillchainTexts;
+    if textIndex > textLimit then
+        local notice = gdiObjects.skillchainTexts[textLimit];
+        notice:set_text('⚠ Results trimmed. Add filters such as job:weapon or limit number of weapons in job or level=2.');
+        notice:set_font_color(0xFFFF5555); -- light red highlight
+        notice:set_position_x(cache.settings.anchor.x + 5);
+        notice:set_position_y(cache.settings.anchor.y - 20);
+        notice:set_visible(true);
     end
 
     -- Ensure maxColumnHeight accounts for the last column
@@ -325,11 +337,13 @@ ashita.events.register('command', 'command_cb', function(e)
             return;
         elseif (args[2] == 'help') then
             print('Usage: /scc <token1> <token2> [level] [both]');
-            print(' Tokens can be weapon types or jobs:');
+            print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
             print('                katana, gkt, club, staff, archery, mm, smn');
             print('  Jobs: WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD, RNG');
             print('        SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH');
+            print('  Job+Weapon: thf:sword   (THF, sword WS only)');
+            print('               war:ga,polearm (WAR, GA and Polearm WS only)');
             print(' [level] optional integer 1–3 that filters skillchain **level**;');
             print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
             print(' [both] optional keyword to calculate chains in both directions.');

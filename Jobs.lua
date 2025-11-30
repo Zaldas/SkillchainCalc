@@ -32,6 +32,7 @@ jobs.aliases = {
 }
 
 jobs.WAR = {
+    primaryWeapons = { 'ga', 'axe' },
     weapons = {
         ga       = { maxSkill = 276 }, -- Great Axe
         axe      = { maxSkill = 269 },
@@ -47,8 +48,10 @@ jobs.WAR = {
         --mm       = { maxSkill = 210 }, -- Marksmanship
     },
 }
+-- Primary Weapons per Job
 
 jobs.MNK = {
+    primaryWeapons = { 'h2h' },
     weapons = {
         h2h   = { maxSkill = 276 },
         staff = { maxSkill = 250 },
@@ -57,22 +60,25 @@ jobs.MNK = {
 }
 
 jobs.WHM = {
+    primaryWeapons = { 'club' },
     weapons = {
         club  = { maxSkill = 256 },
-        --staff = { maxSkill = 230 },
+        staff = { maxSkill = 230 },
     },
 }
 
 jobs.BLM = {
+    primaryWeapons = { 'staff' },
     weapons = {
         staff  = { maxSkill = 240 },
         club   = { maxSkill = 230 },
-        --dagger = { maxSkill = 210 },
-        --scythe = { maxSkill = 200 },
+        dagger = { maxSkill = 210 },
+        scythe = { maxSkill = 200 },
     },
 }
 
 jobs.RDM = {
+    primaryWeapons = { 'sword', 'dagger' },
     weapons = {
         dagger  = { maxSkill = 250 },
         sword   = { maxSkill = 250 },
@@ -83,6 +89,7 @@ jobs.RDM = {
 }
 
 jobs.THF = {
+    primaryWeapons = { 'dagger' },
     weapons = {
         dagger  = { maxSkill = 269 },
         mm      = { maxSkill = 230 },
@@ -94,6 +101,7 @@ jobs.THF = {
 }
 
 jobs.PLD = {
+    primaryWeapons = { 'sword', 'gs' },
     weapons = {
         sword   = { maxSkill = 276 },
         club    = { maxSkill = 269 },
@@ -105,6 +113,7 @@ jobs.PLD = {
 }
 
 jobs.DRK = {
+    primaryWeapons = { 'scythe', 'gs' },
     weapons = {
         scythe = { maxSkill = 276 },
         gs     = { maxSkill = 269 },
@@ -117,6 +126,7 @@ jobs.DRK = {
 }
 
 jobs.BST = {
+    primaryWeapons = { 'axe' },
     weapons = {
         axe    = { maxSkill = 269 },
         scythe = { maxSkill = 240 },
@@ -127,6 +137,7 @@ jobs.BST = {
 }
 
 jobs.BRD = {
+    primaryWeapons = { 'dagger' },
     weapons = {
         dagger = { maxSkill = 240 },
         staff  = { maxSkill = 230 },
@@ -136,6 +147,7 @@ jobs.BRD = {
 }
 
 jobs.RNG = {
+    primaryWeapons = { 'archery', 'mm' },
     weapons = {
         axe     = { maxSkill = 240 },
         dagger  = { maxSkill = 240 },
@@ -147,30 +159,33 @@ jobs.RNG = {
 }
 
 jobs.SAM = {
+    primaryWeapons = { 'gkt' },
     weapons = {
         gkt     = { maxSkill = 276 }, -- Great Katana
         polearm = { maxSkill = 240 },
         sword   = { maxSkill = 250 },
         archery = { maxSkill = 225 },
-        --club    = { maxSkill = 210 },
-        --dagger  = { maxSkill = 200 },
+        club    = { maxSkill = 210 },
+        dagger  = { maxSkill = 200 },
     },
 }
 
 jobs.NIN = {
+    primaryWeapons = { 'katana' },
     weapons = {
         katana  = { maxSkill = 269 },
         dagger  = { maxSkill = 230 },
-        --sword   = { maxSkill = 225 },
+        sword   = { maxSkill = 225 },
         gkt     = { maxSkill = 220 },
-        --h2h     = { maxSkill = 200 },
-        --club    = { maxSkill = 200 },
+        h2h     = { maxSkill = 200 },
+        club    = { maxSkill = 200 },
         archery = { maxSkill = 200 },
         mm      = { maxSkill = 225 }, -- Marksmanship
     },
 }
 
 jobs.DRG = {
+    primaryWeapons = { 'polearm' },
     weapons = {
         polearm = { maxSkill = 276 },
         staff   = { maxSkill = 240 },
@@ -181,6 +196,7 @@ jobs.DRG = {
 }
 
 jobs.SMN = {
+    primaryWeapons = { 'staff' },
     weapons = {
         staff  = { maxSkill = 250 },
         club   = { maxSkill = 230 },
