@@ -8,8 +8,8 @@ Usage:
 /scc weapon1|job1 weapon2|job2 [level] [both]
 &ensp;Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe,
 &ensp;&ensp;polearm, katana, gkt, club, staff, archery, mm, smn
-&ensp;Jobs: defined in jobs.xml (e.g., drk -> scythe, gs)
-&ensp;&ensp;Set optional max_tier per weapon in jobs.xml to filter out weapon skills a job cannot use.
+&ensp;Jobs: defined in jobs.lua (e.g., drk -> scythe, gs)
+&ensp;&ensp;Set optional max_tier per weapon in jobs.lua to filter out weapon skills a job cannot use.
 &ensp;[level] is optional value that filters skillchain tier
 &ensp;&ensp;i.e. 2 only shows tier 2 and 3 skillchains.
 &ensp;&ensp;1 or empty is default all.
