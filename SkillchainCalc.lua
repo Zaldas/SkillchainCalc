@@ -88,18 +88,15 @@ local function formatWeaponList(weapons)
     return table.concat(names, ', ')
 end
 
--- Load job -> weapon mappings from jobs.xml
+-- Load job -> weapon mappings from jobs.lua
 local function loadJobMappings()
-    local file = io.open('jobs.xml', 'r');
-    if (not file) then
-        print('[SkillchainCalc] jobs.xml not found. Job shortcuts unavailable.');
+    local status, jobs = pcall(require, 'jobs');
+    if (not status) then
+        print('[SkillchainCalc] jobs.lua not found. Job shortcuts unavailable.');
         return;
     end
 
-    local content = file:read('*all');
-    file:close();
-
-    jobWeapons = core.parse_job_mappings(content, skills, function(message)
+    jobWeapons = core.parse_job_table(jobs, skills, function(message)
         print('[SkillchainCalc] ' .. message);
     end);
 end
@@ -518,7 +515,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('Usage: /scc <weaponType1|job1> <weaponType2|job2> [#] [both]');
             print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm');
             print('              katana, gkt, club, staff, archery, mm, smn');
-            print(' Jobs: defined in jobs.xml (e.g., drk -> scythe, gs)');
+            print(' Jobs: defined in jobs.lua (e.g., drk -> scythe, gs)');
             print(' [#] is optional integer value that filters skillchain tier')
             print('  i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
             print(' [both] keyword is optional parameter to calculate skillchain in both directions.');

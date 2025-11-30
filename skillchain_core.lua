@@ -120,6 +120,55 @@ function core.resolve_weapons(input, skills_table, job_mappings)
     return nil, false
 end
 
+local function normalize_weapon_entry(entry)
+    if (type(entry) == 'table') then
+        return {
+            name = trim(entry.name or entry[1] or ''),
+            max_tier = entry.max_tier,
+            allowed_skills = entry.allowed_skills,
+        }
+    end
+
+    return { name = trim(entry or '') }
+end
+
+-- Parse job mappings from a Lua table. Unknown weapons are logged via the optional logger.
+-- Supports optional max_tier and allowed_skills fields consistent with XML parsing.
+function core.parse_job_table(job_table, skills_table, logger)
+    local mappings = {}
+    local log = logger or function() end
+
+    for job, weapons in pairs(job_table or {}) do
+        local normalized_job = job:lower()
+        local parsed_weapons = {}
+
+        for _, weapon in ipairs(weapons) do
+            local weapon_entry = normalize_weapon_entry(weapon)
+            local weapon_name = weapon_entry.name:lower()
+
+            if skills_table[weapon_name] then
+                local filtered = core.apply_weapon_filters(weapon_entry, skills_table)
+                if filtered and (#filtered > 0) then
+                    weapon_entry.name = weapon_name
+                    table.insert(parsed_weapons, weapon_entry)
+                else
+                    log(('No usable skills remain for weapon "%s" on job %s after filtering.'):format(weapon_name, job))
+                end
+            else
+                log(('Ignoring unknown weapon "%s" for job %s.'):format(weapon_name, job))
+            end
+        end
+
+        if (#parsed_weapons > 0) then
+            mappings[normalized_job] = parsed_weapons
+        else
+            log(('No valid weapons found for job %s.'):format(job))
+        end
+    end
+
+    return mappings
+end
+
 local function parseSkillchain(skill1, skill2, results, parsedPairs, chain_info, suppress)
     local pairKey = skill1.en .. ">" .. skill2.en
     suppress = suppress or false
