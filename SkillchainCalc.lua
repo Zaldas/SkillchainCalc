@@ -9,6 +9,7 @@ addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
 require('common');
 local skills = require('skills');
+local SkillchainCore = require('SkillchainCore');
 local gdi = require('gdifonts.include');
 local settings = require('settings');
 
@@ -65,12 +66,6 @@ local cache = {
 };
 
 local isVisible = false;
-
--- Helper function to find the level of a skillchain
-local function findChainLevel(chainName)
-    local chainInfo = skills.ChainInfo[chainName];
-    return chainInfo and chainInfo.level or 0;
-end
 
 -- Initialize GDI objects for displaying skillchains
 local function initGDIObjects()
@@ -131,137 +126,6 @@ local function filterSkillchainsByLevel(combinations)
     return filteredResults;
 end
 
--- Build results into a table
-local function buildSkillchainTable(skillchains)
-    local resultsTable = {};
-
-    for _, combo in ipairs(skillchains) do
-        local opener = combo.skill1;
-        local closer = combo.skill2;
-        local chainLevel = findChainLevel(combo.chain);
-
-        -- Check if the opener/closer pair already exists
-        local existingEntry = nil;
-        for chain, openers in pairs(resultsTable) do
-            if openers[opener] then
-                for _, entry in ipairs(openers[opener]) do
-                    if entry.closer == closer then
-                        existingEntry = { chain = chain, entry = entry };
-                        break;
-                    end
-                end
-            end
-            if existingEntry then break; end
-        end
-
-        if existingEntry then
-            local existingLevel = findChainLevel(existingEntry.chain);
-            if chainLevel > existingLevel then
-                -- Remove the lower-level chain entry
-                local openers = resultsTable[existingEntry.chain];
-                for i, entry in ipairs(openers[opener]) do
-                    if entry.closer == closer then
-                        table.remove(openers[opener], i);
-                        break;
-                    end
-                end
-                if #openers[opener] == 0 then
-                    openers[opener] = nil;
-                end
-                if not next(openers) then
-                    resultsTable[existingEntry.chain] = nil;
-                end
-            else
-                -- Skip adding this chain since a higher-level one exists
-                goto continue;
-            end
-        end
-
-        -- Add the new chain
-        resultsTable[combo.chain] = resultsTable[combo.chain] or {};
-        resultsTable[combo.chain][opener] = resultsTable[combo.chain][opener] or {};
-        table.insert(resultsTable[combo.chain][opener], { closer = closer });
-
-        ::continue::
-    end
-
-    return resultsTable;
-end
-
--- Helper function to find the level of a weapon skill
-local function findSkillLevel(skillName)
-    for weaponType, weaponSkills in pairs(skills) do
-        if type(weaponSkills) == 'table' then
-            for _, skill in pairs(weaponSkills) do
-                if skill.en == skillName then
-                    return skill.tier or 0;
-                end
-            end
-        end
-    end
-    return 0; -- Default to 0 if not found
-end
-
--- Sort results table by skillchain level and opening weapon skill
-local function sortSkillchainTable(resultsTable)
-    local sortedResults = {};
-    local orderedResults = {};
-
-    if debugMode then print('[Debug] Starting level-based sorting'); end
-    -- Sort by skillchain level using skills.ChainInfo
-    local chainLevels = {};
-    for chainName, _ in pairs(resultsTable) do
-        table.insert(chainLevels, {
-            chain = chainName,
-            level = findChainLevel(chainName)
-        });
-    end
-
-    table.sort(chainLevels, function(a, b)
-        return skills.GetDisplayIndex(a.chain) < skills.GetDisplayIndex(b.chain)
-    end)
-
-    for _, chainData in ipairs(chainLevels) do
-        local chainName = chainData.chain;
-        sortedResults[chainName] = resultsTable[chainName];
-        table.insert(orderedResults, chainName);
-    end
-
-    -- Sort opening weapon skills within each skillchain level by their weapon skill level
-    for result, openers in pairs(sortedResults) do
-        local sortedOpeners = {};
-        if debugMode then print(('[Debug] Sorting openers for chain %s'):format(result)); end
-        for opener, closers in pairs(openers) do
-            local openerLevel = findSkillLevel(opener);
-            if debugMode then print(('[Debug] Found opener %s with level %d'):format(opener, openerLevel)); end
-
-            -- Sort closers by weapon skill level
-            table.sort(closers, function(a, b)
-                local closerLevelA = findSkillLevel(a.closer);
-                local closerLevelB = findSkillLevel(b.closer);
-                if debugMode then print(('[Debug] Comparing closer %s (Level %d) with closer %s (Level %d)'):format(a.closer, closerLevelA, b.closer, closerLevelB)); end
-                return closerLevelA > closerLevelB;
-            end);
-
-            table.insert(sortedOpeners, {
-                opener = opener,
-                closers = closers,
-                level = openerLevel
-            });
-        end
-
-        table.sort(sortedOpeners, function(a, b)
-            if debugMode then print(('[Debug] Comparing opener %s (Level %d) with opener %s (Level %d)'):format(a.opener, a.level, b.opener, b.level)); end
-            return a.level > b.level;
-        end);
-
-        sortedResults[result] = sortedOpeners;
-    end
-
-    if debugMode then print('[Debug] Sorting completed'); end
-    return sortedResults, orderedResults;
-end
-
 -- Update GDI display with skillchains
 local function updateGDI(skillchains)
     clearGDI(); -- Clear previous objects
@@ -271,8 +135,8 @@ local function updateGDI(skillchains)
     gdiObjects.title:set_visible(true);
 
     local layout = cache.settings.layout;
-    local resultsTable = buildSkillchainTable(skillchains);
-    local sortedResults, orderedResults = sortSkillchainTable(resultsTable);
+    local resultsTable = SkillchainCore.buildSkillchainTable(skillchains);
+    local sortedResults, orderedResults = SkillchainCore.sortSkillchainTable(resultsTable, debugMode);
     local y_offset = 40; -- Starting y-offset
     local textIndex = 1; -- Track text object index
     local columnOffset = 0; -- Track horizontal offset for new columns
@@ -356,58 +220,6 @@ ashita.events.register('load', 'load_cb', function()
     end)
 end);
 
--- Calculates all possible skillchains between two sets of skills
-local function parseSkillchain(skill1, skill2, results, parsedPairs, suppress)
-    local pairKey = skill1.en .. ">" .. skill2.en
-    suppress = suppress or false -- Default to false if not provided
-
-    -- Iterate over skillchains of skill1 and skill2
-    for _, chain1 in ipairs(skill1.skillchain or {}) do
-        for _, chain2 in ipairs(skill2.skillchain or {}) do
-            local chainInfo = skills.ChainInfo[chain1]
-
-            if chainInfo and chainInfo[chain2] and not parsedPairs[pairKey] then
-                -- Suppress insertion if the resulting chain is Light or Darkness
-                if suppress and (chainInfo[chain2].skillchain == "Light" or chainInfo[chain2].skillchain == "Darkness") then
-                    return -- Skip this entry
-                end
-
-                -- Insert into results if suppression is not active or chain is valid
-                parsedPairs[pairKey] = true
-                table.insert(results, {
-                    skill1 = skill1.en,
-                    skill2 = skill2.en,
-                    chain = chainInfo[chain2].skillchain,
-                })
-                break -- Exit the inner loop once a match is found
-            end
-        end
-    end
-end
-
-local function calculateSkillchains(skills1, skills2, both)
-    local results = {}
-    local parsedPairs = {}
-
-    -- Normal calculation (skills1 -> skills2)
-    for _, skill1 in pairs(skills1) do
-        for _, skill2 in pairs(skills2) do
-            parseSkillchain(skill1, skill2, results, parsedPairs)
-        end
-    end
-
-    -- If `both` is specified, add reversed calculation (skills2 -> skills1)
-    if (cache.both) then
-        for _, skill2 in pairs(skills2) do
-            for _, skill1 in pairs(skills1) do
-                parseSkillchain(skill2, skill1, results, parsedPairs, true) -- Suppresses Light/Darkness as they are reversable
-            end
-        end
-    end
-
-    return results
-end
-
 local function ParseSkillchains()
     if (not cache.wt1 or not cache.wt2) then
         return;
@@ -423,10 +235,10 @@ local function ParseSkillchains()
     end
 
     -- Calculate combinations
-    local combinations = calculateSkillchains(weapon1Skills, weapon2Skills);
+    local combinations = SkillchainCore.calculateSkillchains(weapon1Skills, weapon2Skills, cache.both);
 
     -- Filter combinations by level or higher
-    local filteredCombinations = filterSkillchainsByLevel(combinations);
+    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
 
     -- Display results
     if (#filteredCombinations > 0) then
