@@ -59,60 +59,15 @@ function core.apply_weapon_filters(weaponEntry, skills_table)
     return filtered
 end
 
--- Normalize job -> weapon mappings defined in Lua tables or parsed data. Unknown weapons are logged
--- via the optional logger. Supports optional max_tier and allowed_skills to filter job-specific
--- weapon skills.
-function core.normalize_job_mappings(job_table, skills_table, logger)
+-- Parse job mappings from an XML string. Unknown weapons are logged via the optional logger.
+-- Supports optional max_tier attributes and explicit <skill> allowlists inside <weapon> elements
+-- to filter job-specific weapon skills.
+function core.parse_job_mappings(xml_content, skills_table, logger)
     local mappings = {}
     local log = logger or function() end
 
-    for job, weapons in pairs(job_table or {}) do
-        local normalized = {}
-        for _, weaponEntry in ipairs(weapons or {}) do
-            local entry = weaponEntry
-            if (type(entry) == 'string') then
-                entry = { name = entry }
-            end
-
-            local weaponName = trim(entry.name or ''):lower()
-            if (weaponName == '') then
-                log(('Ignoring unnamed weapon entry for job %s.'):format(job))
-            elseif skills_table[weaponName] then
-                local normalizedEntry = {
-                    name = weaponName,
-                    max_tier = entry.max_tier,
-                    allowed_skills = entry.allowed_skills,
-                }
-
-                local filtered = core.apply_weapon_filters(normalizedEntry, skills_table)
-                if filtered and (#filtered > 0) then
-                    table.insert(normalized, normalizedEntry)
-                else
-                    log(('No usable skills remain for weapon "%s" on job %s after filtering.'):format(weaponName, job))
-                end
-            else
-                log(('Ignoring unknown weapon "%s" for job %s.'):format(weaponName, job))
-            end
-        end
-
-        if (#normalized > 0) then
-            mappings[job:lower()] = normalized
-        else
-            log(('No valid weapons found for job %s.'):format(job))
-        end
-    end
-
-    return mappings
-end
-
--- Parse job mappings from an XML string, then normalize them using the shared logic. Maintained for
--- backward compatibility.
-function core.parse_job_mappings(xml_content, skills_table, logger)
-    local parsed = {}
-
     for job, block in xml_content:gmatch('<job%s+name="(.-)"%s*>([\0-\255]-)</job>') do
-        parsed[job] = {}
-
+        local weapons = {}
         for weaponAttrs, weaponBody in block:gmatch('<weapon(.-)>([\0-\255]-)</weapon>') do
             local nameAttr = weaponAttrs:match('name="(.-)"')
             local weaponName = trim(nameAttr or weaponBody):lower()
@@ -122,15 +77,32 @@ function core.parse_job_mappings(xml_content, skills_table, logger)
                 table.insert(skills, trim(skill):lower())
             end
 
-            table.insert(parsed[job], {
-                name = weaponName,
-                max_tier = maxTier and tonumber(maxTier) or nil,
-                allowed_skills = skills,
-            })
+            if skills_table[weaponName] then
+                local entry = {
+                    name = weaponName,
+                    max_tier = maxTier and tonumber(maxTier) or nil,
+                    allowed_skills = skills,
+                }
+
+                local filtered = core.apply_weapon_filters(entry, skills_table)
+                if filtered and (#filtered > 0) then
+                    table.insert(weapons, entry)
+                else
+                    log(('No usable skills remain for weapon "%s" on job %s after filtering.'):format(weaponName, job))
+                end
+            else
+                log(('Ignoring unknown weapon "%s" for job %s.'):format(weaponName, job))
+            end
+        end
+
+        if (#weapons > 0) then
+            mappings[job:lower()] = weapons
+        else
+            log(('No valid weapons found for job %s.'):format(job))
         end
     end
 
-    return core.normalize_job_mappings(parsed, skills_table, logger)
+    return mappings
 end
 
 -- Resolve a provided argument into one or more weapon types.
