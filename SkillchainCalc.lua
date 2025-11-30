@@ -343,7 +343,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             return;
         elseif (args[2] == 'help') then
-            print('Usage: /scc <token1> <token2> [level] [sc:element] [both]');
+            print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both]');
             print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
             print('                katana, gkt, club, staff, archery, mm, smn');
@@ -353,7 +353,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('               war:ga,polearm (WAR, GA and Polearm WS only)');
             print(' [level] optional integer 1–3 that filters skillchain level;');
             print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
-            print(' sc:<element> optional filter by SC burst element, e.g. sc:ice, sc:fire');
+            print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate chains in both directions.');
             print('Usage: /scc setx #       -- set x anchor');
