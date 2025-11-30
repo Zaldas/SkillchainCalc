@@ -235,6 +235,30 @@ function SkillchainCore.filterSkillchainsByLevel(combinations, minLevel)
     return filteredResults;
 end
 
+function SkillchainCore.filterSkillchainsByElement(combinations, elementToken)
+    if not elementToken or elementToken == '' then
+        return combinations;
+    end
+
+    local target = elementToken:lower();
+    local filteredResults = {};
+
+    for _, combo in ipairs(combinations) do
+        local info = skills.ChainInfo[combo.chain];
+        local burst = info and info.burst;
+        if burst then
+            for _, elem in ipairs(burst) do
+                if elem:lower() == target then
+                    table.insert(filteredResults, combo);
+                    break;
+                end
+            end
+        end
+    end
+
+    return filteredResults;
+end
+
 function SkillchainCore.buildSkillchainTable(skillchains)
     local resultsTable = {};
 
