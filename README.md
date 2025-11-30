@@ -11,6 +11,7 @@ Tokens can be one of the following:
 Weapon Types:  
 &ensp;h2h, dagger, sword, gs, axe, ga, scythe,  
 &ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
+&ensp;Weapons Alias as well: e.g. ga or greataxe work, full list in skills.lua
 
 Jobs:  
 &ensp;WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD,  

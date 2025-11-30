@@ -1,5 +1,37 @@
 local skills = {};
 
+skills.aliases = {
+    -- Hand-to-Hand
+    h2h = 'h2h', handtohand = 'h2h', hand2hand  = 'h2h',
+    -- Dagger
+    dagger = 'dagger', dag = 'dagger',
+    -- Sword
+    sword = 'sword',
+    -- Great Sword
+    gs  = 'gs', greatsword = 'gs',
+    -- Axe / Great Axe
+    axe  = 'axe', 
+    ga = 'ga', greataxe = 'ga',
+    -- Scythe
+    scythe = 'scythe',
+    -- Polearm
+    polearm = 'polearm', pole = 'polearm',
+    -- Katana / Great Katana
+    katana = 'katana', 
+    gkt = 'gkt', greatkatana = 'gkt',
+    -- Club / Staff
+    club  = 'club',
+    staff = 'staff',
+    -- Ranged
+    archery      = 'archery',
+    bow          = 'archery',
+    mm           = 'mm',
+    marksmanship = 'mm',
+    gun          = 'mm',
+    -- Pet skills bucket
+    smn = 'smn',
+}
+
 skills.h2h = { -- Hand-to-Hand
     [1]  = {en='Combo',         skillchain={'Impaction'},                 skill=5},
     [2]  = {en='Shoulder Tackle',skillchain={'Reverberation','Impaction'},skill=40},

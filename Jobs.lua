@@ -39,13 +39,13 @@ jobs.WAR = {
         gs       = { maxSkill = 256 }, -- Great Sword
         scythe   = { maxSkill = 256 },
         sword    = { maxSkill = 250 },
-        --staff    = { maxSkill = 250 },
+        staff    = { maxSkill = 250 },
         polearm  = { maxSkill = 240 },
-        --dagger   = { maxSkill = 240 },
-        --club     = { maxSkill = 240 },
-        --h2h      = { maxSkill = 210 },
-        --archery  = { maxSkill = 210 },
-        --mm       = { maxSkill = 210 }, -- Marksmanship
+        dagger   = { maxSkill = 240 },
+        club     = { maxSkill = 240 },
+        h2h      = { maxSkill = 210 },
+        archery  = { maxSkill = 210 },
+        mm       = { maxSkill = 210 }, -- Marksmanship
     },
 }
 -- Primary Weapons per Job
@@ -190,8 +190,8 @@ jobs.DRG = {
         polearm = { maxSkill = 276 },
         staff   = { maxSkill = 240 },
         sword   = { maxSkill = 220 },
-        --club    = { maxSkill = 200 },
-        --dagger  = { maxSkill = 200 },
+        club    = { maxSkill = 200 },
+        dagger  = { maxSkill = 200 },
     },
 }
 
@@ -209,35 +209,30 @@ jobs.SMN = {
 -- (not critical for current SCC flow; safe to leave weapons empty if unused)
 -----------------------------------------------------------------------
 
--- BLU – Blue Mage :contentReference[oaicite:14]{index=14}
 jobs.BLU = {
     weapons = {
         -- add weapons
     },
 }
 
--- COR – Corsair (TODO: fill from data if you start using /scc cor)
 jobs.COR = {
     weapons = {
         -- add sword / dagger / gun (mm) once needed
     },
 }
 
--- PUP – Puppetmaster (TODO)
 jobs.PUP = {
     weapons = {
         -- h2h, etc.
     },
 }
 
--- DNC – Dancer (TODO)
 jobs.DNC = {
     weapons = {
         -- dagger, sword etc.
     },
 }
 
--- SCH – Scholar (melee similar to BLM/SMN, left TODO) :contentReference[oaicite:15]{index=15}
 jobs.SCH = {
     weapons = {
         -- staff, club, dagger once you care about SCH WS here

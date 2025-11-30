@@ -63,7 +63,7 @@ local cache = {
     wt2 = nil,
     level = 1,
     both = false,
-    scElement = nil,   -- NEW
+    scElement = nil,
     settings = sccSettings;
 };
 
@@ -230,6 +230,13 @@ local function ParseSkillchains()
     -- Resolve tokens (weapon types OR jobs)
     local skills1 = SkillchainCore.resolveTokenToSkills(cache.wt1);
     local skills2 = SkillchainCore.resolveTokenToSkills(cache.wt2);
+
+    if (not skills1 or not skills2) then
+        print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
+            tostring(cache.wt1) .. ', ' .. tostring(cache.wt2));
+        clearGDI();
+        return;
+    end
 
     --[[ debugging
     print('Skills1:');
