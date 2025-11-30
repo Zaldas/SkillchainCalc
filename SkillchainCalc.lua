@@ -10,7 +10,6 @@ addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 require('common');
 local skills = require('skills');
 local SkillchainCore = require('SkillchainCore');
-local jobs = require('jobs');
 local gdi = require('gdifonts.include');
 local settings = require('settings');
 
@@ -354,7 +353,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('        SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH');
             print('  Job+Weapon: thf:sword   (THF, sword WS only)');
             print('               war:ga,polearm (WAR, GA and Polearm WS only)');
-            print(' [level] optional integer 1–3 that filters skillchain level;');
+            print(' [level] optional integer 1-3 that filters skillchain level;');
             print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
