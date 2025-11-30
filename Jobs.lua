@@ -14,7 +14,7 @@ jobs.aliases = {
     rdm = 'RDM', redmage     = 'RDM',
     thf = 'THF', thief       = 'THF',
     pld = 'PLD', paladin     = 'PLD',
-    drk = 'DRK', darkknight  = 'DRK', ['dark_knight'] = 'DRK',
+    drk = 'DRK', darkknight  = 'DRK',
     bst = 'BST', beastmaster = 'BST',
     brd = 'BRD', bard        = 'BRD',
     rng = 'RNG', ranger      = 'RNG',
