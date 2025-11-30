@@ -4,13 +4,15 @@ Skillchain Calculator
   
 Display skillchains possible given an opening weapon type and closing weapon type.  
 
-Usage:  
-/scc weapon1 weapon2 [level] [both]  
-&ensp;Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe,  
-&ensp;&ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
-&ensp;[level] is optional value that filters skillchain tier  
-&ensp;&ensp;i.e. 2 only shows tier 2 and 3 skillchains.  
-&ensp;&ensp;1 or empty is default all.  
+Usage:
+/scc weapon1|job1 weapon2|job2 [level] [both]
+&ensp;Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe,
+&ensp;&ensp;polearm, katana, gkt, club, staff, archery, mm, smn
+&ensp;Jobs: defined in jobs.lua (e.g., drk -> scythe, gs)
+&ensp;&ensp;Set optional max_tier per weapon in jobs.lua to filter out weapon skills a job cannot use.
+&ensp;[level] is optional value that filters skillchain tier
+&ensp;&ensp;i.e. 2 only shows tier 2 and 3 skillchains.
+&ensp;&ensp;1 or empty is default all.
 &ensp;[both] is optional keyword to calculate skillchains in both directions  
 &ensp;Optional arguments have no order  
 &ensp;Optional arguments will use default values if not explicitly stated    
@@ -28,9 +30,10 @@ Commands:
 &ensp;/scc debug -- enable debugging  
 &ensp;/scc status -- show default filter status  
   
-Files:  
-&ensp;skillchaincalc.lua -- main addon  
-&ensp;skills.lua -- weaponskill data and colors  
+Files:
+&ensp;skillchaincalc.lua -- main addon
+&ensp;skills.lua -- weaponskill data and colors
+&ensp;jobs.lua -- job -> weapon mapping configuration
   
 Notes:  
 &ensp;This is adjusted for HorizonXI. No plans to support for retail.  
