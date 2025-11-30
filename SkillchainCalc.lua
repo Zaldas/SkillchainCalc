@@ -268,6 +268,41 @@ local function ParseSkillchains()
     end
 end
 
+local function ParseStepSkillchains()
+    if (not cache.wt1) then
+        return;
+    end
+
+    -- Resolve single token (weapon / job / job:weapons)
+    local wsList = SkillchainCore.resolveTokenToSkills(cache.wt1);
+    if (not wsList) then
+        print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.wt1));
+        clearGDI();
+        return;
+    end
+
+    -- Property → WS-property → resulting chain
+    local combinations = SkillchainCore.calculateStepSkillchains(wsList);
+
+    -- Level filter (on resulting chain level)
+    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
+
+    -- sc:<element> filter on resulting chain burst
+    if cache.scElement then
+        filteredCombinations = SkillchainCore.filterSkillchainsByElement(filteredCombinations, cache.scElement);
+    end
+
+    -- both has no meaning in step mode
+    cache.both = false;
+
+    if (#filteredCombinations > 0) then
+        updateGDI(filteredCombinations);
+    else
+        print(('[SkillchainCalc] No step skillchain combinations found for filter level %d.'):format(cache.level));
+        clearGDI();
+    end
+end
+
 -- Event handler for commands
 ashita.events.register('command', 'command_cb', function(e)
     local args = e.command:args();
@@ -326,6 +361,52 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
+    -----------------------------------------------------------------------
+    -- /scc step <token> [level] [sc:<element>]
+    -----------------------------------------------------------------------
+    if (#args >= 3 and args[2]:lower() == 'step') then
+        local token = args[3];
+        if (not token or token == '') then
+            print('Usage: /scc step <token> [level] [sc:<element>]');
+            return;
+        end
+
+        local level     = nil;
+        local scElement = nil;
+
+        for i = 4, #args do
+            local param = args[i];
+            local lower = param:lower();
+
+            -- Level filter (same meaning as normal mode)
+            if (lower == '1' or lower == '2' or lower == '3' or lower == '4') then
+                level = tonumber(lower);
+
+            -- Element filter on resulting chain
+            elseif lower:sub(1, 3) == 'sc:' then
+                scElement = lower:sub(4);
+
+            -- both is explicitly ignored in step mode
+            elseif lower == 'both' then
+                -- no-op
+
+            else
+                print('[SkillchainCalc] Invalid argument for step mode: ' .. param);
+                print('Usage: /scc step <token> [level] [sc:<element>]');
+                return;
+            end
+        end
+
+        cache.wt1       = token;
+        cache.wt2       = nil;
+        cache.level     = level or cache.settings.default.level;
+        cache.both      = false; -- has no meaning in step mode
+        cache.scElement = scElement and scElement:lower() or nil;
+
+        ParseStepSkillchains();
+        return;
+    end
+
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
@@ -358,6 +439,8 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate chains in both directions.');
+            print('Usage: /scc step <token> [level] [sc:<element>]');
+            print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('Usage: /scc setx #       -- set x anchor');
             print('Usage: /scc sety #       -- set y anchor');
             print('Usage: /scc setlevel #   -- set default level filter');
@@ -379,14 +462,17 @@ ashita.events.register('command', 'command_cb', function(e)
     local scElement = nil;
 
     for i = 4, #args do
-        if args[i]:any('1', '2', '3') then
-            level = tonumber(args[i]);
-        elseif args[i] == 'both' then
+        local param = args[i];
+        local lower = param:lower();
+
+        if param:any('1', '2', '3') then
+            level = tonumber(param);
+        elseif lower == 'both' then
             both = true;
         elseif lower:sub(1, 3) == 'sc:' then
-            scElement = lower:sub(4)   -- always stored as lowercase
+            scElement = lower:sub(4);   -- already lowercase
         else
-            print('[SkillchainCalc] Invalid argument: ' .. args[i])
+            print('[SkillchainCalc] Invalid argument: ' .. param);
             print('/scc help -- for usage help');
             return;
         end
