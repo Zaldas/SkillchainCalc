@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jobs>
+    <job name="war">
+        <weapon name="axe" max_tier="9"></weapon>
+        <weapon name="ga"></weapon>
+        <weapon name="sword" max_tier="10"></weapon>
+        <weapon name="gs"></weapon>
+    </job>
+    <job name="mnk">
+        <weapon name="h2h"></weapon>
+        <weapon name="staff" max_tier="8"></weapon>
+    </job>
+    <job name="whm">
+        <weapon name="club" max_tier="9"></weapon>
+        <weapon name="staff" max_tier="9"></weapon>
+    </job>
+    <job name="blm">
+        <weapon name="staff" max_tier="9"></weapon>
+    </job>
+    <job name="rdm">
+        <weapon name="sword" max_tier="10"></weapon>
+        <weapon name="dagger" max_tier="8"></weapon>
+    </job>
+    <job name="thf">
+        <weapon name="dagger" max_tier="9"></weapon>
+    </job>
+    <job name="pld">
+        <weapon name="sword" max_tier="11"></weapon>
+        <weapon name="gs"></weapon>
+    </job>
+    <job name="drk">
+        <weapon name="scythe"></weapon>
+        <weapon name="gs"></weapon>
+    </job>
+    <job name="bst">
+        <weapon name="axe"></weapon>
+    </job>
+    <job name="brd">
+        <weapon name="dagger" max_tier="8"></weapon>
+    </job>
+    <job name="rng">
+        <weapon name="archery" max_tier="8"></weapon>
+        <weapon name="mm" max_tier="8"></weapon>
+    </job>
+    <job name="sam">
+        <weapon name="gkt"></weapon>
+        <weapon name="polearm"></weapon>
+    </job>
+    <job name="nin">
+        <weapon name="katana"></weapon>
+    </job>
+    <job name="drg">
+        <weapon name="polearm"></weapon>
+    </job>
+    <job name="smn">
+        <weapon name="staff" max_tier="9"></weapon>
+        <weapon name="smn"></weapon>
+    </job>
+    <job name="blu">
+        <weapon name="sword" max_tier="10"></weapon>
+    </job>
+    <job name="cor">
+        <weapon name="mm" max_tier="7"></weapon>
+        <weapon name="sword" max_tier="10"></weapon>
+        <weapon name="dagger" max_tier="8"></weapon>
+    </job>
+    <job name="dnc">
+        <weapon name="dagger" max_tier="8"></weapon>
+    </job>
+</jobs>

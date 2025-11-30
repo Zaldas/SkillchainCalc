@@ -1,6 +1,16 @@
 local core = require('skillchain_core')
 local skills = require('skills')
 
+local function read_file(path)
+    local file, err = io.open(path, 'r')
+    if not file then
+        error('Failed to open ' .. path .. ': ' .. tostring(err))
+    end
+    local content = file:read('*all')
+    file:close()
+    return content
+end
+
 local function assert_equal(actual, expected, message)
     if actual ~= expected then
         error((message or 'Values did not match') .. string.format(' (expected %s, got %s)', tostring(expected), tostring(actual)))
@@ -14,8 +24,8 @@ local function assert_true(condition, message)
 end
 
 local function main()
-    local jobs = require('jobs')
-    local job_mappings = core.normalize_job_mappings(jobs, skills)
+    local jobs_xml = read_file('jobs.xml')
+    local job_mappings = core.parse_job_mappings(jobs_xml, skills)
 
     -- Ensure key jobs are parsed correctly
     assert_true(job_mappings.drk ~= nil, 'Dark Knight mapping missing')

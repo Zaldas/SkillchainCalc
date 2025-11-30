@@ -59,33 +59,34 @@ function core.apply_weapon_filters(weaponEntry, skills_table)
     return filtered
 end
 
--- Normalize job -> weapon mappings defined in Lua tables. Unknown weapons are logged via the optional
--- logger. Supports optional max_tier and allowed_skills to filter job-specific weapon skills.
-function core.normalize_job_mappings(job_table, skills_table, logger)
+-- Parse job mappings from an XML string. Unknown weapons are logged via the optional logger.
+-- Supports optional max_tier attributes and explicit <skill> allowlists inside <weapon> elements
+-- to filter job-specific weapon skills.
+function core.parse_job_mappings(xml_content, skills_table, logger)
     local mappings = {}
     local log = logger or function() end
 
-    for job, weapons in pairs(job_table or {}) do
-        local normalized = {}
-        for _, weaponEntry in ipairs(weapons or {}) do
-            local entry = weaponEntry
-            if (type(entry) == 'string') then
-                entry = { name = entry }
+    for job, block in xml_content:gmatch('<job%s+name="(.-)"%s*>([\0-\255]-)</job>') do
+        local weapons = {}
+        for weaponAttrs, weaponBody in block:gmatch('<weapon(.-)>([\0-\255]-)</weapon>') do
+            local nameAttr = weaponAttrs:match('name="(.-)"')
+            local weaponName = trim(nameAttr or weaponBody):lower()
+            local maxTier = weaponAttrs:match('max_tier="(%d+)"') or weaponBody:match('<max_tier>%s*(%d+)%s*</max_tier>')
+            local skills = {}
+            for skill in weaponBody:gmatch('<skill>%s*(.-)%s*</skill>') do
+                table.insert(skills, trim(skill):lower())
             end
 
-            local weaponName = trim(entry.name or ''):lower()
-            if (weaponName == '') then
-                log(('Ignoring unnamed weapon entry for job %s.'):format(job))
-            elseif skills_table[weaponName] then
-                local normalizedEntry = {
+            if skills_table[weaponName] then
+                local entry = {
                     name = weaponName,
-                    max_tier = entry.max_tier,
-                    allowed_skills = entry.allowed_skills,
+                    max_tier = maxTier and tonumber(maxTier) or nil,
+                    allowed_skills = skills,
                 }
 
-                local filtered = core.apply_weapon_filters(normalizedEntry, skills_table)
+                local filtered = core.apply_weapon_filters(entry, skills_table)
                 if filtered and (#filtered > 0) then
-                    table.insert(normalized, normalizedEntry)
+                    table.insert(weapons, entry)
                 else
                     log(('No usable skills remain for weapon "%s" on job %s after filtering.'):format(weaponName, job))
                 end
@@ -94,8 +95,8 @@ function core.normalize_job_mappings(job_table, skills_table, logger)
             end
         end
 
-        if (#normalized > 0) then
-            mappings[job:lower()] = normalized
+        if (#weapons > 0) then
+            mappings[job:lower()] = weapons
         else
             log(('No valid weapons found for job %s.'):format(job))
         end
