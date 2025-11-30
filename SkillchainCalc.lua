@@ -247,10 +247,6 @@ local function ParseSkillchains()
     for _, skill2 in pairs(skills2) do
         print(skill2.en .. ' ');
     end
-    if (not skills1 or not skills2) then
-        print('[SkillchainCalc] Invalid weapon or job tokens provided.');
-        return;
-    end
     ]]--
 
     -- Calculate combinations (respect /scc both)
