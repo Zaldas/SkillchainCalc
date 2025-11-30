@@ -170,71 +170,145 @@ local function findChainLevel(chainName)
     return chainInfo and chainInfo.level or 0;
 end
 
-local function findSkillLevel(skillName)
+local function findSkillLevel(name)
+    -- 1) Property (Darkness, Distortion, etc.) – use displayOrder
+    if skills.ChainInfo[name] then
+        local idx = skills.GetDisplayIndex(name);
+        if idx ~= nil then
+            -- smaller idx = earlier in displayOrder, so invert to sort highest first
+            return 1000 - idx;
+        end
+        return 0;
+    end
+
+    -- 2) Weaponskill – use WS skill level
     for weaponType, weaponSkills in pairs(skills) do
-        if type(weaponSkills) == 'table' then
+        if type(weaponSkills) == 'table'
+            and weaponType ~= 'aliases'
+            and weaponType ~= 'ChainInfo'
+        then
             for _, skill in pairs(weaponSkills) do
-                if skill.en == skillName then
+                if type(skill) == 'table' and skill.en == name then
                     return skill.skill or 0;
                 end
             end
         end
     end
+
     return 0;
 end
 
-local function parseSkillchain(skill1, skill2, results, parsedPairs, suppress)
-    local pairKey = skill1.en .. ">" .. skill2.en;
-    suppress = suppress or false;
-
-    for _, chain1 in ipairs(skill1.skillchain or {}) do
-        for _, chain2 in ipairs(skill2.skillchain or {}) do
-            local chainInfo = skills.ChainInfo[chain1];
-
-            if chainInfo and chainInfo[chain2] and not parsedPairs[pairKey] then
-                local resultChain = chainInfo[chain2].skillchain;
-
-                -- Optional suppression for reversible Light / Darkness
-                if suppress and (resultChain == 'Light' or resultChain == 'Darkness') then
-                    return;
-                end
-
-                parsedPairs[pairKey] = true;
-                table.insert(results, {
-                    skill1 = skill1.en,
-                    skill2 = skill2.en,
-                    chain  = resultChain,
-                });
-                break;
-            end
-        end
+local function normalizeChainSource(source)
+    -- source can be:
+    --  * WS table with .skillchain = { 'Gravitation', ... }
+    --  * string property, e.g. 'Distortion'
+    if type(source) == 'string' then
+        return { source };
+    elseif type(source) == 'table' then
+        return source.skillchain or {};
     end
+
+    return {};
 end
 
--- Public API
+local function resolveChainProperties(source1, source2, suppress)
+    local props1  = normalizeChainSource(source1);
+    local props2  = normalizeChainSource(source2);
+    local results = {};
 
-function SkillchainCore.calculateSkillchains(skills1, skills2, both)
-    local results     = {};
-    local parsedPairs = {};
+    suppress = suppress or false;
 
-    -- Normal direction (skills1 → skills2)
-    for _, skill1 in pairs(skills1) do
-        for _, skill2 in pairs(skills2) do
-            parseSkillchain(skill1, skill2, results, parsedPairs, false);
-        end
-    end
-
-    -- Optional reverse direction (skills2 → skills1), suppress Light/Darkness
-    if both then
-        for _, skill2 in pairs(skills2) do
-            for _, skill1 in pairs(skills1) do
-                parseSkillchain(skill2, skill1, results, parsedPairs, true);
+    for _, chain1 in ipairs(props1) do
+        local chainInfo = skills.ChainInfo[chain1];
+        if chainInfo then
+            for _, chain2 in ipairs(props2) do
+                local link = chainInfo[chain2];
+                if link then
+                    local resultChain = link.skillchain;
+                    if not suppress or (resultChain ~= 'Light' and resultChain ~= 'Darkness') then
+                        table.insert(results, resultChain);
+                    end
+                end
             end
         end
     end
 
     return results;
 end
+
+function SkillchainCore.calculateSkillchains(wsList1, wsList2, both)
+    local results  = {}
+    local seen     = {}
+
+    if not wsList1 or not wsList2 then
+        return results
+    end
+
+    local function addCombo(ws1, ws2, suppress)
+        local chains = resolveChainProperties(ws1, ws2, suppress)
+        for _, chain in ipairs(chains) do
+            local key = ws1.en .. '>' .. ws2.en .. '>' .. chain
+            if not seen[key] then
+                seen[key] = true
+                table.insert(results, {
+                    skill1 = ws1.en,
+                    skill2 = ws2.en,
+                    chain  = chain,
+                })
+            end
+        end
+    end
+
+    for _, ws1 in ipairs(wsList1) do
+        for _, ws2 in ipairs(wsList2) do
+            addCombo(ws1, ws2, false)
+        end
+    end
+
+    if both then
+        for _, ws2 in ipairs(wsList2) do
+            for _, ws1 in ipairs(wsList1) do
+                addCombo(ws2, ws1, true)
+            end
+        end
+    end
+
+    return results
+end
+
+-- Public API
+function SkillchainCore.calculateStepSkillchains(wsList)
+    local results  = {};
+    local seenKeys = {};
+
+    if not wsList then
+        return results;
+    end
+
+    for baseProperty, _ in pairs(skills.ChainInfo) do
+        for _, ws in pairs(wsList) do
+            local resultChains = resolveChainProperties(baseProperty, ws, false);
+
+            for _, resultChain in ipairs(resultChains) do
+                local opener = baseProperty;
+                local closer = ws.en;
+                local key    = opener .. '>' .. closer .. '>' .. resultChain;
+
+                if not seenKeys[key] then
+                    seenKeys[key] = true;
+                    table.insert(results, {
+                        skill1 = opener,      -- property, e.g. "Distortion"
+                        skill2 = closer,      -- WS name, e.g. "Blade: Jin"
+                        chain  = resultChain, -- e.g. "Darkness"
+                    });
+                end
+            end
+        end
+    end
+
+    return results;
+end
+
 
 function SkillchainCore.filterSkillchainsByLevel(combinations, minLevel)
     local filteredResults = {};
