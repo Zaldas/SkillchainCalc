@@ -3,8 +3,91 @@
 
 require('common');
 local skills = require('skills');
+local jobs   = require('jobs');   -- NEW
 
 local SkillchainCore = {};
+
+-- Job / WS resolution helpers
+function SkillchainCore.getJobIdFromToken(token)
+    if not token or type(token) ~= 'string' then
+        return nil;
+    end
+
+    local lower = token:lower();
+    if jobs.aliases and jobs.aliases[lower] then
+        return jobs.aliases[lower];         -- e.g. "nin" -> "NIN"
+    end
+
+    local upper = token:upper();
+    if jobs[upper] and jobs[upper].weapons then
+        return upper;                       -- e.g. "NIN"
+    end
+
+    return nil;
+end
+
+function SkillchainCore.isJobAllowedForWs(ws, jobId)
+    local allowedJobs = ws.jobRestrictions;
+    if not allowedJobs then
+        -- No restriction: everyone with the skill can use it.
+        return true;
+    end
+
+    for _, j in ipairs(allowedJobs) do
+        if j == jobId then
+            return true;
+        end
+    end
+
+    return false;
+end
+
+function SkillchainCore.buildSkillListForJob(jobId)
+    local job = jobs[jobId];
+    if not job or not job.weapons then
+        return nil;
+    end
+
+    local result = {};
+
+    for weaponKey, cfg in pairs(job.weapons) do
+        local maxSkill     = cfg.maxSkill or 999;
+        local weaponSkills = skills[weaponKey];
+
+        if weaponSkills then
+            for _, ws in pairs(weaponSkills) do
+                local wsSkill = ws.skill or 0;   -- **skill only**
+                if wsSkill <= maxSkill and SkillchainCore.isJobAllowedForWs(ws, jobId) then
+                    table.insert(result, ws);
+                end
+            end
+        end
+    end
+
+    return (#result > 0) and result or nil;
+end
+
+function SkillchainCore.resolveTokenToSkills(token)
+    if not token or type(token) ~= 'string' then
+        return nil;
+    end
+
+    local raw   = token;
+    local lower = token:lower();
+
+    -- 1) Weapon type direct, e.g. "katana", "scythe"
+    if skills[lower] ~= nil then
+        return skills[lower];
+    end
+
+    -- 2) Job name / abbreviation, e.g. "nin", "ninja", "drk"
+    local jobId = SkillchainCore.getJobIdFromToken(raw);
+    if jobId then
+        return SkillchainCore.buildSkillListForJob(jobId);
+    end
+
+    return nil;
+end
 
 -- Local helpers
 local function findChainLevel(chainName)
@@ -17,7 +100,7 @@ local function findSkillLevel(skillName)
         if type(weaponSkills) == 'table' then
             for _, skill in pairs(weaponSkills) do
                 if skill.en == skillName then
-                    return skill.tier or 0;
+                    return skill.skill or 0;
                 end
             end
         end
@@ -178,7 +261,7 @@ function SkillchainCore.sortSkillchainTable(resultsTable, debugMode)
         table.insert(orderedResults, chainName);
     end
 
-    -- Sort openers and closers by WS tier
+    -- Sort openers and closers by WS skill level
     for chainName, openers in pairs(sortedResults) do
         local sortedOpeners = {};
 

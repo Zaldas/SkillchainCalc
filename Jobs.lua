@@ -1,73 +1,231 @@
--- jobs.lua
--- Maps FFXI jobs to the weapon type keys used in skills.lua.
+-- Jobs.lua – level 75 weapon skill caps (Era/Horizon style)
+-- Only includes weapon types that exist in skills.lua:
+-- h2h, dagger, sword, gs (Great Sword), ga (Great Axe), axe, scythe,
+-- polearm, katana, gkt (Great Katana), staff, club, archery, mm (Marksmanship).
 
 local jobs = {}
 
--- weapon keys must match skills.lua:
--- h2h, dagger, sword, gs, axe, ga, scythe, polearm,
--- katana, gkt, club, staff, archery, mm, smn
-
-jobs.WAR = { 'h2h','dagger','sword','gs','axe','ga','scythe','polearm','club','staff','archery' }
-jobs.MNK = { 'h2h','staff','club' }
-jobs.WHM = { 'club','staff','dagger' }
-jobs.BLM = { 'staff','club','dagger' }
-jobs.RDM = { 'sword','dagger','club','staff' }
-jobs.THF = { 'dagger','sword','h2h' }
-jobs.PLD = { 'sword','gs','club','staff' }
-
--- your example:
-jobs.DRK = { 'scythe','gs','sword','club','staff' }
-jobs.BST = { 'axe','ga','club','staff','dagger' }
-jobs.BRD = { 'dagger','sword','club','staff' }
-jobs.RNG = { 'archery','mm','dagger','sword','axe' }
-jobs.SAM = { 'polearm','gkt','gs','archery' }
-jobs.NIN = { 'katana','dagger','sword' }
-jobs.DRG = { 'polearm','staff' }
-jobs.SMN = { 'smn','staff','club' }
-jobs.BLU = { 'sword','dagger','club','staff' }
-jobs.COR = { 'mm','sword','dagger' }
-jobs.PUP = { 'h2h','staff','club' }
-jobs.DNC = { 'dagger','h2h','sword' }
-jobs.SCH = { 'staff','club' }
-jobs.GEO = { 'club','staff','dagger' }
-jobs.RUN = { 'gs','sword','dagger','club' }
-
--- simple alias map: supports nin/ninja, drk, etc.
-local aliases = {
-    war = 'WAR', warrior = 'WAR',
-    mnk = 'MNK', monk = 'MNK',
-    whm = 'WHM', whiteMage = 'WHM', whitemage = 'WHM',
-    blm = 'BLM', blackmage = 'BLM',
-    rdm = 'RDM', redmage = 'RDM',
-    thf = 'THF', thief = 'THF',
-    pld = 'PLD', paladin = 'PLD',
-    drk = 'DRK', darkknight = 'DRK', ['dark knight'] = 'DRK',
+jobs.aliases = {
+    -- Base jobs
+    war = 'WAR', warrior     = 'WAR',
+    mnk = 'MNK', monk        = 'MNK',
+    whm = 'WHM', whitemage   = 'WHM',
+    blm = 'BLM', blackmage   = 'BLM',
+    rdm = 'RDM', redmage     = 'RDM',
+    thf = 'THF', thief       = 'THF',
+    pld = 'PLD', paladin     = 'PLD',
+    drk = 'DRK', darkknight  = 'DRK', ['dark_knight'] = 'DRK',
     bst = 'BST', beastmaster = 'BST',
-    brd = 'BRD', bard = 'BRD',
-    rng = 'RNG', ranger = 'RNG',
-    sam = 'SAM', samurai = 'SAM',
-    nin = 'NIN', ninja = 'NIN',
-    drg = 'DRG', dragoon = 'DRG',
-    smn = 'SMN', summoner = 'SMN',
-    blu = 'BLU', blueMage = 'BLU', bluemage = 'BLU',
-    cor = 'COR', corsair = 'COR',
+    brd = 'BRD', bard        = 'BRD',
+    rng = 'RNG', ranger      = 'RNG',
+    sam = 'SAM', samurai     = 'SAM',
+    nin = 'NIN', ninja       = 'NIN',
+    drg = 'DRG', dragoon     = 'DRG',
+    smn = 'SMN', summoner    = 'SMN',
+
+    -- ToAU+ jobs – stubs for now (empty weapons is fine)
+    blu = 'BLU', bluemage    = 'BLU',
+    cor = 'COR', corsair     = 'COR',
     pup = 'PUP', puppetmaster = 'PUP',
-    dnc = 'DNC', dancer = 'DNC',
-    sch = 'SCH', scholar = 'SCH',
-    geo = 'GEO', geomancer = 'GEO',
-    run = 'RUN', runeFencer = 'RUN', runefencer = 'RUN',
+    dnc = 'DNC', dancer      = 'DNC',
+    sch = 'SCH', scholar     = 'SCH',
 }
 
-local function normalize_job(job)
-    if type(job) ~= 'string' then return nil end
-    local key = job:lower():gsub('%s+', '')
-    return aliases[key] or job:upper()
-end
+jobs.WAR = {
+    weapons = {
+        ga       = { maxSkill = 276 }, -- Great Axe
+        axe      = { maxSkill = 269 },
+        gs       = { maxSkill = 256 }, -- Great Sword
+        scythe   = { maxSkill = 256 },
+        sword    = { maxSkill = 250 },
+        --staff    = { maxSkill = 250 },
+        polearm  = { maxSkill = 240 },
+        --dagger   = { maxSkill = 240 },
+        --club     = { maxSkill = 240 },
+        --h2h      = { maxSkill = 210 },
+        --archery  = { maxSkill = 210 },
+        --mm       = { maxSkill = 210 }, -- Marksmanship
+    },
+}
 
-function jobs.GetWeaponsForJob(job)
-    local id = normalize_job(job)
-    if not id then return nil end
-    return jobs[id]
-end
+jobs.MNK = {
+    weapons = {
+        h2h   = { maxSkill = 276 },
+        staff = { maxSkill = 250 },
+        club  = { maxSkill = 230 },
+    },
+}
+
+jobs.WHM = {
+    weapons = {
+        club  = { maxSkill = 256 },
+        --staff = { maxSkill = 230 },
+    },
+}
+
+jobs.BLM = {
+    weapons = {
+        staff  = { maxSkill = 240 },
+        club   = { maxSkill = 230 },
+        --dagger = { maxSkill = 210 },
+        --scythe = { maxSkill = 200 },
+    },
+}
+
+jobs.RDM = {
+    weapons = {
+        dagger  = { maxSkill = 250 },
+        sword   = { maxSkill = 250 },
+        club    = { maxSkill = 210 },
+        archery = { maxSkill = 210 },
+        mm      = { maxSkill = 189 }, -- Marksmanship / Throwing equivalent cap
+    },
+}
+
+jobs.THF = {
+    weapons = {
+        dagger  = { maxSkill = 269 },
+        mm      = { maxSkill = 230 },
+        archery = { maxSkill = 220 },
+        sword   = { maxSkill = 210 },
+        club    = { maxSkill = 200 },
+        h2h     = { maxSkill = 200 },
+    },
+}
+
+jobs.PLD = {
+    weapons = {
+        sword   = { maxSkill = 276 },
+        club    = { maxSkill = 269 },
+        staff   = { maxSkill = 269 },
+        gs      = { maxSkill = 250 },
+        dagger  = { maxSkill = 220 },
+        polearm = { maxSkill = 200 },
+    },
+}
+
+jobs.DRK = {
+    weapons = {
+        scythe = { maxSkill = 276 },
+        gs     = { maxSkill = 269 },
+        axe    = { maxSkill = 240 },
+        ga     = { maxSkill = 240 },
+        sword  = { maxSkill = 240 },
+        dagger = { maxSkill = 225 },
+        club   = { maxSkill = 220 },
+    },
+}
+
+jobs.BST = {
+    weapons = {
+        axe    = { maxSkill = 269 },
+        scythe = { maxSkill = 240 },
+        dagger = { maxSkill = 230 },
+        club   = { maxSkill = 210 },
+        sword  = { maxSkill = 200 },
+    },
+}
+
+jobs.BRD = {
+    weapons = {
+        dagger = { maxSkill = 240 },
+        staff  = { maxSkill = 230 },
+        sword  = { maxSkill = 220 },
+        club   = { maxSkill = 210 },
+    },
+}
+
+jobs.RNG = {
+    weapons = {
+        axe     = { maxSkill = 240 },
+        dagger  = { maxSkill = 240 },
+        sword   = { maxSkill = 210 },
+        club    = { maxSkill = 200 },
+        archery = { maxSkill = 269 },
+        mm      = { maxSkill = 269 }, -- Marksmanship
+    },
+}
+
+jobs.SAM = {
+    weapons = {
+        gkt     = { maxSkill = 276 }, -- Great Katana
+        polearm = { maxSkill = 240 },
+        sword   = { maxSkill = 250 },
+        archery = { maxSkill = 225 },
+        --club    = { maxSkill = 210 },
+        --dagger  = { maxSkill = 200 },
+    },
+}
+
+jobs.NIN = {
+    weapons = {
+        katana  = { maxSkill = 269 },
+        dagger  = { maxSkill = 230 },
+        --sword   = { maxSkill = 225 },
+        gkt     = { maxSkill = 220 },
+        --h2h     = { maxSkill = 200 },
+        --club    = { maxSkill = 200 },
+        archery = { maxSkill = 200 },
+        mm      = { maxSkill = 225 }, -- Marksmanship
+    },
+}
+
+jobs.DRG = {
+    weapons = {
+        polearm = { maxSkill = 276 },
+        staff   = { maxSkill = 240 },
+        sword   = { maxSkill = 220 },
+        --club    = { maxSkill = 200 },
+        --dagger  = { maxSkill = 200 },
+    },
+}
+
+jobs.SMN = {
+    weapons = {
+        staff  = { maxSkill = 250 },
+        club   = { maxSkill = 230 },
+        dagger = { maxSkill = 200 },
+    },
+}
+
+-----------------------------------------------------------------------
+-- TOAU/WotG jobs – basic melee caps for future use
+-- (not critical for current SCC flow; safe to leave weapons empty if unused)
+-----------------------------------------------------------------------
+
+-- BLU – Blue Mage :contentReference[oaicite:14]{index=14}
+jobs.BLU = {
+    weapons = {
+        -- add weapons
+    },
+}
+
+-- COR – Corsair (TODO: fill from data if you start using /scc cor)
+jobs.COR = {
+    weapons = {
+        -- add sword / dagger / gun (mm) once needed
+    },
+}
+
+-- PUP – Puppetmaster (TODO)
+jobs.PUP = {
+    weapons = {
+        -- h2h, etc.
+    },
+}
+
+-- DNC – Dancer (TODO)
+jobs.DNC = {
+    weapons = {
+        -- dagger, sword etc.
+    },
+}
+
+-- SCH – Scholar (melee similar to BLM/SMN, left TODO) :contentReference[oaicite:15]{index=15}
+jobs.SCH = {
+    weapons = {
+        -- staff, club, dagger once you care about SCH WS here
+    },
+}
 
 return jobs
