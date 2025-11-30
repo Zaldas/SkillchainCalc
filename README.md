@@ -30,9 +30,10 @@ Commands:
 &ensp;/scc debug -- enable debugging  
 &ensp;/scc status -- show default filter status  
   
-Files:  
-&ensp;skillchaincalc.lua -- main addon  
-&ensp;skills.lua -- weaponskill data and colors  
+Files:
+&ensp;skillchaincalc.lua -- main addon
+&ensp;skills.lua -- weaponskill data and colors
+&ensp;jobs.lua -- job -> weapon mapping configuration
   
 Notes:  
 &ensp;This is adjusted for HorizonXI. No plans to support for retail.  
