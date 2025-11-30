@@ -26,7 +26,7 @@ function SkillchainCore.getJobIdFromToken(token)
     return nil;
 end
 
--- NEW: parse "job:weapon1,weapon2" style tokens
+-- parse "job:weapon1,weapon2" style tokens
 local function parseJobWeaponToken(token)
     if not token or type(token) ~= 'string' then
         return nil;
@@ -51,12 +51,15 @@ local function parseJobWeaponToken(token)
 
     -- weaponPart can be "sword" or "ga,polearm" etc.
     for w in weaponPart:gmatch('[^,]+') do
-        local key = w:lower():gsub('%s+', ''); -- trim spaces
-        if key ~= '' then
-            -- validate against job capability and skills table
-            if job.weapons[key] and skills[key] then
-                allowedWeapons[key] = true;
-            end
+        local key = w:lower():gsub('%s+', '');
+        local weaponKey = key;
+
+        if skills.aliases and skills.aliases[key] then
+            weaponKey = skills.aliases[key];
+        end
+
+        if job.weapons[weaponKey] and skills[weaponKey] then
+            allowedWeapons[weaponKey] = true;
         end
     end
 
@@ -135,7 +138,19 @@ function SkillchainCore.resolveTokenToSkills(token)
         return SkillchainCore.buildSkillListForJob(jobId, allowedWeapons);
     end
 
-    -- 1) Weapon type direct, e.g. "katana", "scythe"
+    -- 1) Weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
+    local weaponKey = lower;
+
+    if skills.aliases and skills.aliases[lower] then
+        weaponKey = skills.aliases[lower];
+    end
+
+    -- Try alias-resolved key first
+    if skills[weaponKey] ~= nil then
+        return skills[weaponKey];
+    end
+
+    -- Fallback: direct lookup on the raw lower token (in case aliases table is incomplete)
     if skills[lower] ~= nil then
         return skills[lower];
     end
