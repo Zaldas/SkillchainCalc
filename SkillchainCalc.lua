@@ -63,6 +63,7 @@ local cache = {
     wt2 = nil,
     level = 1,
     both = false,
+    scElement = nil,   -- NEW
     settings = sccSettings;
 };
 
@@ -251,6 +252,11 @@ local function ParseSkillchains()
     -- Filter combinations by requested skillchain level (1/2/3)
     local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
 
+    -- Filter by element property if sc:<element> provided
+    if cache.scElement then
+        filteredCombinations = SkillchainCore.filterSkillchainsByElement(filteredCombinations, cache.scElement);
+    end
+
     -- Display results
     if (#filteredCombinations > 0) then
         updateGDI(filteredCombinations);
@@ -321,10 +327,11 @@ ashita.events.register('command', 'command_cb', function(e)
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
-            cache.wt1   = nil;
-            cache.wt2   = nil;
-            cache.level = cache.settings.default.level or 1;
-            cache.both  = cache.settings.default.both or false;
+            cache.wt1      = nil;
+            cache.wt2      = nil;
+            cache.level    = cache.settings.default.level or 1;
+            cache.both     = cache.settings.default.both or false;
+            cache.scElement = nil;
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
@@ -336,7 +343,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             return;
         elseif (args[2] == 'help') then
-            print('Usage: /scc <token1> <token2> [level] [both]');
+            print('Usage: /scc <token1> <token2> [level] [sc:element] [both]');
             print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
             print('                katana, gkt, club, staff, archery, mm, smn');
@@ -344,8 +351,10 @@ ashita.events.register('command', 'command_cb', function(e)
             print('        SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH');
             print('  Job+Weapon: thf:sword   (THF, sword WS only)');
             print('               war:ga,polearm (WAR, GA and Polearm WS only)');
-            print(' [level] optional integer 1–3 that filters skillchain **level**;');
+            print(' [level] optional integer 1–3 that filters skillchain level;');
             print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
+            print(' sc:<element> optional filter by SC burst element, e.g. sc:ice, sc:fire');
+            print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate chains in both directions.');
             print('Usage: /scc setx #       -- set x anchor');
             print('Usage: /scc sety #       -- set y anchor');
@@ -363,13 +372,17 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     -- Parse optional arguments
-    local level = nil;
-    local both = nil;
+    local level     = nil;
+    local both      = nil;
+    local scElement = nil;
+
     for i = 4, #args do
         if args[i]:any('1', '2', '3') then
             level = tonumber(args[i]);
         elseif args[i] == 'both' then
             both = true;
+        elseif lower:sub(1, 3) == 'sc:' then
+            scElement = lower:sub(4)   -- always stored as lowercase
         else
             print('[SkillchainCalc] Invalid argument: ' .. args[i])
             print('/scc help -- for usage help');
@@ -386,6 +399,7 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.wt2 = args[3];
     cache.level = level or cache.settings.default.level;
     cache.both = both or cache.settings.default.both;
+    cache.scElement = scElement and scElement:lower() or nil;
 
     ParseSkillchains();
 end);
