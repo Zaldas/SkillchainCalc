@@ -17,7 +17,6 @@ jobs.PLD = { 'sword','gs','club','staff' }
 
 -- your example:
 jobs.DRK = { 'scythe','gs','sword','club','staff' }
-
 jobs.BST = { 'axe','ga','club','staff','dagger' }
 jobs.BRD = { 'dagger','sword','club','staff' }
 jobs.RNG = { 'archery','mm','dagger','sword','axe' }
@@ -60,18 +59,14 @@ local aliases = {
 }
 
 local function normalize_job(job)
-    if type(job) ~= 'string' then
-        return nil
-    end
+    if type(job) ~= 'string' then return nil end
     local key = job:lower():gsub('%s+', '')
     return aliases[key] or job:upper()
 end
 
 function jobs.GetWeaponsForJob(job)
     local id = normalize_job(job)
-    if not id then
-        return nil
-    end
+    if not id then return nil end
     return jobs[id]
 end
 

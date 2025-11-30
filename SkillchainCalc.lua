@@ -10,6 +10,7 @@ addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 require('common');
 local skills = require('skills');
 local SkillchainCore = require('SkillchainCore');
+local jobs = require('jobs');
 local gdi = require('gdifonts.include');
 local settings = require('settings');
 
@@ -220,32 +221,59 @@ ashita.events.register('load', 'load_cb', function()
     end)
 end);
 
+local function buildSkillTableFromToken(token)
+    if not token then
+        return nil
+    end
+
+    -- 1) direct weapon type (katana, scythe, etc.)
+    local weaponSkills = skills[token]
+    if type(weaponSkills) == 'table' then
+        return weaponSkills
+    end
+
+    -- 2) job name (nin, drk, ninja, etc.)
+    local jobWeapons = jobs.GetWeaponsForJob(token)
+    if not jobWeapons then
+        return nil
+    end
+
+    local combined = {}
+    local idx = 1
+    for _, wt in ipairs(jobWeapons) do
+        local wsTable = skills[wt]
+        if wsTable then
+            for _, skill in pairs(wsTable) do
+                combined[idx] = skill
+                idx = idx + 1
+            end
+        end
+    end
+
+    return combined
+end
+
 local function ParseSkillchains()
     if (not cache.wt1 or not cache.wt2) then
         return;
     end
 
-    -- Validate weapon types
-    local weapon1Skills = skills[cache.wt1];
-    local weapon2Skills = skills[cache.wt2];
+    local skills1 = buildSkillTableFromToken(cache.wt1)
+    local skills2 = buildSkillTableFromToken(cache.wt2)
 
-    if (not weapon1Skills or not weapon2Skills) then
-        print('[SkillchainCalc] Invalid weapon types provided.');
+    if (not skills1 or not skills2) then
+        print('[SkillchainCalc] Invalid weapon type or job provided.');
         return;
     end
 
-    -- Calculate combinations
-    local combinations = SkillchainCore.calculateSkillchains(weapon1Skills, weapon2Skills, cache.both);
+    local combinations = SkillchainCore.calculateSkillchains(skills1, skills2, cache.both)
+    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level)
 
-    -- Filter combinations by level or higher
-    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
-
-    -- Display results
     if (#filteredCombinations > 0) then
-        updateGDI(filteredCombinations);
+        updateGDI(filteredCombinations)
     else
         print('[SkillchainCalc] No skillchain combinations found for filter level ' .. cache.level .. '.');
-        clearGDI();
+        clearGDI()
     end
 end
 
