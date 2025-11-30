@@ -79,7 +79,7 @@ local function initGDIObjects()
     gdiObjects.background:set_position_x(cache.settings.anchor.x);
     gdiObjects.background:set_position_y(cache.settings.anchor.y);
 
-    for i = 1, 100 do -- Increased limit to accommodate more lines
+    for i = 1, 200 do -- Increased limit to accommodate more lines
         local text = gdi:create_object(cache.settings.font);
         text:set_visible(false);
         table.insert(gdiObjects.skillchainTexts, text);
@@ -113,18 +113,6 @@ local function moveGDIAnchor()
 
     gdiObjects.background:set_position_x(cache.settings.anchor.x);
     gdiObjects.background:set_position_y(cache.settings.anchor.y);
-end
-
--- Filter skillchains by level or higher
-local function filterSkillchainsByLevel(combinations)
-    local filteredResults = {};
-    for _, combo in ipairs(combinations) do
-        local chainLevel = findChainLevel(combo.chain);
-        if chainLevel >= cache.level then
-            table.insert(filteredResults, combo);
-        end
-    end
-    return filteredResults;
 end
 
 -- Update GDI display with skillchains
@@ -221,59 +209,42 @@ ashita.events.register('load', 'load_cb', function()
     end)
 end);
 
-local function buildSkillTableFromToken(token)
-    if not token then
-        return nil
-    end
-
-    -- 1) direct weapon type (katana, scythe, etc.)
-    local weaponSkills = skills[token]
-    if type(weaponSkills) == 'table' then
-        return weaponSkills
-    end
-
-    -- 2) job name (nin, drk, ninja, etc.)
-    local jobWeapons = jobs.GetWeaponsForJob(token)
-    if not jobWeapons then
-        return nil
-    end
-
-    local combined = {}
-    local idx = 1
-    for _, wt in ipairs(jobWeapons) do
-        local wsTable = skills[wt]
-        if wsTable then
-            for _, skill in pairs(wsTable) do
-                combined[idx] = skill
-                idx = idx + 1
-            end
-        end
-    end
-
-    return combined
-end
-
 local function ParseSkillchains()
     if (not cache.wt1 or not cache.wt2) then
         return;
     end
 
-    local skills1 = buildSkillTableFromToken(cache.wt1)
-    local skills2 = buildSkillTableFromToken(cache.wt2)
+    -- Resolve tokens (weapon types OR jobs)
+    local skills1 = SkillchainCore.resolveTokenToSkills(cache.wt1);
+    local skills2 = SkillchainCore.resolveTokenToSkills(cache.wt2);
 
+    --[[ debugging
+    print('Skills1:');
+    for _, skill1 in pairs(skills1) do
+        print(skill1.en .. ' ');
+    end
+    print('Skills2:');
+    for _, skill2 in pairs(skills2) do
+        print(skill2.en .. ' ');
+    end
     if (not skills1 or not skills2) then
-        print('[SkillchainCalc] Invalid weapon type or job provided.');
+        print('[SkillchainCalc] Invalid weapon or job tokens provided.');
         return;
     end
+    ]]--
 
-    local combinations = SkillchainCore.calculateSkillchains(skills1, skills2, cache.both)
-    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level)
+    -- Calculate combinations (respect /scc both)
+    local combinations = SkillchainCore.calculateSkillchains(skills1, skills2, cache.both);
 
+    -- Filter combinations by requested skillchain level (1/2/3)
+    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
+
+    -- Display results
     if (#filteredCombinations > 0) then
-        updateGDI(filteredCombinations)
+        updateGDI(filteredCombinations);
     else
-        print('[SkillchainCalc] No skillchain combinations found for filter level ' .. cache.level .. '.');
-        clearGDI()
+        print(('[SkillchainCalc] No skillchain combinations found for filter level %d.'):format(cache.level));
+        clearGDI();
     end
 end
 
@@ -338,9 +309,10 @@ ashita.events.register('command', 'command_cb', function(e)
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
-            cache.wt1 = nil;
-            cache.wt2 = nil;
-            cache.level = 1;
+            cache.wt1   = nil;
+            cache.wt2   = nil;
+            cache.level = cache.settings.default.level or 1;
+            cache.both  = cache.settings.default.both or false;
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
@@ -352,20 +324,20 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             return;
         elseif (args[2] == 'help') then
-            print('Usage: /scc <weaponType1> <weaponType2> [#] [both]');
-            print(' WeaponTypes: h2h, dagger, sword, gs, axe, ga, scythe, polearm');
-            print('              katana, gkt, club, staff, archery, mm, smn');
-            print(' [#] is optional integer value that filters skillchain tier')
-            print('  i.e. 2 only shows tier 2 and 3 skillchains. 1 or empty is default all.')
-            print(' [both] keyword is optional parameter to calculate skillchain in both directions.');
-            print('  e.g. /scc gs gkt both');
-            print('Usage: /scc setx # -- set x anchor');
-            print('Usage: /scc sety # -- set y anchor');
-            print('Usage: /scc setlevel # -- set default level filter; 1, 2, or 3');
-            print('Usage: /scc setboth <bool> -- set default for \'both\' param; true or false');
-            print('Usage: /scc clear -- clear out window');
-            print('Usage: /scc debug -- enable debugging');
-            print('Usage: /scc status -- show default filter status');
+            print('Usage: /scc <token1> <token2> [level] [both]');
+            print(' Tokens can be weapon types or jobs:');
+            print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
+            print('                katana, gkt, club, staff, archery, mm, smn');
+            print('  Jobs: WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD, RNG');
+            print('        SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH');
+            print(' [level] optional integer 1–3 that filters skillchain **level**;');
+            print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
+            print(' [both] optional keyword to calculate chains in both directions.');
+            print('Usage: /scc setx #       -- set x anchor');
+            print('Usage: /scc sety #       -- set y anchor');
+            print('Usage: /scc setlevel #   -- set default level filter');
+            print('Usage: /scc setboth true -- set default both flag');
+            print('Usage: /scc status       -- show current defaults');
             return;
         end
     end
