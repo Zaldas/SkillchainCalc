@@ -63,6 +63,7 @@ local cache = {
     level = 1,
     both = false,
     scElement = nil,
+    stepMode = false,
     settings = sccSettings;
 };
 
@@ -221,7 +222,51 @@ ashita.events.register('load', 'load_cb', function()
     end)
 end);
 
-local function ParseSkillchains()
+local function displaySkillchainResults(combinations, label)
+    if not combinations then
+        clearGDI();
+        return;
+    end
+
+    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
+
+    if cache.scElement then
+        filteredCombinations = SkillchainCore.filterSkillchainsByElement(filteredCombinations, cache.scElement);
+    end
+
+    if (#filteredCombinations > 0) then
+        updateGDI(filteredCombinations);
+    else
+        local suffix = label and (' ' .. label) or '';
+        print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.level));
+        clearGDI();
+    end
+end
+
+local function ParseSkillchains(isStep)
+    if isStep then
+        if (not cache.wt1) then
+            return;
+        end
+
+        -- Resolve single token (weapon / job / job:weapons)
+        local wsList = SkillchainCore.resolveTokenToSkills(cache.wt1);
+        if (not wsList) then
+            print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.wt1));
+            clearGDI();
+            return;
+        end
+
+        -- Property → WS-property → resulting chain
+        local combinations = SkillchainCore.calculateStepSkillchains(wsList);
+
+        -- both has no meaning in step mode
+        cache.both = false;
+
+        displaySkillchainResults(combinations, 'step');
+        return;
+    end
+
     if (not cache.wt1 or not cache.wt2) then
         return;
     end
@@ -251,56 +296,7 @@ local function ParseSkillchains()
     -- Calculate combinations (respect /scc both)
     local combinations = SkillchainCore.calculateSkillchains(skills1, skills2, cache.both);
 
-    -- Filter combinations by requested skillchain level (1/2/3)
-    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
-
-    -- Filter by element property if sc:<element> provided
-    if cache.scElement then
-        filteredCombinations = SkillchainCore.filterSkillchainsByElement(filteredCombinations, cache.scElement);
-    end
-
-    -- Display results
-    if (#filteredCombinations > 0) then
-        updateGDI(filteredCombinations);
-    else
-        print(('[SkillchainCalc] No skillchain combinations found for filter level %d.'):format(cache.level));
-        clearGDI();
-    end
-end
-
-local function ParseStepSkillchains()
-    if (not cache.wt1) then
-        return;
-    end
-
-    -- Resolve single token (weapon / job / job:weapons)
-    local wsList = SkillchainCore.resolveTokenToSkills(cache.wt1);
-    if (not wsList) then
-        print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.wt1));
-        clearGDI();
-        return;
-    end
-
-    -- Property → WS-property → resulting chain
-    local combinations = SkillchainCore.calculateStepSkillchains(wsList);
-
-    -- Level filter (on resulting chain level)
-    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
-
-    -- sc:<element> filter on resulting chain burst
-    if cache.scElement then
-        filteredCombinations = SkillchainCore.filterSkillchainsByElement(filteredCombinations, cache.scElement);
-    end
-
-    -- both has no meaning in step mode
-    cache.both = false;
-
-    if (#filteredCombinations > 0) then
-        updateGDI(filteredCombinations);
-    else
-        print(('[SkillchainCalc] No step skillchain combinations found for filter level %d.'):format(cache.level));
-        clearGDI();
-    end
+    displaySkillchainResults(combinations);
 end
 
 -- Event handler for commands
@@ -355,7 +351,7 @@ ashita.events.register('command', 'command_cb', function(e)
         if (validCommand) then
             settings.save();
             if (isVisible) then
-                ParseSkillchains();
+                ParseSkillchains(cache.stepMode);
             end
             return;
         end
@@ -402,8 +398,9 @@ ashita.events.register('command', 'command_cb', function(e)
         cache.level     = level or cache.settings.default.level;
         cache.both      = false; -- has no meaning in step mode
         cache.scElement = scElement and scElement:lower() or nil;
+        cache.stepMode  = true;
 
-        ParseStepSkillchains();
+        ParseSkillchains(true);
         return;
     end
 
@@ -415,6 +412,7 @@ ashita.events.register('command', 'command_cb', function(e)
             cache.level    = cache.settings.default.level or 1;
             cache.both     = cache.settings.default.both or false;
             cache.scElement = nil;
+            cache.stepMode = false;
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
@@ -488,8 +486,9 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.level = level or cache.settings.default.level;
     cache.both = both or cache.settings.default.both;
     cache.scElement = scElement and scElement:lower() or nil;
+    cache.stepMode = false;
 
-    ParseSkillchains();
+    ParseSkillchains(false);
 end);
 
 -- Event handler for addon unloading
