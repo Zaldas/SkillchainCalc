@@ -236,72 +236,60 @@ local function resolveChainProperties(source1, source2, suppress)
     return results;
 end
 
-function SkillchainCore.calculateSkillchains(wsList1, wsList2, both)
-    local results  = {}
-    local seen     = {}
-
-    if not wsList1 or not wsList2 then
-        return results
+local function getSourceName(source)
+    if type(source) == 'string' then
+        return source;
+    elseif type(source) == 'table' then
+        return source.en or '';
     end
-
-    local function addCombo(ws1, ws2, suppress)
-        local chains = resolveChainProperties(ws1, ws2, suppress)
-        for _, chain in ipairs(chains) do
-            local key = ws1.en .. '>' .. ws2.en .. '>' .. chain
-            if not seen[key] then
-                seen[key] = true
-                table.insert(results, {
-                    skill1 = ws1.en,
-                    skill2 = ws2.en,
-                    chain  = chain,
-                })
-            end
-        end
-    end
-
-    for _, ws1 in ipairs(wsList1) do
-        for _, ws2 in ipairs(wsList2) do
-            addCombo(ws1, ws2, false)
-        end
-    end
-
-    if both then
-        for _, ws2 in ipairs(wsList2) do
-            for _, ws1 in ipairs(wsList1) do
-                addCombo(ws2, ws1, true)
-            end
-        end
-    end
-
-    return results
+    return '';
 end
 
--- Public API
-function SkillchainCore.calculateStepSkillchains(wsList)
-    local results  = {};
-    local seenKeys = {};
+-- Generic combo builder: works for WS→WS and Property→WS.
+local function buildCombinations(list1, list2, opts)
+    local results = {};
+    local seen    = {};
 
-    if not wsList then
+    opts = opts or {};
+    local both = opts.both and true or false;
+
+    if not list1 or not list2 then
         return results;
     end
 
-    for baseProperty, _ in pairs(skills.ChainInfo) do
-        for _, ws in pairs(wsList) do
-            local resultChains = resolveChainProperties(baseProperty, ws, false);
+    local function addCombo(src1, src2, suppressLv3)
+        local chains = resolveChainProperties(src1, src2, suppressLv3);
+        local name1  = getSourceName(src1);
+        local name2  = getSourceName(src2);
 
-            for _, resultChain in ipairs(resultChains) do
-                local opener = baseProperty;
-                local closer = ws.en;
-                local key    = opener .. '>' .. closer .. '>' .. resultChain;
-
-                if not seenKeys[key] then
-                    seenKeys[key] = true;
+        if name1 ~= '' and name2 ~= '' then
+            for _, chain in ipairs(chains) do
+                local key = name1 .. '>' .. name2 .. '>' .. chain;
+                if not seen[key] then
+                    seen[key] = true;
                     table.insert(results, {
-                        skill1 = opener,      -- property, e.g. "Distortion"
-                        skill2 = closer,      -- WS name, e.g. "Blade: Jin"
-                        chain  = resultChain, -- e.g. "Darkness"
+                        skill1 = name1,
+                        skill2 = name2,
+                        chain  = chain,
                     });
                 end
+            end
+        end
+    end
+
+    -- forward pass
+    for _, s1 in ipairs(list1) do
+        for _, s2 in ipairs(list2) do
+            addCombo(s1, s2, false);
+        end
+    end
+
+    -- optional reverse pass (used for WS both-direction support)
+    if both then
+        for _, s2 in ipairs(list2) do
+            for _, s1 in ipairs(list1) do
+                -- suppress Lv3 Light/Darkness on reverse pass to avoid dup L/D
+                addCombo(s2, s1, true);
             end
         end
     end
@@ -309,6 +297,31 @@ function SkillchainCore.calculateStepSkillchains(wsList)
     return results;
 end
 
+-- Public API
+
+-- Normal WS→WS combinations.
+function SkillchainCore.calculateSkillchains(wsList1, wsList2, both)
+    if not wsList1 or not wsList2 then
+        return {};
+    end
+    return buildCombinations(wsList1, wsList2, { both = both });
+end
+
+-- Step mode: Property→WS combinations.
+function SkillchainCore.calculateStepSkillchains(wsList)
+    if not wsList then
+        return {};
+    end
+
+    -- Build list of base properties (Compression, Distortion, etc.).
+    local properties = {};
+    for propName, _ in pairs(skills.ChainInfo) do
+        table.insert(properties, propName);
+    end
+
+    -- No reverse/both meaning in step mode.
+    return buildCombinations(properties, wsList, { both = false });
+end
 
 function SkillchainCore.filterSkillchainsByLevel(combinations, minLevel)
     local filteredResults = {};
