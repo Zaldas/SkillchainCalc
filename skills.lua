@@ -232,7 +232,6 @@ skills.club = { -- Club
                 jobRestrictions={'WHM'}},
 };
 
-
 skills.staff = { -- Staff
     [176] = {en='Heavy Swing',     skillchain={'Impaction'},                    skill=5},
     [177] = {en='Rock Crusher',    skillchain={'Impaction'},                    skill=40},
