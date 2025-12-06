@@ -129,6 +129,7 @@ end
 -----------------------------------------------------------------------
 local state = {
     initialized   = false,
+    openedFromCli = false,
 
     -- top section
     level         = 1,
@@ -261,6 +262,105 @@ local function ensureJobWeaponSelection(side, jobId)
     end
 
     return selTable;
+end
+
+-- Map "thf:sword,dagger" style tokens to job + weapon state
+local function resolveJobIdFromToken(token)
+    if not token or type(token) ~= 'string' then
+        return nil;
+    end
+
+    local name  = token;
+    local colon = token:find(':');
+    if colon then
+        name = token:sub(1, colon - 1);
+    end
+
+    name = name:upper();
+
+    -- Use jobs.aliases first (nin, thf, etc.)
+    if jobsData.aliases and jobsData.aliases[name] then
+        return jobsData.aliases[name];
+    end
+
+    -- Fallback: direct jobId
+    if jobsData[name] then
+        return name;
+    end
+
+    return nil;
+end
+
+local function findJobIndex(jobId)
+    if not jobId then return nil; end
+    for i, id in ipairs(jobItems) do
+        if id == jobId then
+            return i;
+        end
+    end
+    return nil;
+end
+
+local function buildWeaponSelectionFromToken(token, jobId)
+    local sel   = {};
+    local job   = jobId and jobsData[jobId] or nil;
+    if not job or not job.weapons then
+        return sel;
+    end
+
+    local colon = token:find(':');
+    if colon then
+        local listPart = token:sub(colon + 1);
+        for w in listPart:gmatch('[^,]+') do
+            w = w:lower();
+
+            -- Normalize via skills.aliases (dag -> dagger, ga -> ga, etc.)
+            if skills.aliases and skills.aliases[w] then
+                w = skills.aliases[w];
+            end
+
+            if job.weapons[w] then
+                sel[w] = true;
+            end
+        end
+    end
+
+    -- If nothing explicitly selected, fall back to primary weapons (or all)
+    if not next(sel) then
+        local prim = job.primaryWeapons or {};
+        if type(prim) == 'table' and #prim > 0 then
+            for _, w in ipairs(prim) do
+                if job.weapons[w] then
+                    sel[w] = true;
+                end
+            end
+        else
+            for w, _ in pairs(job.weapons) do
+                sel[w] = true;
+            end
+        end
+    end
+
+    return sel;
+end
+
+local function applyTokenToSide(side, token)
+    local jobId = resolveJobIdFromToken(token);
+    if not jobId then
+        return;
+    end
+
+    local idx = findJobIndex(jobId) or 1;
+
+    if side == 1 then
+        state.job1Index  = idx;
+        state.job1LastId = jobId;
+        state.job1Weapons = buildWeaponSelectionFromToken(token, jobId);
+    else
+        state.job2Index  = idx;
+        state.job2LastId = jobId;
+        state.job2Weapons = buildWeaponSelectionFromToken(token, jobId);
+    end
 end
 
 local function drawWeaponCheckboxes(jobId, weaponSel)
@@ -639,10 +739,54 @@ end
 -----------------------------------------------------------------------
 -- Public API
 -----------------------------------------------------------------------
+function SkillchainGUI.OpenFromCli(cache)
+    if not cache or cache.stepMode then
+        return;
+    end
+
+    local def = (cache.settings and cache.settings.default) or {};
+
+    -- Filters from CLI (with fallback to defaults)
+    state.level = cache.level or def.level or 1;
+
+    if cache.both ~= nil then
+        state.both = cache.both;
+    else
+        state.both = def.both or false;
+    end
+
+    -- Element from cache.scElement
+    state.elementIndex = 1;
+    if cache.scElement then
+        local lower = cache.scElement:lower();
+        for i, tok in ipairs(elementTokens) do
+            if tok == lower then
+                state.elementIndex = i;
+                break;
+            end
+        end
+    end
+
+    -- Jobs + weapons from token1 / token2
+    if cache.token1 then
+        applyTokenToSide(1, cache.token1);
+    end
+    if cache.token2 then
+        applyTokenToSide(2, cache.token2);
+    end
+
+    -- Tell DrawWindow "don't re-init from defaults"
+    state.initialized   = true;
+    state.openedFromCli = true;
+
+    showWindow[1] = true;
+end
+
 function SkillchainGUI.Toggle()
     showWindow[1] = not showWindow[1];
     if showWindow[1] then
         state.initialized = false;
+        state.openedFromCli = false;
     end
 end
 
@@ -650,6 +794,7 @@ function SkillchainGUI.SetVisible(v)
     showWindow[1] = v;
     if showWindow[1] then
         state.initialized = false;
+        state.openedFromCli = false;
     end
 end
 
@@ -662,17 +807,19 @@ function SkillchainGUI.DrawWindow(cache)
         return nil;
     end
 
-    -- one-time sync from settings defaults (ignore cache.level/both)
+    -- one-time sync from settings defaults
     if (not state.initialized) and cache and cache.settings and cache.settings.default then
         local def = cache.settings.default;
 
-        -- always start from stored defaults
-        state.level = def.level or 1;
+        -- Only apply defaults when NOT opened from CLI
+        if not state.openedFromCli then
+            state.level = def.level or 1;
 
-        if def.both ~= nil then
-            state.both = def.both;
-        else
-            state.both = false;
+            if def.both ~= nil then
+                state.both = def.both;
+            else
+                state.both = false;
+            end
         end
 
         state.elementIndex = 1;
@@ -686,7 +833,8 @@ function SkillchainGUI.DrawWindow(cache)
             end
         end
 
-        state.initialized = true;
+        state.initialized   = true;
+        state.openedFromCli = false; -- reset after init
     end
 
     -- derive current jobs to estimate height
