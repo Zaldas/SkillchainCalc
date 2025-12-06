@@ -196,8 +196,9 @@ jobs.DRG = {
 }
 
 jobs.SMN = {
-    primaryWeapons = { 'staff' },
+    primaryWeapons = { 'avatar' },
     weapons = {
+        avatar = { maxSkill = 75 },     -- avatar skills are based on level
         staff  = { maxSkill = 250 },
         club   = { maxSkill = 230 },
         dagger = { maxSkill = 200 },

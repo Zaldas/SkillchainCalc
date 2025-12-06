@@ -29,7 +29,7 @@ skills.aliases = {
     marksmanship = 'mm',
     gun          = 'mm',
     -- Pet skills bucket
-    smn = 'smn',
+    avatar = 'avatar',
 }
 
 skills.h2h = { -- Hand-to-Hand
@@ -290,22 +290,22 @@ skills.mm = { -- Marksmanship
 };
 
 -- Pet skills as triggered by player.
-skills.smn = { -- BST/SMN Player Pet Skills
-    [513] = {en='[C]Poison Nails',      skillchain={'Transfixion'},tier=1},
-    [528] = {en='[F]Moonlit Charge',    skillchain={'Compression'},tier=2},
-    [529] = {en='[F]Crescent Fang',     skillchain={'Transfixion'},tier=3},
-    [544] = {en='[I]Punch',             skillchain={'Liquefaction'},tier=4},
-    [546] = {en='[I]Burning Strike',    skillchain={'Impaction'},tier=5},
-    [547] = {en='[I]Double Punch',      skillchain={'Compression'},tier=6},
-    [560] = {en='[T]Rock Throw',        skillchain={'Scission'},tier=7},
-    [562] = {en='[T]Rock Buster',       skillchain={'Reverberation'},tier=8},
-    [563] = {en='[T]Megalith Throw',    skillchain={'Induration'},tier=9},
-    [576] = {en='[L]Barracuda Dive',    skillchain={'Reverberation'},tier=10},
-    [578] = {en='[L]Tail Whip',         skillchain={'Detonation'},tier=11},
-    [592] = {en='[G]Claw',              skillchain={'Detonation'},tier=12},
-    [608] = {en='[S]Axe Kick',          skillchain={'Induration'},tier=13},
-    [612] = {en='[S]Double Slap',       skillchain={'Scission'},tier=14},
-    [624] = {en='[R]Shock Strike',      skillchain={'Impaction'},tier=15},
+skills.avatar = { -- SMN Player Pet Skills; skill is based on level
+    [513] = {en='[C]Poison Nails',      skillchain={'Transfixion'},     skill=5},
+    [528] = {en='[F]Moonlit Charge',    skillchain={'Compression'},     skill=5},
+    [529] = {en='[F]Crescent Fang',     skillchain={'Transfixion'},     skill=10},
+    [544] = {en='[I]Punch',             skillchain={'Liquefaction'},    skill=1},
+    [546] = {en='[I]Burning Strike',    skillchain={'Impaction'},       skill=23},
+    [547] = {en='[I]Double Punch',      skillchain={'Compression'},     skill=30},
+    [560] = {en='[T]Rock Throw',        skillchain={'Scission'},        skill=1},
+    [562] = {en='[T]Rock Buster',       skillchain={'Reverberation'},   skill=21},
+    [563] = {en='[T]Megalith Throw',    skillchain={'Induration'},      skill=35},
+    [576] = {en='[L]Barracuda Dive',    skillchain={'Reverberation'},   skill=1},
+    [578] = {en='[L]Tail Whip',         skillchain={'Detonation'},      skill=26},
+    [592] = {en='[G]Claw',              skillchain={'Detonation'},      skill=1},
+    [608] = {en='[S]Axe Kick',          skillchain={'Induration'},      skill=1},
+    [612] = {en='[S]Double Slap',       skillchain={'Scission'},        skill=50},
+    [624] = {en='[R]Shock Strike',      skillchain={'Impaction'},       skill=1},
 };
 
 -- static information on skillchains
