@@ -140,8 +140,8 @@ local state = {
 
     job1LastId    = nil,
     job2LastId    = nil,
-    job1Weapons   = {},
-    job2Weapons   = {},
+    job1Weapons   = nil,
+    job2Weapons   = nil,
 };
 
 -----------------------------------------------------------------------
@@ -209,9 +209,12 @@ local function countJobWeapons(jobId)
 end
 
 local function ensureJobWeaponSelection(side, jobId)
-    if not jobId then return; end
+    if not jobId then
+        return {};
+    end
 
     local lastId, selTable;
+
     if side == 1 then
         lastId   = state.job1LastId;
         selTable = state.job1Weapons;
@@ -220,34 +223,43 @@ local function ensureJobWeaponSelection(side, jobId)
         selTable = state.job2Weapons;
     end
 
-    if jobId == lastId and selTable ~= nil then
-        return;
-    end
+    -- If job changed, rebuild defaults from jobs.lua.
+    if jobId ~= lastId then
+        selTable = {};
 
-    selTable = {};
-    local job = jobsData[jobId];
-    if job and job.weapons then
-        local prim = job.primaryWeapons or {};
-        if prim and #prim > 0 then
-            for _, w in ipairs(prim) do
-                if job.weapons[w] then
+        local job = jobsData[jobId];
+        if job and job.weapons then
+            local prim = job.primaryWeapons or {};
+            if type(prim) == 'table' and #prim > 0 then
+                for _, w in ipairs(prim) do
+                    if job.weapons[w] then
+                        selTable[w] = true;
+                    end
+                end
+            else
+                for w, _ in pairs(job.weapons) do
                     selTable[w] = true;
                 end
             end
-        else
-            for w, _ in pairs(job.weapons) do
-                selTable[w] = true;
-            end
         end
+
+        if side == 1 then
+            state.job1LastId = jobId;
+        else
+            state.job2LastId = jobId;
+        end
+    elseif type(selTable) ~= 'table' then
+        -- Same job, but somehow no table yet.
+        selTable = {};
     end
 
     if side == 1 then
-        state.job1LastId  = jobId;
         state.job1Weapons = selTable;
     else
-        state.job2LastId  = jobId;
         state.job2Weapons = selTable;
     end
+
+    return selTable;
 end
 
 local function drawWeaponCheckboxes(jobId, weaponSel)
@@ -441,21 +453,25 @@ function SkillchainGUI.DrawWindow(cache)
     imgui.PopItemWidth();
 
     -- Re-resolve job IDs after selection
-    job1Id = jobItems[state.job1Index] or jobItems[1];
+       job1Id = jobItems[state.job1Index] or jobItems[1];
     job2Id = jobItems[state.job2Index] or jobItems[2];
 
-    ensureJobWeaponSelection(1, job1Id);
-    ensureJobWeaponSelection(2, job2Id);
+    local job1Sel = ensureJobWeaponSelection(1, job1Id);
+    local job2Sel = ensureJobWeaponSelection(2, job2Id);
 
     -- Row 2: weapons under each job
     imgui.NextColumn();
-    drawWeaponCheckboxes(job1Id, state.job1Weapons);
+    imgui.PushID('job1_weapons');
+    drawWeaponCheckboxes(job1Id, job1Sel);
+    imgui.PopID();
 
     imgui.NextColumn();
     imgui.Dummy({ 0, 0 }); -- keep center empty
 
     imgui.NextColumn();
-    drawWeaponCheckboxes(job2Id, state.job2Weapons);
+    imgui.PushID('job2_weapons');
+    drawWeaponCheckboxes(job2Id, job2Sel);
+    imgui.PopID();
 
     imgui.Columns(1);
 
