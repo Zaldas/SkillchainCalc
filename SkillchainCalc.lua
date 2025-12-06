@@ -443,6 +443,12 @@ ashita.events.register('command', 'command_cb', function(e)
             cache.both     = cache.settings.default.both or false;
             cache.scElement = nil;
             cache.stepMode = false;
+
+            -- Also close the ImGui GUI when clearing from CLI
+            if (SkillchainGUI ~= nil) then
+                SkillchainGUI.SetVisible(false);
+            end
+
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
