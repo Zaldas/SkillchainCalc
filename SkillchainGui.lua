@@ -543,7 +543,28 @@ function SkillchainGUI.DrawWindow(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
 
     if imgui.Button('Clear', { buttonWidth, 0 }) then
-        request = { clear = true };
+        -- Reset GUI weapon selections to primary weapons
+        local function resetWeapons(jobId)
+            local job = jobsData[jobId]
+            local newSel = {}
+            if job and job.primaryWeapons then
+                for _, w in ipairs(job.primaryWeapons) do
+                    newSel[w] = true
+                end
+            end
+            return newSel
+        end
+
+        local job1Id = jobItems[state.job1Index]
+        local job2Id = jobItems[state.job2Index]
+
+        state.job1Weapons = resetWeapons(job1Id)
+        state.job2Weapons = resetWeapons(job2Id)
+
+        -- Reset SC element back to Any
+        state.elementIndex = 1
+
+        request = { clear = true }
     end
 
     imgui.PopStyleColor(3);
