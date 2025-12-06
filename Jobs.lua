@@ -34,9 +34,9 @@ jobs.aliases = {
 jobs.WAR = {
     primaryWeapons = { 'ga', 'axe' },
     weapons = {
-        ga       = { maxSkill = 276 }, -- Great Axe
+        ga       = { maxSkill = 276 },
         axe      = { maxSkill = 269 },
-        gs       = { maxSkill = 256 }, -- Great Sword
+        gs       = { maxSkill = 256 },
         scythe   = { maxSkill = 256 },
         sword    = { maxSkill = 250 },
         staff    = { maxSkill = 250 },
@@ -45,7 +45,7 @@ jobs.WAR = {
         club     = { maxSkill = 240 },
         h2h      = { maxSkill = 210 },
         archery  = { maxSkill = 210 },
-        mm       = { maxSkill = 210 }, -- Marksmanship
+        mm       = { maxSkill = 210 },
     },
 }
 -- Primary Weapons per Job
@@ -84,7 +84,7 @@ jobs.RDM = {
         sword   = { maxSkill = 250 },
         club    = { maxSkill = 210 },
         archery = { maxSkill = 210 },
-        mm      = { maxSkill = 189 }, -- Marksmanship / Throwing equivalent cap
+        mm      = { maxSkill = 189 },
     },
 }
 
@@ -154,14 +154,14 @@ jobs.RNG = {
         sword   = { maxSkill = 210 },
         club    = { maxSkill = 200 },
         archery = { maxSkill = 269 },
-        mm      = { maxSkill = 269 }, -- Marksmanship
+        mm      = { maxSkill = 269 },
     },
 }
 
 jobs.SAM = {
     primaryWeapons = { 'gkt' },
     weapons = {
-        gkt     = { maxSkill = 276 }, -- Great Katana
+        gkt     = { maxSkill = 276 },
         polearm = { maxSkill = 240 },
         sword   = { maxSkill = 250 },
         archery = { maxSkill = 225 },
@@ -180,7 +180,7 @@ jobs.NIN = {
         h2h     = { maxSkill = 200 },
         club    = { maxSkill = 200 },
         archery = { maxSkill = 200 },
-        mm      = { maxSkill = 225 }, -- Marksmanship
+        mm      = { maxSkill = 225 },
     },
 }
 
@@ -208,7 +208,7 @@ jobs.SMN = {
 -- TOAU/WotG jobs – basic melee caps for future use
 -- (not critical for current SCC flow; safe to leave weapons empty if unused)
 -----------------------------------------------------------------------
-
+--[[
 jobs.BLU = {
     weapons = {
         -- add weapons
@@ -238,5 +238,6 @@ jobs.SCH = {
         -- staff, club, dagger once you care about SCH WS here
     },
 }
+]]
 
 return jobs

@@ -4,45 +4,128 @@
 require('common');
 local imgui    = require('imgui');
 local jobsData = require('jobs');
+local skills   = require('skills');
 
 local SkillchainGUI = {};
 local showWindow    = { false };
 
--- canonical weapon order
-local weaponOrder = {
-    'h2h','dagger','sword','gs','axe','ga','scythe',
-    'polearm','katana','gkt','club','staff','archery','mm',
-};
-
--- shared width for each job column
+-- Shared width for each job column.
 local JOB_COLUMN_WIDTH = 160;
 
--- job tokens (CLI side)
-local jobTokens = {
-    'war','mnk','whm','blm','rdm','thf','pld','drk','bst',
-    'brd','rng','sam','nin','drg','smn','blu','cor','dnc','sch',
-};
-
--- job display labels (from Jobs.lua aliases if present)
+-----------------------------------------------------------------------
+-- Dynamic job list from jobs.lua (no hardcoded tokens)
+-----------------------------------------------------------------------
 local jobItems = {};
-for _, tok in ipairs(jobTokens) do
-    local upper = (jobsData.aliases and jobsData.aliases[tok]) or tok:upper();
-    table.insert(jobItems, upper);
+do
+    local seen = {};
+    if jobsData.aliases then
+        for _, jobId in pairs(jobsData.aliases) do
+            if type(jobId) == 'string' and not seen[jobId] then
+                local job = jobsData[jobId];
+                if job and job.weapons then
+                    seen[jobId] = true;
+                    table.insert(jobItems, jobId);
+                end
+            end
+        end
+    end
+    table.sort(jobItems);
 end
 
--- element filter combo
-local elementItems = {
-    'Any',
-    'Fire','Wind','Lightning','Light',
-    'Earth','Ice','Water','Dark',
-};
+-----------------------------------------------------------------------
+-- Dynamic element list from skills.ChainInfo using display order.
+-- Only properties with a single burst element are considered.
+-- Elements appear in the order of the first property that uses them.
+-----------------------------------------------------------------------
+local elementItems  = { 'Any' };
+local elementTokens = { '' };
+do
+    local chainInfo = skills.ChainInfo or {};
+    local props     = {};
 
-local elementTokens = {
-    '',
-    'fire','wind','lightning','light',
-    'earth','ice','water','dark',
-};
+    -- Collect properties that have exactly one burst element.
+    for name, info in pairs(chainInfo) do
+        if type(info) == 'table' and type(info.burst) == 'table' and #info.burst == 1 then
+            table.insert(props, name);
+        end
+    end
 
+    -- Sort properties by display order (skills.GetDisplayIndex),
+    -- fall back to name if helper is missing / equal.
+    table.sort(props, function(a, b)
+        local ia = skills.GetDisplayIndex and skills.GetDisplayIndex(a) or 0;
+        local ib = skills.GetDisplayIndex and skills.GetDisplayIndex(b) or 0;
+        if ia ~= ib then
+            return ia < ib;
+        end
+        return a < b;
+    end)
+
+    -- Walk properties in display order and add their single burst element
+    -- once, in the order we encounter them.
+    local seen = {};
+    for _, name in ipairs(props) do
+        local info  = chainInfo[name];
+        local burst = info.burst;
+        local elem  = burst[1];  -- exactly one
+        if not seen[elem] then
+            seen[elem] = true;
+            table.insert(elementItems,  elem);
+            table.insert(elementTokens, elem:lower());
+        end
+    end
+end
+
+-----------------------------------------------------------------------
+-- Per-job weapon ordering, built from jobs.lua
+-- primaryWeapons first (in order), then remaining weapons in table order.
+-----------------------------------------------------------------------
+local jobWeaponLists = {};
+
+local function getJobWeaponList(jobId)
+    if not jobId then
+        return {};
+    end
+
+    local cached = jobWeaponLists[jobId];
+    if cached then
+        return cached;
+    end
+
+    local job = jobsData[jobId];
+    if not job or not job.weapons then
+        jobWeaponLists[jobId] = {};
+        return jobWeaponLists[jobId];
+    end
+
+    local list   = {};
+    local listed = {};
+
+    -- Primary weapons first (if defined).
+    if type(job.primaryWeapons) == 'table' then
+        for _, w in ipairs(job.primaryWeapons) do
+            if job.weapons[w] and not listed[w] then
+                table.insert(list, w);
+                listed[w] = true;
+            end
+        end
+    end
+
+    -- Then all remaining weapons as defined in jobs.lua.
+    for w, _ in pairs(job.weapons) do
+        if not listed[w] then
+            table.insert(list, w);
+            listed[w] = true;
+        end
+    end
+
+    jobWeaponLists[jobId] = list;
+    return list;
+end
+
+-----------------------------------------------------------------------
+-- State
+-----------------------------------------------------------------------
 local state = {
     initialized   = false,
 
@@ -61,47 +144,14 @@ local state = {
     job2Weapons   = {},
 };
 
-local function DrawGradientHeader(text, width)
-    local drawlist = imgui.GetWindowDrawList();
-    local x, y     = imgui.GetCursorScreenPos();
-    local lineH    = imgui.GetTextLineHeightWithSpacing();
-
-    -- How far the gradient extends as a fraction of the header width.
-    local fadeFraction = 0.75;
-    local gradWidth    = width * fadeFraction;
-
-    -- Editable start color (RGBA floats)
-    local colLeft     = {0.25, 0.40, 0.85, 1.00};
-    local colLeftU32  = imgui.GetColorU32(colLeft);
-
-    -- Same color but alpha = 0 for transparent fade
-    local colRight    = {colLeft[1], colLeft[2], colLeft[3], 0.00};
-    local colRightU32 = imgui.GetColorU32(colRight);
-
-    -- Draw gradient bar
-    drawlist:AddRectFilledMultiColor(
-        {x, y},
-        {x + gradWidth, y + lineH},
-        colLeftU32,    -- TL
-        colRightU32,   -- TR
-        colRightU32,   -- BR
-        colLeftU32     -- BL
-    );
-
-    -- Small padding inside the gradient for the text
-    local padX = 4;   -- left padding
-    local padY = 2;   -- top padding
-    imgui.SetCursorScreenPos({ x + padX, y + padY });
-    imgui.Text(text);
-
-    -- Move cursor to next line with a bit of space below header
-    local _, newY = imgui.GetCursorScreenPos();
-    imgui.SetCursorScreenPos({ x, newY });
-    imgui.Spacing();
-end
-
+-----------------------------------------------------------------------
+-- Helpers
+-----------------------------------------------------------------------
 local function DrawCombo(label, items, currentIndex)
     local idx   = currentIndex or 1;
+    if idx < 1 or idx > #items then
+        idx = 1;
+    end
     local value = items[idx] or items[1];
 
     if imgui.BeginCombo(label, value) then
@@ -120,7 +170,44 @@ local function DrawCombo(label, items, currentIndex)
     return idx;
 end
 
--- ensure each side gets a weapon selection table seeded from primaryWeapons (or all)
+-- Gradient header helper: color → transparent with small text padding.
+local function DrawGradientHeader(text, width)
+    local drawlist = imgui.GetWindowDrawList();
+    local x, y     = imgui.GetCursorScreenPos();
+    local lineH    = imgui.GetTextLineHeightWithSpacing();
+
+    local fadeFraction = 0.75;
+    local gradWidth    = width * fadeFraction;
+
+    local colLeft      = {0.25, 0.40, 0.85, 1.00};
+    local colLeftU32   = imgui.GetColorU32(colLeft);
+    local colRight     = {colLeft[1], colLeft[2], colLeft[3], 0.00};
+    local colRightU32  = imgui.GetColorU32(colRight);
+
+    drawlist:AddRectFilledMultiColor(
+        {x, y},
+        {x + gradWidth, y + lineH},
+        colLeftU32,
+        colRightU32,
+        colRightU32,
+        colLeftU32
+    );
+
+    local padX = 4;
+    local padY = 2;
+    imgui.SetCursorScreenPos({ x + padX, y + padY });
+    imgui.Text(text);
+
+    local _, newY = imgui.GetCursorScreenPos();
+    imgui.SetCursorScreenPos({ x, newY });
+    imgui.Spacing();
+end
+
+local function countJobWeapons(jobId)
+    local list = getJobWeaponList(jobId);
+    return #list;
+end
+
 local function ensureJobWeaponSelection(side, jobId)
     if not jobId then return; end
 
@@ -170,31 +257,43 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
         return;
     end
 
-    for _, w in ipairs(weaponOrder) do
-        if job.weapons[w] then
-            local checked = { weaponSel[w] and true or false };
-            if imgui.Checkbox(w, checked) then
-                weaponSel[w] = checked[1];
-            end
+    local list = getJobWeaponList(jobId);
+
+    -- Primary weapons for this job.
+    local primarySet = {};
+    if type(job.primaryWeapons) == 'table' then
+        for _, pw in ipairs(job.primaryWeapons) do
+            primarySet[pw] = true;
+        end
+    end
+
+    -- Indent offset
+    local baseX = imgui.GetCursorPosX();
+    local indent = 5;
+
+    for _, w in ipairs(list) do
+        -- Move text + checkbox inward
+        imgui.SetCursorPosX(baseX + indent);
+
+        local checked = { weaponSel[w] and true or false };
+
+        if primarySet[w] then
+            imgui.PushStyleColor(ImGuiCol_Text, { 1.00, 0.90, 0.40, 1.00 }); -- gold tint
+        end
+
+        if imgui.Checkbox(w, checked) then
+            weaponSel[w] = checked[1];
+        end
+
+        if primarySet[w] then
+            imgui.PopStyleColor();
         end
     end
 end
 
-local function countJobWeapons(jobId)
-    local job = jobId and jobsData[jobId] or nil;
-    if not job or not job.weapons then
-        return 0;
-    end
-
-    local count = 0;
-    for _, w in ipairs(weaponOrder) do
-        if job.weapons[w] then
-            count = count + 1;
-        end
-    end
-    return count;
-end
-
+-----------------------------------------------------------------------
+-- Public API
+-----------------------------------------------------------------------
 function SkillchainGUI.Toggle()
     showWindow[1] = not showWindow[1];
 end
@@ -229,30 +328,22 @@ function SkillchainGUI.DrawWindow(cache)
         state.initialized = true;
     end
 
-    -- Current jobs based on indices
-    local job1Token = jobTokens[state.job1Index] or jobTokens[1];
-    local job2Token = jobTokens[state.job2Index] or jobTokens[2];
+    -- Current job IDs based on indices
+    local job1Id = jobItems[state.job1Index] or jobItems[1];
+    local job2Id = jobItems[state.job2Index] or jobItems[2];
 
-    local job1Id = jobsData.aliases[job1Token] or job1Token:upper();
-    local job2Id = jobsData.aliases[job2Token] or job2Token:upper();
-
-    -- Count weapons for current jobs
+    -- Count weapons for current jobs.
     local count1     = countJobWeapons(job1Id);
     local count2     = countJobWeapons(job2Id);
     local maxWeapons = math.max(count1, count2);
 
     -- Rough row-based height estimate to avoid scrollbars.
-    -- Top: Filters header + element text/combo + level text/slider + both checkbox + separator.
-    local rowsTop    = 6;
-    -- Middle: jobs header + job combo row + a bit of spacing before weapons.
-    local rowsMiddle = 3;
-    -- Weapons: one row per weapon checkbox (max of the two jobs).
+    local rowsTop     = 6;
+    local rowsMiddle  = 3;
     local rowsWeapons = maxWeapons;
-    -- Bottom: separator + buttons row + spacing.
     local rowsBottom  = 3;
 
-    local totalRows = rowsTop + rowsMiddle + rowsWeapons + rowsBottom;
-
+    local totalRows  = rowsTop + rowsMiddle + rowsWeapons + rowsBottom;
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local winHeight  = totalRows * lineHeight - 25;
 
@@ -260,7 +351,8 @@ function SkillchainGUI.DrawWindow(cache)
 
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
-        ImGuiWindowFlags_NoDocking
+        ImGuiWindowFlags_NoDocking,
+        ImGuiWindowFlags_NoResize
     );
 
     if not imgui.Begin('SkillchainCalc Input', showWindow, flags) then
@@ -273,14 +365,14 @@ function SkillchainGUI.DrawWindow(cache)
     -----------------------------------------------------------------------
     -- TOP SECTION: Filters
     -----------------------------------------------------------------------
-    DrawGradientHeader('Filters', 380);   -- width matches your window width minus padding
+    DrawGradientHeader('Filters', imgui.GetContentRegionAvail());
 
     local filterWidth = JOB_COLUMN_WIDTH * 2;
 
     -- Element filter
     imgui.Text('Skillchain Element (sc:<element>)');
 
-    local baseX = imgui.GetCursorPosX();
+    local baseX  = imgui.GetCursorPosX();
     local indent = 5;
 
     imgui.SetCursorPosX(baseX + indent);
@@ -291,11 +383,11 @@ function SkillchainGUI.DrawWindow(cache)
     imgui.Spacing();
 
     -- Level filter
-    local lvl = { state.level };
     imgui.Text('Skillchain Level (1, 2, 3)');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.PushItemWidth(filterWidth - indent);
+    local lvl = { state.level };
     if imgui.SliderInt('##sclevel', lvl, 1, 3) then
         state.level = lvl[1];
     end
@@ -303,8 +395,9 @@ function SkillchainGUI.DrawWindow(cache)
 
     imgui.Spacing();
 
-    -- Both toggle
+    -- Both directions
     local both = { state.both };
+    imgui.SetCursorPosX(baseX);
     if imgui.Checkbox('Both directions (both)', both) then
         state.both = both[1];
     end
@@ -315,58 +408,56 @@ function SkillchainGUI.DrawWindow(cache)
     -----------------------------------------------------------------------
     -- MIDDLE SECTION: Jobs + weapons
     -----------------------------------------------------------------------
-    DrawGradientHeader('Jobs & Weapons', 380);
-
-    -- resolve job IDs from tokens first
-    local job1Token = jobTokens[state.job1Index];
-    local job2Token = jobTokens[state.job2Index];
-
-    local job1Id = jobsData.aliases[job1Token] or job1Token:upper();
-    local job2Id = jobsData.aliases[job2Token] or job2Token:upper();
+    DrawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
 
     ensureJobWeaponSelection(1, job1Id);
     ensureJobWeaponSelection(2, job2Id);
 
-    -- Layout: 3 columns (left job, arrow, right job)
     imgui.Columns(3, 'scc_jobs_cols', false);
     imgui.SetColumnWidth(0, JOB_COLUMN_WIDTH);
     imgui.SetColumnWidth(1, 30);
     imgui.SetColumnWidth(2, JOB_COLUMN_WIDTH);
 
-    -- Row 1: job combos + arrow (fixed width)
+    -- Row 1: job combos + arrow
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 8);
     state.job1Index = DrawCombo('##fromjob', jobItems, state.job1Index);
     imgui.PopItemWidth();
 
     imgui.NextColumn();
-    imgui.Text(state.both and '<->' or '->');
+    do
+        local arrow      = state.both and '<->' or '->';
+        local curX, curY = imgui.GetCursorPos();
+        local comboH     = imgui.GetFrameHeight();
+        local textH      = imgui.GetTextLineHeight();
+        local yOffset    = math.max(0, (comboH - textH) * 0.5);
+        imgui.SetCursorPos({ curX, curY + yOffset });
+        imgui.Text(arrow);
+        imgui.SetCursorPos({ curX, curY });
+    end
 
     imgui.NextColumn();
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 8);
     state.job2Index = DrawCombo('##tojob', jobItems, state.job2Index);
     imgui.PopItemWidth();
 
-    -- Re-resolve IDs in case job selection changed
-    job1Token = jobTokens[state.job1Index];
-    job2Token = jobTokens[state.job2Index];
-
-    job1Id = jobsData.aliases[job1Token] or job1Token:upper();
-    job2Id = jobsData.aliases[job2Token] or job2Token:upper();
+    -- Re-resolve job IDs after selection
+    job1Id = jobItems[state.job1Index] or jobItems[1];
+    job2Id = jobItems[state.job2Index] or jobItems[2];
 
     ensureJobWeaponSelection(1, job1Id);
     ensureJobWeaponSelection(2, job2Id);
 
-    -- Row 2: weapon checkboxes directly under each job
+    -- Row 2: weapons under each job
     imgui.NextColumn();
     drawWeaponCheckboxes(job1Id, state.job1Weapons);
 
     imgui.NextColumn();
-    imgui.Dummy({ 0, 0 }); -- keep center column (arrow) empty on second row
+    imgui.Dummy({ 0, 0 }); -- keep center empty
 
     imgui.NextColumn();
     drawWeaponCheckboxes(job2Id, state.job2Weapons);
 
-    imgui.Columns(1); -- back to single-column layout
+    imgui.Columns(1);
 
     imgui.Separator();
     imgui.Spacing();
@@ -374,7 +465,7 @@ function SkillchainGUI.DrawWindow(cache)
     -----------------------------------------------------------------------
     -- BOTTOM SECTION: Buttons (centered)
     -----------------------------------------------------------------------
-    local availWidth   = imgui.GetContentRegionAvail(); -- scalar width
+    local availWidth   = imgui.GetContentRegionAvail();
     local buttonWidth  = 120;
     local spacing      = 10;
     local totalWidth   = buttonWidth * 2 + spacing;
@@ -384,10 +475,18 @@ function SkillchainGUI.DrawWindow(cache)
         imgui.SetCursorPosX(startX);
     end
 
+    -- Primary action: Calculate
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 }); -- base blue
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 }); -- brighter hover
+    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 }); -- darker pressed state
+
     if imgui.Button('Calculate', { buttonWidth, 0 }) then
-        local function buildToken(jobTok, weaponSel)
+        local function buildToken(jobId, weaponSel)
+            local jobTok   = jobId:lower();
             local selected = {};
-            for _, w in ipairs(weaponOrder) do
+            local list     = getJobWeaponList(jobId);
+            for _, w in ipairs(list) do
                 if weaponSel[w] then
                     table.insert(selected, w);
                 end
@@ -399,8 +498,8 @@ function SkillchainGUI.DrawWindow(cache)
             end
         end
 
-        local wt1 = buildToken(job1Token, state.job1Weapons);
-        local wt2 = buildToken(job2Token, state.job2Weapons);
+        local wt1 = buildToken(job1Id, state.job1Weapons);
+        local wt2 = buildToken(job2Id, state.job2Weapons);
 
         local lvlVal    = state.level or 1;
         local elemTok   = elementTokens[state.elementIndex] or '';
@@ -416,10 +515,23 @@ function SkillchainGUI.DrawWindow(cache)
         };
     end
 
+    imgui.PopStyleColor(3);
+    imgui.PopStyleVar(1);
+
     imgui.SameLine();
+
+    -- Secondary action: Clear (ghost button style)
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+    imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
+    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
+
     if imgui.Button('Clear', { buttonWidth, 0 }) then
         request = { clear = true };
     end
+
+    imgui.PopStyleColor(3);
+    imgui.PopStyleVar(1);
 
     imgui.End();
     return request;
