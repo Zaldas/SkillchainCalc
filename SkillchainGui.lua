@@ -6,6 +6,7 @@ local imgui    = require('imgui');
 local jobsData = require('jobs');
 local skills   = require('skills');
 local scaling  = require('scaling');
+local SkillchainCore = require('SkillchainCore');
 
 local SkillchainGUI = {};
 local showWindow    = { false };
@@ -264,33 +265,7 @@ local function ensureJobWeaponSelection(side, jobId)
     return selTable;
 end
 
--- Map "thf:sword,dagger" style tokens to job + weapon state
-local function resolveJobIdFromToken(token)
-    if not token or type(token) ~= 'string' then
-        return nil;
-    end
-
-    local name  = token;
-    local colon = token:find(':');
-    if colon then
-        name = token:sub(1, colon - 1);
-    end
-
-    name = name:upper();
-
-    -- Use jobs.aliases first (nin, thf, etc.)
-    if jobsData.aliases and jobsData.aliases[name] then
-        return jobsData.aliases[name];
-    end
-
-    -- Fallback: direct jobId
-    if jobsData[name] then
-        return name;
-    end
-
-    return nil;
-end
-
+-- Helper to find job index in jobItems for dropdown
 local function findJobIndex(jobId)
     if not jobId then return nil; end
     for i, id in ipairs(jobItems) do
@@ -301,31 +276,35 @@ local function findJobIndex(jobId)
     return nil;
 end
 
-local function buildWeaponSelectionFromToken(token, jobId)
-    local sel   = {};
-    local job   = jobId and jobsData[jobId] or nil;
-    if not job or not job.weapons then
-        return sel;
+local function applyTokenToSide(side, token)
+    if not token or type(token) ~= 'string' then
+        return;
     end
 
-    local colon = token:find(':');
-    if colon then
-        local listPart = token:sub(colon + 1);
-        for w in listPart:gmatch('[^,]+') do
-            w = w:lower();
+    -- Let core parse "job" or "job:weapon1,weapon2"
+    local jobId, allowedWeapons = SkillchainCore.getJobAndWeaponsFromToken(token);
+    if not jobId then
+        return;
+    end
 
-            -- Normalize via skills.aliases (dag -> dagger, ga -> ga, etc.)
-            if skills.aliases and skills.aliases[w] then
-                w = skills.aliases[w];
-            end
+    local job = jobsData[jobId];
+    if not job or not job.weapons then
+        return;
+    end
 
+    local idx = findJobIndex(jobId) or 1;
+    local sel = {};
+
+    -- If the token had an explicit weapon list (job:weapon1,weapon2)
+    if allowedWeapons and next(allowedWeapons) then
+        for w, _ in pairs(allowedWeapons) do
             if job.weapons[w] then
                 sel[w] = true;
             end
         end
     end
 
-    -- If nothing explicitly selected, fall back to primary weapons (or all)
+    -- Fallback: primaryWeapons, else all weapons for that job
     if not next(sel) then
         local prim = job.primaryWeapons or {};
         if type(prim) == 'table' and #prim > 0 then
@@ -341,25 +320,14 @@ local function buildWeaponSelectionFromToken(token, jobId)
         end
     end
 
-    return sel;
-end
-
-local function applyTokenToSide(side, token)
-    local jobId = resolveJobIdFromToken(token);
-    if not jobId then
-        return;
-    end
-
-    local idx = findJobIndex(jobId) or 1;
-
     if side == 1 then
         state.job1Index  = idx;
         state.job1LastId = jobId;
-        state.job1Weapons = buildWeaponSelectionFromToken(token, jobId);
+        state.job1Weapons = sel;
     else
         state.job2Index  = idx;
         state.job2LastId = jobId;
-        state.job2Weapons = buildWeaponSelectionFromToken(token, jobId);
+        state.job2Weapons = sel;
     end
 end
 
@@ -870,7 +838,7 @@ function SkillchainGUI.DrawWindow(cache)
     local request = nil;
     if imgui.BeginTabBar('##scc_tabs') then
         -- Calculator tab
-        if imgui.BeginTabItem('Calculator', nil, tabFlags) then
+        if imgui.BeginTabItem('Calculator') then
             local r = DrawCalculatorTab(cache);
             if r then
                 request = r;
