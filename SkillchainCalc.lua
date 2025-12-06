@@ -62,8 +62,8 @@ local gdiObjects = {
 };
 
 local cache = {
-    wt1 = nil,
-    wt2 = nil,
+    token1 = nil,
+    token2 = nil,
     level = 1,
     both = false,
     scElement = nil,
@@ -249,14 +249,14 @@ end
 
 local function ParseSkillchains(isStep)
     if isStep then
-        if (not cache.wt1) then
+        if (not cache.token1) then
             return;
         end
 
         -- Resolve single token (weapon / job / job:weapons)
-        local wsList = SkillchainCore.resolveTokenToSkills(cache.wt1);
+        local wsList = SkillchainCore.resolveTokenToSkills(cache.token1);
         if (not wsList) then
-            print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.wt1));
+            print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
             clearGDI();
             return;
         end
@@ -271,17 +271,17 @@ local function ParseSkillchains(isStep)
         return;
     end
 
-    if (not cache.wt1 or not cache.wt2) then
+    if (not cache.token1 or not cache.token2) then
         return;
     end
 
     -- Resolve tokens (weapon types OR jobs)
-    local skills1 = SkillchainCore.resolveTokenToSkills(cache.wt1);
-    local skills2 = SkillchainCore.resolveTokenToSkills(cache.wt2);
+    local skills1 = SkillchainCore.resolveTokenToSkills(cache.token1);
+    local skills2 = SkillchainCore.resolveTokenToSkills(cache.token2);
 
     if (not skills1 or not skills2) then
         print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
-            tostring(cache.wt1) .. ', ' .. tostring(cache.wt2));
+            tostring(cache.token1) .. ', ' .. tostring(cache.token2));
         clearGDI();
         return;
     end
@@ -331,8 +331,8 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             -- Clear from GUI
             if req.clear then
                 clearGDI();
-                cache.wt1       = nil;
-                cache.wt2       = nil;
+                cache.token1       = nil;
+                cache.token2       = nil;
                 cache.level     = cache.settings.default.level or 1;
                 cache.both      = cache.settings.default.both or false;
                 cache.scElement = nil;
@@ -340,9 +340,9 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             end
 
             -- Normal calculator request
-            if req.wt1 ~= nil then
-                cache.wt1       = req.wt1;
-                cache.wt2       = req.wt2;
+            if req.token1 ~= nil then
+                cache.token1       = req.token1;
+                cache.token2       = req.token2;
                 cache.level     = req.level or cache.settings.default.level or 1;
                 cache.both      = req.both or false;
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
@@ -420,8 +420,8 @@ ashita.events.register('command', 'command_cb', function(e)
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
-            cache.wt1      = nil;
-            cache.wt2      = nil;
+            cache.token1      = nil;
+            cache.token2      = nil;
             cache.level    = cache.settings.default.level or 1;
             cache.both     = cache.settings.default.both or false;
             cache.scElement = nil;
@@ -510,8 +510,8 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Check if we doing Step vs Combo calculator
     local isStep = args[2]:lower() == 'step';
 
-    cache.wt1 = isStep and args[3] or args[2];
-    cache.wt2 = isStep and nil or args[3];
+    cache.token1 = isStep and args[3] or args[2];
+    cache.token2 = isStep and nil or args[3];
     cache.level = level or cache.settings.default.level;
     cache.both = both or cache.settings.default.both;
     cache.scElement = scElement and scElement:lower() or nil;

@@ -489,8 +489,8 @@ local function DrawCalculatorTab(cache)
             end
         end
 
-        local wt1 = buildToken(job1Id, state.job1Weapons);
-        local wt2 = buildToken(job2Id, state.job2Weapons);
+        local token1 = buildToken(job1Id, state.job1Weapons);
+        local token2 = buildToken(job2Id, state.job2Weapons);
 
         local lvlVal    = state.level or 1;
         local elemTok   = elementTokens[state.elementIndex] or '';
@@ -498,8 +498,8 @@ local function DrawCalculatorTab(cache)
 
         request = {
             mode      = 'pair',
-            wt1       = wt1,
-            wt2       = wt2,
+            token1       = token1,
+            token2       = token2,
             level     = lvlVal,
             both      = state.both,
             scElement = scElement,
