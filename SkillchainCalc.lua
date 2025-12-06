@@ -459,11 +459,6 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Skillchain Level: Skillchains Level ' .. cache.settings.default.level .. ' or higher.')
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             return;
-        elseif (args[2] == 'gui') then            -- NEW
-            if (SkillchainGUI ~= nil) then
-                SkillchainGUI.Toggle();
-            end
-            return;
         elseif (args[2] == 'help') then
             print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both]');
             print(' Tokens can be weapon types, jobs, or job:weapon filters:');
@@ -491,7 +486,13 @@ ashita.events.register('command', 'command_cb', function(e)
 
     -- Ensure we have the necessary arguments
     if (#args < 3) then
-        print('/scc help -- for usage help');
+        if (#args == 1) then
+            -- bare /scc → open GUI + show hint
+            if SkillchainGUI ~= nil then
+                SkillchainGUI.SetVisible(true);
+            end
+        end
+        print('/scc help -- for usage help, or /scc to open GUI');
         return;
     end
 
