@@ -47,6 +47,7 @@ local sccSettings = T{
     layout = {
         columnWidth = 315,
         entriesPerColumn = 30,
+        entriesHeight = 20,
     },
     default = {
         level = 1,
@@ -161,7 +162,7 @@ local function updateGDI(skillchains)
         header:set_position_y(cache.settings.anchor.y + y_offset);
         header:set_visible(true);
         textIndex = textIndex + 1;
-        y_offset = y_offset + 20;
+        y_offset = y_offset + layout.entriesHeight;
         entriesInColumn = entriesInColumn + 1;
 
         -- Display each opener and closer
@@ -183,7 +184,7 @@ local function updateGDI(skillchains)
                 comboText:set_position_y(cache.settings.anchor.y + y_offset);
                 comboText:set_visible(true);
                 textIndex = textIndex + 1;
-                y_offset = y_offset + 20;
+                y_offset = y_offset + layout.entriesHeight;
                 entriesInColumn = entriesInColumn + 1;
             end
         end
@@ -307,6 +308,17 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
         local req = SkillchainGUI.DrawWindow(cache);
         if req ~= nil then
+            -- 1) Anchor change from Settings tab
+            if req.anchorChanged then
+                -- cache.settings.anchor.x/y already updated by GUI
+                moveGDIAnchor();
+                settings.save();
+                if isVisible then
+                    ParseSkillchains(cache.stepMode);
+                end
+            end
+
+            -- 2) Clear from GUI
             if req.clear then
                 clearGDI();
                 cache.wt1       = nil;
@@ -317,14 +329,16 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 return;
             end
 
-            cache.wt1       = req.wt1;
-            cache.wt2       = req.wt2;
-            cache.level     = req.level or cache.settings.default.level or 1;
-            cache.both      = req.both or false;
-            cache.scElement = req.scElement and req.scElement:lower() or nil;
+            -- 3) Normal calculator request
+            if req.wt1 ~= nil then
+                cache.wt1       = req.wt1;
+                cache.wt2       = req.wt2;
+                cache.level     = req.level or cache.settings.default.level or 1;
+                cache.both      = req.both or false;
+                cache.scElement = req.scElement and req.scElement:lower() or nil;
 
-            -- GUI only drives pair mode for now
-            ParseSkillchains(false);
+                ParseSkillchains(cache.stepMode);
+            end
         end
     end
 end);
@@ -431,7 +445,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
-            print(' [both] optional keyword to calculate chains in both directions.');
+            print(' [both] optional keyword to calculate skillchains in both directions.');
             print('Usage: /scc step <token> [level] [sc:<element>]');
             print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('Usage: /scc setx #       -- set x anchor');

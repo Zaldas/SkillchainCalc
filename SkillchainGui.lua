@@ -5,6 +5,7 @@ require('common');
 local imgui    = require('imgui');
 local jobsData = require('jobs');
 local skills   = require('skills');
+local scaling  = require('scaling');
 
 local SkillchainGUI = {};
 local showWindow    = { false };
@@ -351,7 +352,7 @@ local function DrawCalculatorTab(cache)
     -- Both directions
     local both = { state.both };
     imgui.SetCursorPosX(baseX);
-    if imgui.Checkbox('Both directions (both)', both) then
+    if imgui.Checkbox('Both Directions (both)', both) then
         state.both = both[1];
     end
 
@@ -513,6 +514,90 @@ local function DrawCalculatorTab(cache)
     return request;
 end
 
+local function DrawSettingsTab(cache)
+    local request = nil;
+
+    if not cache or not cache.settings or not cache.settings.anchor then
+        imgui.Text('Settings not available.');
+        return nil;
+    end
+
+    -----------------------------------------------------------------------
+    -- Anchor adjustment position
+    -----------------------------------------------------------------------
+    local anchor = cache.settings.anchor;
+
+    local pad    = 20;
+    local layoutSettings = cache.settings.layout;
+    local colW   = (layoutSettings and layoutSettings.columnWidth) or pad;
+    local colH   = (layoutSettings and layoutSettings.entriesPerColumn * layoutSettings.entriesHeight) or pad;
+    -- X max = screen width - one column width - padding
+    local maxX   = scaling.window.w - colW - pad;
+    if maxX < pad then maxX = pad; end
+
+    -- Y can still use full height padding
+    local maxY   = scaling.window.h - colH - pad;
+    if maxY < pad then maxY = pad; end
+
+    DrawGradientHeader('Results Window Anchor (top-left)', imgui.GetContentRegionAvail());
+    imgui.Spacing();
+
+    -- 5px indent
+    local baseX  = imgui.GetCursorPosX();
+    local indent = 5;
+
+    imgui.SetCursorPosX(baseX + indent);
+    local x = { anchor.x or 0 };
+    if imgui.SliderInt('X', x, pad, maxX) then
+        anchor.x = x[1];
+        request = request or {};
+        request.anchorChanged = true;
+    end
+
+    imgui.SetCursorPosX(baseX + indent);
+    local y = { anchor.y or 0 };
+    if imgui.SliderInt('Y', y, pad, maxY) then
+        anchor.y = y[1];
+        request = request or {};
+        request.anchorChanged = true;
+    end
+
+    -----------------------------------------------------------------------
+    -- Stored Default Filter Status (read-only)
+    -----------------------------------------------------------------------
+    imgui.Separator();
+    DrawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
+
+    local def = cache.settings.default or {};
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Default Level: %s", tostring(def.level)));
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Default Both:  %s", tostring(def.both)));
+
+    -----------------------------------------------------------------------
+    -- How to update defaults (CLI instructions)
+    -----------------------------------------------------------------------
+    imgui.Spacing();
+    imgui.Separator();
+    DrawGradientHeader('How to Update Defaults (CLI)', imgui.GetContentRegionAvail());
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setlevel <1-3>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setboth <true|false>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setx <value>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc sety <value>');
+
+    return request;
+end
+
 -----------------------------------------------------------------------
 -- Public API
 -----------------------------------------------------------------------
@@ -581,23 +666,25 @@ function SkillchainGUI.DrawWindow(cache)
     end
 
     local request = nil;
-
     if imgui.BeginTabBar('##scc_tabs') then
-        -- TAB 1: existing calculator
-        if imgui.BeginTabItem('Calculator') then
-            request = DrawCalculatorTab(cache);
+        -- Calculator tab
+        if imgui.BeginTabItem('Calculator', nil, tabFlags) then
+            local r = DrawCalculatorTab(cache);
+            if r then
+                request = r;
+            end
             imgui.EndTabItem();
         end
 
-        -- TAB 2: settings (placeholder)
+        -- Settings tab
         if imgui.BeginTabItem('Settings') then
-            imgui.Text('Coming soon: settings tab.');
-            imgui.EndTabItem();
-        end
-
-        -- TAB 3: debug (placeholder)
-        if imgui.BeginTabItem('Debug') then
-            imgui.Text('Debug info / internal state here.');
+            local r = DrawSettingsTab(cache);
+            if r then
+                request = request or {};
+                for k, v in pairs(r) do
+                    request[k] = v;
+                end
+            end
             imgui.EndTabItem();
         end
 
