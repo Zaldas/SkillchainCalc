@@ -308,7 +308,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
         local req = SkillchainGUI.DrawWindow(cache);
         if req ~= nil then
-            -- 1) Anchor change from Settings tab
+            -- Anchor change from Settings tab
             if req.anchorChanged then
                 -- cache.settings.anchor.x/y already updated by GUI
                 moveGDIAnchor();
@@ -318,7 +318,17 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 end
             end
 
-            -- 2) Clear from GUI
+            -- Defaults updated from Calculator tab
+            if req.updateDefaults then
+                cache.level = cache.settings.default.level or cache.level or 1;
+                cache.both  = cache.settings.default.both  or cache.both  or false;
+                settings.save();
+                if isVisible then
+                    ParseSkillchains(cache.stepMode);
+                end
+            end
+
+            -- Clear from GUI
             if req.clear then
                 clearGDI();
                 cache.wt1       = nil;
@@ -329,7 +339,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 return;
             end
 
-            -- 3) Normal calculator request
+            -- Normal calculator request
             if req.wt1 ~= nil then
                 cache.wt1       = req.wt1;
                 cache.wt2       = req.wt2;

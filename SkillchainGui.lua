@@ -356,6 +356,39 @@ local function DrawCalculatorTab(cache)
         state.both = both[1];
     end
 
+    -----------------------------------------------------------------------
+    -- Set Defaults button (centered, styled like Calculate)
+    -----------------------------------------------------------------------
+    do
+        local avail = imgui.GetContentRegionAvail();
+        local btnW  = 130;
+        local btnH  = 0;
+
+        -- center horizontally
+        local curX  = imgui.GetCursorPosX();
+        local startX = curX + (avail - btnW) * 0.5;
+        imgui.SetCursorPosX(startX);
+
+        -- Ghost style
+        imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+        imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
+        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
+
+        if imgui.Button('Set Defaults', { btnW, btnH }) then
+            local def = (cache and cache.settings and cache.settings.default) or {};
+            def.level = state.level;
+            def.both  = state.both;
+            cache.settings.default = def;
+
+            request = request or {};
+            request.updateDefaults = true;
+        end
+
+        imgui.PopStyleColor(3);
+        imgui.PopStyleVar(1);
+    end
+
     imgui.Separator();
     imgui.Spacing();
 
@@ -665,7 +698,7 @@ function SkillchainGUI.DrawWindow(cache)
     local maxWeapons = math.max(count1, count2);
 
     local rowsTop     = 6;
-    local rowsMiddle  = 3;
+    local rowsMiddle  = 4;
     local rowsWeapons = maxWeapons;
     local rowsBottom  = 3;
 
