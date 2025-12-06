@@ -278,16 +278,16 @@ local function buildCombinations(list1, list2, opts)
     end
 
     -- forward pass
-    for _, s1 in ipairs(list1) do
-        for _, s2 in ipairs(list2) do
+    for _, s1 in pairs(list1) do
+        for _, s2 in pairs(list2) do
             addCombo(s1, s2, false);
         end
     end
 
     -- optional reverse pass (used for WS both-direction support)
     if both then
-        for _, s2 in ipairs(list2) do
-            for _, s1 in ipairs(list1) do
+        for _, s2 in pairs(list2) do
+            for _, s1 in pairs(list1) do
                 -- suppress Lv3 Light/Darkness on reverse pass to avoid dup L/D
                 addCombo(s2, s1, true);
             end
