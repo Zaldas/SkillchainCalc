@@ -350,6 +350,8 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 ParseSkillchains(cache.stepMode);
             end
         end
+    else
+        clearGDI();
     end
 end);
 
@@ -456,8 +458,8 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate skillchains in both directions.');
-            print('Usage: /scc step <token> [level] [sc:<element>]');
-            print(' Tokens can be weapon types, jobs, or job:weapon filters:');
+            --print('Usage: /scc step <token> [level] [sc:<element>]');
+            --print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('Usage: /scc setx #       -- set x anchor');
             print('Usage: /scc sety #       -- set y anchor');
             print('Usage: /scc setlevel #   -- set default level filter');
@@ -508,7 +510,8 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     -- Check if we doing Step vs Combo calculator
-    local isStep = args[2]:lower() == 'step';
+    --local isStep = args[2]:lower() == 'step';
+    local isStep = false;
 
     cache.token1 = isStep and args[3] or args[2];
     cache.token2 = isStep and nil or args[3];
@@ -518,6 +521,11 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.stepMode = isStep;
 
     ParseSkillchains(isStep);
+
+    -- Auto-open GUI with current CLI inputs (pair mode only)
+    if (not isStep) and SkillchainGUI ~= nil then
+        SkillchainGUI.OpenFromCli(cache);
+    end
 end);
 
 -- Event handler for addon unloading
