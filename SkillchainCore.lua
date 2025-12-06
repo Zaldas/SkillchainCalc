@@ -71,6 +71,26 @@ local function parseJobWeaponToken(token)
     return jobId, allowedWeapons;
 end
 
+function SkillchainCore.getJobAndWeaponsFromToken(token)
+    if not token or type(token) ~= 'string' then
+        return nil, nil;
+    end
+
+    -- First try full job:weapon1,weapon2 syntax
+    local jobId, allowedWeapons = parseJobWeaponToken(token);
+    if jobId then
+        return jobId, allowedWeapons;
+    end
+
+    -- Fall back to plain job token ("nin", "NIN", etc.)
+    local plainJobId = SkillchainCore.getJobIdFromToken(token);
+    if plainJobId then
+        return plainJobId, nil;
+    end
+
+    return nil, nil;
+end
+
 function SkillchainCore.isJobAllowedForWs(ws, jobId)
     local allowedJobs = ws.jobRestrictions;
     if not allowedJobs then

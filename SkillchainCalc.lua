@@ -71,6 +71,20 @@ local cache = {
     settings = sccSettings;
 };
 
+local function applyDefaultsToCache()
+    local def = (cache.settings and cache.settings.default) or (sccSettings and sccSettings.default) or {};
+    cache.level = def.level or 1;
+    cache.both  = def.both  or false;
+end
+
+local function resetCacheFull()
+    cache.token1    = nil;
+    cache.token2    = nil;
+    cache.scElement = nil;
+    cache.stepMode  = false;
+    applyDefaultsToCache();
+end
+
 local isVisible = false;
 
 -- Initialize GDI objects for displaying skillchains
@@ -122,8 +136,6 @@ end
 
 -- Update GDI display with skillchains
 local function updateGDI(skillchains)
-    clearGDI(); -- Clear previous objects
-
     isVisible = true;
 
     gdiObjects.background:set_visible(true);
@@ -213,6 +225,7 @@ end
 ashita.events.register('load', 'load_cb', function()
     --print('[SkillchainCalc] Addon loaded.');
     cache.settings = settings.load(sccSettings);
+    applyDefaultsToCache();
     initGDIObjects();
     clearGDI();
 
@@ -220,6 +233,7 @@ ashita.events.register('load', 'load_cb', function()
         if (s ~= nil) then
             destroyGDIObjects();
             cache.settings = s;
+            applyDefaultsToCache();
             initGDIObjects();
             clearGDI();
         end
@@ -239,6 +253,7 @@ local function displaySkillchainResults(combinations, label)
     end
 
     if (#filteredCombinations > 0) then
+        clearGDI();
         updateGDI(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
@@ -320,8 +335,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
 
             -- Defaults updated from Calculator tab
             if req.updateDefaults then
-                cache.level = cache.settings.default.level or cache.level or 1;
-                cache.both  = cache.settings.default.both  or cache.both  or false;
+                applyDefaultsToCache();
                 settings.save();
                 if isVisible then
                     ParseSkillchains(cache.stepMode);
@@ -331,20 +345,24 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             -- Clear from GUI
             if req.clear then
                 clearGDI();
-                cache.token1       = nil;
-                cache.token2       = nil;
-                cache.level     = cache.settings.default.level or 1;
-                cache.both      = cache.settings.default.both or false;
-                cache.scElement = nil;
+                resetCacheFull();
                 return;
             end
 
             -- Normal calculator request
             if req.token1 ~= nil then
-                cache.token1       = req.token1;
-                cache.token2       = req.token2;
-                cache.level     = req.level or cache.settings.default.level or 1;
-                cache.both      = req.both or false;
+                cache.token1 = req.token1;
+                cache.token2 = req.token2;
+
+                -- Start from current defaults, then override with GUI state.
+                applyDefaultsToCache();
+                if req.level ~= nil then
+                    cache.level = req.level;
+                end
+                if req.both ~= nil then
+                    cache.both = req.both;
+                end
+
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
 
                 ParseSkillchains(cache.stepMode);
@@ -389,7 +407,7 @@ ashita.events.register('command', 'command_cb', function(e)
             if (args[3]:any('1', '2', '3')) then
                 local l = tonumber(args[3]);
                 cache.settings.default.level = l;
-                cache.level = l;
+                applyDefaultsToCache();
                 print('[SkillchainCalc] Set default level: ' .. args[3]);
                 validCommand = true;
             else
@@ -399,13 +417,14 @@ ashita.events.register('command', 'command_cb', function(e)
             if (args[3]:any('true', 'false')) then
                 local b = args[3] == 'true';
                 cache.settings.default.both = b;
-                cache.both = b;
+                applyDefaultsToCache();
                 print('[SkillchainCalc] Set parameter \'both\' = ' .. args[3]);
                 validCommand = true;
             else
                 print('[SkillchainCalc] Invalid value for setboth. Must be true or false.');
             end
         end
+
 
         if (validCommand) then
             settings.save();
@@ -422,12 +441,7 @@ ashita.events.register('command', 'command_cb', function(e)
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
-            cache.token1      = nil;
-            cache.token2      = nil;
-            cache.level    = cache.settings.default.level or 1;
-            cache.both     = cache.settings.default.both or false;
-            cache.scElement = nil;
-            cache.stepMode = false;
+            resetCacheFull();
 
             -- Also close the ImGui GUI when clearing from CLI
             if (SkillchainGUI ~= nil) then
@@ -515,8 +529,16 @@ ashita.events.register('command', 'command_cb', function(e)
 
     cache.token1 = isStep and args[3] or args[2];
     cache.token2 = isStep and nil or args[3];
-    cache.level = level or cache.settings.default.level;
-    cache.both = both or cache.settings.default.both;
+
+    -- Start from defaults, then override with explicit CLI args
+    applyDefaultsToCache();
+    if level ~= nil then
+        cache.level = level;
+    end
+    if both ~= nil then
+        cache.both = both;
+    end
+
     cache.scElement = scElement and scElement:lower() or nil;
     cache.stepMode = isStep;
 
