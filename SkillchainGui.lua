@@ -303,74 +303,15 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
     end
 end
 
------------------------------------------------------------------------
--- Public API
------------------------------------------------------------------------
-function SkillchainGUI.Toggle()
-    showWindow[1] = not showWindow[1];
-end
-
-function SkillchainGUI.SetVisible(v)
-    showWindow[1] = v and true or false;
-end
-
-function SkillchainGUI.IsVisible()
-    return showWindow[1];
-end
-
-function SkillchainGUI.DrawWindow(cache)
-    if not showWindow[1] then
-        return nil;
-    end
-
-    -- one-time sync from cache
-    if (not state.initialized) and cache then
-        state.level        = cache.level or 1;
-        state.both         = cache.both or false;
-        state.elementIndex = 1;
-        if cache.scElement then
-            local lower = cache.scElement:lower();
-            for i, tok in ipairs(elementTokens) do
-                if tok == lower then
-                    state.elementIndex = i;
-                    break;
-                end
-            end
-        end
-        state.initialized = true;
-    end
-
+local function DrawCalculatorTab(cache)
     -- Current job IDs based on indices
     local job1Id = jobItems[state.job1Index] or jobItems[1];
     local job2Id = jobItems[state.job2Index] or jobItems[2];
 
-    -- Count weapons for current jobs.
+    -- Count weapons for current jobs (used for layout decisions if needed)
     local count1     = countJobWeapons(job1Id);
     local count2     = countJobWeapons(job2Id);
     local maxWeapons = math.max(count1, count2);
-
-    -- Rough row-based height estimate to avoid scrollbars.
-    local rowsTop     = 6;
-    local rowsMiddle  = 3;
-    local rowsWeapons = maxWeapons;
-    local rowsBottom  = 3;
-
-    local totalRows  = rowsTop + rowsMiddle + rowsWeapons + rowsBottom;
-    local lineHeight = imgui.GetFrameHeightWithSpacing();
-    local winHeight  = totalRows * lineHeight - 25;
-
-    imgui.SetNextWindowSize({ 400, winHeight }, ImGuiCond_Always);
-
-    local flags = bit.bor(
-        ImGuiWindowFlags_NoSavedSettings,
-        ImGuiWindowFlags_NoDocking,
-        ImGuiWindowFlags_NoResize
-    );
-
-    if not imgui.Begin('SkillchainCalc Input', showWindow, flags) then
-        imgui.End();
-        return nil;
-    end
 
     local request = nil;
 
@@ -453,7 +394,7 @@ function SkillchainGUI.DrawWindow(cache)
     imgui.PopItemWidth();
 
     -- Re-resolve job IDs after selection
-       job1Id = jobItems[state.job1Index] or jobItems[1];
+    job1Id = jobItems[state.job1Index] or jobItems[1];
     job2Id = jobItems[state.job2Index] or jobItems[2];
 
     local job1Sel = ensureJobWeaponSelection(1, job1Id);
@@ -493,9 +434,9 @@ function SkillchainGUI.DrawWindow(cache)
 
     -- Primary action: Calculate
     imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 }); -- base blue
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 }); -- brighter hover
-    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 }); -- darker pressed state
+    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
 
     if imgui.Button('Calculate', { buttonWidth, 0 }) then
         local function buildToken(jobId, weaponSel)
@@ -543,32 +484,125 @@ function SkillchainGUI.DrawWindow(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
 
     if imgui.Button('Clear', { buttonWidth, 0 }) then
-        -- Reset GUI weapon selections to primary weapons
         local function resetWeapons(jobId)
-            local job = jobsData[jobId]
-            local newSel = {}
+            local job   = jobsData[jobId];
+            local newSel = {};
             if job and job.primaryWeapons then
                 for _, w in ipairs(job.primaryWeapons) do
-                    newSel[w] = true
+                    newSel[w] = true;
                 end
             end
-            return newSel
+            return newSel;
         end
 
-        local job1Id = jobItems[state.job1Index]
-        local job2Id = jobItems[state.job2Index]
+        local curJob1Id = jobItems[state.job1Index];
+        local curJob2Id = jobItems[state.job2Index];
 
-        state.job1Weapons = resetWeapons(job1Id)
-        state.job2Weapons = resetWeapons(job2Id)
+        state.job1Weapons = resetWeapons(curJob1Id);
+        state.job2Weapons = resetWeapons(curJob2Id);
 
         -- Reset SC element back to Any
-        state.elementIndex = 1
+        state.elementIndex = 1;
 
-        request = { clear = true }
+        request = { clear = true };
     end
 
     imgui.PopStyleColor(3);
     imgui.PopStyleVar(1);
+
+    return request;
+end
+
+-----------------------------------------------------------------------
+-- Public API
+-----------------------------------------------------------------------
+function SkillchainGUI.Toggle()
+    showWindow[1] = not showWindow[1];
+end
+
+function SkillchainGUI.SetVisible(v)
+    showWindow[1] = v and true or false;
+end
+
+function SkillchainGUI.IsVisible()
+    return showWindow[1];
+end
+
+function SkillchainGUI.DrawWindow(cache)
+    if not showWindow[1] then
+        return nil;
+    end
+
+    -- one-time sync from cache
+    if (not state.initialized) and cache then
+        state.level        = cache.level or 1;
+        state.both         = cache.both or false;
+        state.elementIndex = 1;
+        if cache.scElement then
+            local lower = cache.scElement:lower();
+            for i, tok in ipairs(elementTokens) do
+                if tok == lower then
+                    state.elementIndex = i;
+                    break;
+                end
+            end
+        end
+        state.initialized = true;
+    end
+
+    -- derive current jobs to estimate height
+    local job1Id = jobItems[state.job1Index] or jobItems[1];
+    local job2Id = jobItems[state.job2Index] or jobItems[2];
+
+    local count1     = countJobWeapons(job1Id);
+    local count2     = countJobWeapons(job2Id);
+    local maxWeapons = math.max(count1, count2);
+
+    local rowsTop     = 6;
+    local rowsMiddle  = 3;
+    local rowsWeapons = maxWeapons;
+    local rowsBottom  = 3;
+
+    local totalRows  = rowsTop + rowsMiddle + rowsWeapons + rowsBottom;
+    local lineHeight = imgui.GetFrameHeightWithSpacing();
+    local winHeight  = totalRows * lineHeight;
+
+    imgui.SetNextWindowSize({ 400, winHeight }, ImGuiCond_Always);
+
+    local flags = bit.bor(
+        ImGuiWindowFlags_NoSavedSettings,
+        ImGuiWindowFlags_NoDocking,
+        ImGuiWindowFlags_NoResize
+    );
+
+    if not imgui.Begin('SkillchainCalc', showWindow, flags) then
+        imgui.End();
+        return nil;
+    end
+
+    local request = nil;
+
+    if imgui.BeginTabBar('##scc_tabs') then
+        -- TAB 1: existing calculator
+        if imgui.BeginTabItem('Calculator') then
+            request = DrawCalculatorTab(cache);
+            imgui.EndTabItem();
+        end
+
+        -- TAB 2: settings (placeholder)
+        if imgui.BeginTabItem('Settings') then
+            imgui.Text('Coming soon: settings tab.');
+            imgui.EndTabItem();
+        end
+
+        -- TAB 3: debug (placeholder)
+        if imgui.BeginTabItem('Debug') then
+            imgui.Text('Debug info / internal state here.');
+            imgui.EndTabItem();
+        end
+
+        imgui.EndTabBar();
+    end
 
     imgui.End();
     return request;
