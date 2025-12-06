@@ -463,6 +463,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('Usage: /scc setlevel #   -- set default level filter');
             print('Usage: /scc setboth true -- set default both flag');
             print('Usage: /scc status       -- show current defaults');
+            print('Usage: /scc              -- open gui interface');
             return;
         end
     end
