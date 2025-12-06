@@ -339,6 +339,9 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Block the command to prevent further processing
     e.blocked = true;
 
+    -----------------------------------------------------------------------
+    -- Settings-style commands: setx / sety / setlevel / setboth
+    -----------------------------------------------------------------------
     local validCommand = false;
     if #args > 2 then
         if (args[2]:any('setx', 'sety')) then
@@ -388,52 +391,8 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     -----------------------------------------------------------------------
-    -- /scc step <token> [level] [sc:<element>]
+    -- 1-arg utility commands: clear / debug / status / help
     -----------------------------------------------------------------------
-    if (#args >= 3 and args[2]:lower() == 'step') then
-        local token = args[3];
-        if (not token or token == '') then
-            print('Usage: /scc step <token> [level] [sc:<element>]');
-            return;
-        end
-
-        local level     = nil;
-        local scElement = nil;
-
-        for i = 4, #args do
-            local param = args[i];
-            local lower = param:lower();
-
-            -- Level filter (same meaning as normal mode)
-            if (lower == '1' or lower == '2' or lower == '3' or lower == '4') then
-                level = tonumber(lower);
-
-            -- Element filter on resulting chain
-            elseif lower:sub(1, 3) == 'sc:' then
-                scElement = lower:sub(4);
-
-            -- both is explicitly ignored in step mode
-            elseif lower == 'both' then
-                -- no-op
-
-            else
-                print('[SkillchainCalc] Invalid argument for step mode: ' .. param);
-                print('Usage: /scc step <token> [level] [sc:<element>]');
-                return;
-            end
-        end
-
-        cache.wt1       = token;
-        cache.wt2       = nil;
-        cache.level     = level or cache.settings.default.level;
-        cache.both      = false; -- has no meaning in step mode
-        cache.scElement = scElement and scElement:lower() or nil;
-        cache.stepMode  = true;
-
-        ParseSkillchains(true);
-        return;
-    end
-
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
@@ -523,14 +482,17 @@ ashita.events.register('command', 'command_cb', function(e)
         both = nil;
     end
 
-    cache.wt1 = args[2];
-    cache.wt2 = args[3];
+    -- Check if we doing Step vs Combo calculator
+    local isStep = args[2]:lower() == 'step';
+
+    cache.wt1 = isStep and args[3] or args[2];
+    cache.wt2 = isStep and nil or args[3];
     cache.level = level or cache.settings.default.level;
     cache.both = both or cache.settings.default.both;
     cache.scElement = scElement and scElement:lower() or nil;
-    cache.stepMode = false;
+    cache.stepMode = isStep;
 
-    ParseSkillchains(false);
+    ParseSkillchains(isStep);
 end);
 
 -- Event handler for addon unloading
