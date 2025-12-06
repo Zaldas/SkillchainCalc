@@ -505,6 +505,11 @@ local function DrawCalculatorTab(cache)
         -- Reset SC element back to Any
         state.elementIndex = 1;
 
+        -- Reset GUI level/both to stored defaults
+        local def = (cache and cache.settings and cache.settings.default) or {};
+        state.level = def.level or 1;
+        state.both  = def.both  or false;
+
         request = { clear = true };
     end
 
@@ -603,10 +608,16 @@ end
 -----------------------------------------------------------------------
 function SkillchainGUI.Toggle()
     showWindow[1] = not showWindow[1];
+    if showWindow[1] then
+        state.initialized = false;
+    end
 end
 
 function SkillchainGUI.SetVisible(v)
-    showWindow[1] = v and true or false;
+    showWindow[1] = v;
+    if showWindow[1] then
+        state.initialized = false;
+    end
 end
 
 function SkillchainGUI.IsVisible()
@@ -618,10 +629,19 @@ function SkillchainGUI.DrawWindow(cache)
         return nil;
     end
 
-    -- one-time sync from cache
-    if (not state.initialized) and cache then
-        state.level        = cache.level or 1;
-        state.both         = cache.both or false;
+    -- one-time sync from settings defaults (ignore cache.level/both)
+    if (not state.initialized) and cache and cache.settings and cache.settings.default then
+        local def = cache.settings.default;
+
+        -- always start from stored defaults
+        state.level = def.level or 1;
+
+        if def.both ~= nil then
+            state.both = def.both;
+        else
+            state.both = false;
+        end
+
         state.elementIndex = 1;
         if cache.scElement then
             local lower = cache.scElement:lower();
@@ -632,6 +652,7 @@ function SkillchainGUI.DrawWindow(cache)
                 end
             end
         end
+
         state.initialized = true;
     end
 
