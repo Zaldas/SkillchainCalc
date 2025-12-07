@@ -1,53 +1,54 @@
-<img align="right" src="https://github.com/user-attachments/assets/cd05ba75-dd09-444a-a0ea-aaf4b4eecd20">  
-<img align="right" src="https://github.com/user-attachments/assets/cd05ba75-dd09-444a-a0ea-aaf4b4eecd20">  
+# Skillchain Calculator
 
-Skillchain Calculator
+<img align="right" alt="image" src="https://github.com/user-attachments/assets/35fdb593-d6cf-404b-b3ae-adbbc5f7478a" />
   
 Display skillchains possible given an opening weapon type and closing weapon type.  
 Now with ImGui interface to input parameters!!!  
 
-Usage:  
-/scc token1 token2 [level] [both] [sc:element]  
-Tokens can be one of the following:  
+#### Usage: 
+&ensp;`/scc` -- opens the GUI interface  
+&ensp;`/scc token1 token2 [level] [both] [sc:element]`  
+  
+### <ins>Tokens can be one of the following:</ins>  
 
-Weapon Types:  
+#### Weapon Types:  
 &ensp;h2h, dagger, sword, gs, axe, ga, scythe,  
 &ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
 &ensp;Weapons Alias as well: e.g. ga or greataxe work, full list in Skills.lua
 
-Jobs:  
+#### Jobs:  
 &ensp;WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD,  
 &ensp;RNG, SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH  
 
-Job + Weapon Filters:  
+#### Job + Weapon Filters:  
 &ensp;Use the syntax `job:weapon` or `job:weapon1,weapon2` to limit WS by weapon type  
 &ensp;e.g. `/scc thf:sword war:ga,polearm`  
 
-Primary Weapon Auto-Limit:  
+#### Primary Weapon Auto-Limit:  
 &ensp;If a plain job token is used (e.g. `thf`), the job’s `primaryWeapons` list defined in Jobs.lua is used.  
 &ensp;Example: `/scc thf war` is internally treated as `/scc thf:dagger war:ga,axe`  
 
-[level]  
+*[level]*  
 &ensp;Optional value that filters skillchain tier  
 &ensp;2 only shows tier 2 and 3 skillchains  
 &ensp;1 or empty shows all  
 
-[both]  
+*[both]*  
 &ensp;Optional keyword to calculate skillchains in both directions  
 
-[sc:element]  
+*[sc:element]*  
 &ensp;Optional filter that limits results to skillchains whose burst table contains the given element  
 &ensp;e.g. `/scc thf war sc:ice` will show only SCs with Ice as a burst element  
 &ensp;Case-insensitive (`sc:ice`, `sc:Ice`, `SC:ICE` etc.)  
 
-Examples:  
+#### Examples:  
 &ensp;/scc katana h2h both 2  
 &ensp;/scc thf war  
 &ensp;/scc thf:sword war:ga  
 &ensp;/scc thf war sc:ice  
 &ensp;/scc nin drk:ga 2 both  
 
-Commands:  
+#### Commands:  
 &ensp;/scc -- opens GUI window
 &ensp;/scc help -- show all commands  
 &ensp;/scc setx # -- set x anchor  
@@ -58,7 +59,7 @@ Commands:
 &ensp;/scc clear -- clear out window  
 &ensp;/scc debug -- enable debugging  
 
-Files:  
+#### Files:  
 &ensp;SkillchainCalc.lua -- main addon  
 &ensp;Skills.lua -- weaponskill data and colors  
 &ensp;Jobs.lua -- job skill caps + primaryWeapons  
@@ -66,7 +67,7 @@ Files:
 &ensp;SkillchainGui.lua -- ImGui interface  
 &ensp;imgui_compat.lua -- ImGui compatability layer <credit XIUI team>  
 
-Notes:  
+#### Notes:  
 &ensp;This is adjusted for HorizonXI. No plans to support retail.  
 &ensp;Superscript 1/2 denote quested/relic weaponskills  
 &ensp;Default title font is Times New Roman  
