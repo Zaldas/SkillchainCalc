@@ -65,7 +65,7 @@ Now with ImGui interface to input parameters!!!
 &ensp;Jobs.lua -- job skill caps + primaryWeapons  
 &ensp;SkillchainCore.lua -- filtering and routing logic  
 &ensp;SkillchainGui.lua -- ImGui interface  
-&ensp;imgui_compat.lua -- ImGui compatability layer <credit XIUI team>  
+&ensp;imgui_compat.lua -- ImGui compatability layer <[credit XIUI team](https://github.com/tirem/XIUI)>
 
 #### Notes:  
 &ensp;This is adjusted for HorizonXI. No plans to support retail.  
