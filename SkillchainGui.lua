@@ -125,6 +125,28 @@ local function getJobWeaponList(jobId)
     return list;
 end
 
+local function buildToken(jobId, weaponSel)
+    if not jobId then
+        return nil;
+    end
+
+    local jobTok   = jobId:lower();
+    local selected = {};
+    local list     = getJobWeaponList(jobId);
+
+    for _, w in ipairs(list) do
+        if weaponSel and weaponSel[w] then
+            table.insert(selected, w);
+        end
+    end
+
+    if #selected > 0 then
+        return string.format('%s:%s', jobTok, table.concat(selected, ','));
+    else
+        return jobTok;
+    end
+end
+
 -----------------------------------------------------------------------
 -- State
 -----------------------------------------------------------------------
@@ -171,6 +193,18 @@ local function DrawCombo(label, items, currentIndex)
     end
 
     return idx;
+end
+
+local function HelpMarker(text)
+    imgui.SameLine();
+    imgui.TextDisabled('(?)');
+    if imgui.IsItemHovered() then
+        imgui.BeginTooltip();
+        imgui.PushTextWrapPos(imgui.GetFontSize() * 35.0);
+        imgui.TextUnformatted(text);
+        imgui.PopTextWrapPos();
+        imgui.EndTooltip();
+    end
 end
 
 -- Gradient header helper: color → transparent with small text padding.
@@ -393,6 +427,7 @@ local function DrawCalculatorTab(cache)
 
     -- Element filter
     imgui.Text('Skillchain Element (sc:<element>)');
+    HelpMarker('Filter by skillchain element. Matches CLI sc:<element>, e.g. sc:ice, sc:fire, sc:any.');
 
     local baseX  = imgui.GetCursorPosX();
     local indent = 5;
@@ -406,6 +441,7 @@ local function DrawCalculatorTab(cache)
 
     -- Level filter
     imgui.Text('Skillchain Level (1, 2, 3)');
+    HelpMarker('Filter by skillchain tier. 1 = basic, 2 = tier 2, 3 = tier 3/4.');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.PushItemWidth(filterWidth - indent);
@@ -415,17 +451,28 @@ local function DrawCalculatorTab(cache)
     end
     imgui.PopItemWidth();
 
-    imgui.Spacing();
+        imgui.Spacing();
 
     -- Both directions
     local both = { state.both };
-    imgui.SetCursorPosX(baseX);
-    if imgui.Checkbox('Both Directions (both)', both) then
+
+    -- Checkbox first (left side)
+    if imgui.Checkbox('##both', both) then
         state.both = both[1];
     end
 
+    imgui.SameLine();
+
+    -- Label
+    imgui.Text('Both Directions (both)');
+
+    -- Help marker at end of label
+    HelpMarker('Show both A->B and B->A chains when they differ. Matches CLI "both".');
+
+    imgui.Spacing();
+
     -----------------------------------------------------------------------
-    -- Set Defaults button (centered, styled like Calculate)
+    -- Set Defaults button (centered, with ? tooltip marker on the right)
     -----------------------------------------------------------------------
     do
         local avail = imgui.GetContentRegionAvail();
@@ -433,7 +480,7 @@ local function DrawCalculatorTab(cache)
         local btnH  = 0;
 
         -- center horizontally
-        local curX  = imgui.GetCursorPosX();
+        local curX   = imgui.GetCursorPosX();
         local startX = curX + (avail - btnW) * 0.5;
         imgui.SetCursorPosX(startX);
 
@@ -443,6 +490,7 @@ local function DrawCalculatorTab(cache)
         imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
         imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
 
+        -- The button
         if imgui.Button('Set Defaults', { btnW, btnH }) then
             local def = (cache and cache.settings and cache.settings.default) or {};
             def.level = state.level;
@@ -455,6 +503,10 @@ local function DrawCalculatorTab(cache)
 
         imgui.PopStyleColor(3);
         imgui.PopStyleVar(1);
+
+        -- Add (?) help marker to the *right* of the button
+        imgui.SameLine();
+        HelpMarker('Save current Level and Both as your default behavior for GUI and CLI.');
     end
 
     imgui.Separator();
@@ -541,22 +593,6 @@ local function DrawCalculatorTab(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
 
     if imgui.Button('Calculate', { buttonWidth, 0 }) then
-        local function buildToken(jobId, weaponSel)
-            local jobTok   = jobId:lower();
-            local selected = {};
-            local list     = getJobWeaponList(jobId);
-            for _, w in ipairs(list) do
-                if weaponSel[w] then
-                    table.insert(selected, w);
-                end
-            end
-            if #selected > 0 then
-                return string.format('%s:%s', jobTok, table.concat(selected, ','));
-            else
-                return jobTok;
-            end
-        end
-
         local token1 = buildToken(job1Id, state.job1Weapons);
         local token2 = buildToken(job2Id, state.job2Weapons);
 
@@ -566,8 +602,8 @@ local function DrawCalculatorTab(cache)
 
         request = {
             mode      = 'pair',
-            token1       = token1,
-            token2       = token2,
+            token1    = token1,
+            token2    = token2,
             level     = lvlVal,
             both      = state.both,
             scElement = scElement,
@@ -813,16 +849,14 @@ function SkillchainGUI.DrawWindow(cache)
     local count2     = countJobWeapons(job2Id);
     local maxWeapons = math.max(count1, count2);
 
-    local rowsTop     = 6;
-    local rowsMiddle  = 4;
+    local rows     = 13;    -- rows of static gui 
     local rowsWeapons = maxWeapons;
-    local rowsBottom  = 3;
 
-    local totalRows  = rowsTop + rowsMiddle + rowsWeapons + rowsBottom;
+    local totalRows  = rows + rowsWeapons;
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local winHeight  = totalRows * lineHeight;
 
-    imgui.SetNextWindowSize({ 400, winHeight }, ImGuiCond_Always);
+    imgui.SetNextWindowSize({ 420, winHeight }, ImGuiCond_Always);
 
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
