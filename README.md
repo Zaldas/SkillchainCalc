@@ -1,8 +1,10 @@
 <img align="right" src="https://github.com/user-attachments/assets/cd05ba75-dd09-444a-a0ea-aaf4b4eecd20">  
-  
+<img align="right" src="https://github.com/user-attachments/assets/cd05ba75-dd09-444a-a0ea-aaf4b4eecd20">  
+
 Skillchain Calculator
   
 Display skillchains possible given an opening weapon type and closing weapon type.  
+Now with ImGui interface to input parameters!!!  
 
 Usage:  
 /scc token1 token2 [level] [both] [sc:element]  
@@ -11,7 +13,7 @@ Tokens can be one of the following:
 Weapon Types:  
 &ensp;h2h, dagger, sword, gs, axe, ga, scythe,  
 &ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
-&ensp;Weapons Alias as well: e.g. ga or greataxe work, full list in skills.lua
+&ensp;Weapons Alias as well: e.g. ga or greataxe work, full list in Skills.lua
 
 Jobs:  
 &ensp;WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD,  
@@ -43,9 +45,10 @@ Examples:
 &ensp;/scc thf war  
 &ensp;/scc thf:sword war:ga  
 &ensp;/scc thf war sc:ice  
-&ensp;/scc nin:katana drk:scythe 2 both  
+&ensp;/scc nin drk:ga 2 both  
 
 Commands:  
+&ensp;/scc -- opens GUI window
 &ensp;/scc help -- show all commands  
 &ensp;/scc setx # -- set x anchor  
 &ensp;/scc sety # -- set y anchor  
@@ -56,10 +59,12 @@ Commands:
 &ensp;/scc debug -- enable debugging  
 
 Files:  
-&ensp;skillchaincalc.lua -- main addon  
-&ensp;skills.lua -- weaponskill data and colors  
-&ensp;jobs.lua -- job skill caps + primaryWeapons  
+&ensp;SkillchainCalc.lua -- main addon  
+&ensp;Skills.lua -- weaponskill data and colors  
+&ensp;Jobs.lua -- job skill caps + primaryWeapons  
 &ensp;SkillchainCore.lua -- filtering and routing logic  
+&ensp;SkillchainGui.lua -- ImGui interface  
+&ensp;imgui_compat.lua -- ImGui compatability layer <credit XIUI team>  
 
 Notes:  
 &ensp;This is adjusted for HorizonXI. No plans to support retail.  
