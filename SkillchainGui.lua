@@ -856,7 +856,7 @@ function SkillchainGUI.DrawWindow(cache)
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local winHeight  = totalRows * lineHeight;
 
-    imgui.SetNextWindowSize({ 420, winHeight }, ImGuiCond_Always);
+    imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
 
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
