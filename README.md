@@ -49,7 +49,7 @@ Now with ImGui interface to input parameters!!!
 &ensp;/scc nin drk:ga 2 both  
 
 #### Commands:  
-&ensp;/scc -- opens GUI window
+&ensp;/scc -- opens GUI window  
 &ensp;/scc help -- show all commands  
 &ensp;/scc setx # -- set x anchor  
 &ensp;/scc sety # -- set y anchor  
