@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '2.00';
+addon.version   = '2.01';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
@@ -58,7 +58,11 @@ local sccSettings = T{
 local gdiObjects = {
     title = nil,
     background = nil,
-    skillchainTexts = {},
+    textPool = {},          -- Active text objects
+    poolSize = 0,           -- Current pool size
+    maxPoolSize = 150,      -- Hard cap
+    minPoolSize = 20,       -- Minimum to keep alive
+    lastUsedCount = 0,      -- Track last frame usage
 };
 
 local cache = {
@@ -87,7 +91,6 @@ end
 
 local isVisible = false;
 
--- Initialize GDI objects for displaying skillchains
 local function initGDIObjects()
     gdiObjects.title = gdi:create_object(cache.settings.title_font);
     gdiObjects.title:set_text('Skillchains');
@@ -98,31 +101,44 @@ local function initGDIObjects()
     gdiObjects.background:set_position_x(cache.settings.anchor.x);
     gdiObjects.background:set_position_y(cache.settings.anchor.y);
 
-    for i = 1, 150 do -- Increased limit to accommodate more lines
+    -- Start with minimum pool size
+    for i = 1, gdiObjects.minPoolSize do
         local text = gdi:create_object(cache.settings.font);
         text:set_visible(false);
-        table.insert(gdiObjects.skillchainTexts, text);
+        table.insert(gdiObjects.textPool, text);
     end
+    gdiObjects.poolSize = gdiObjects.minPoolSize;
 end
 
--- Destroy GDI objects
 local function destroyGDIObjects()
-    gdi:destroy_object(gdiObjects.title);
-    gdi:destroy_object(gdiObjects.background);
-    for _, text in ipairs(gdiObjects.skillchainTexts) do
+    if gdiObjects.title then
+        gdi:destroy_object(gdiObjects.title);
+        gdiObjects.title = nil;
+    end
+    
+    if gdiObjects.background then
+        gdi:destroy_object(gdiObjects.background);
+        gdiObjects.background = nil;
+    end
+    
+    for _, text in ipairs(gdiObjects.textPool) do
         gdi:destroy_object(text);
     end
-    gdiObjects.skillchainTexts = {};
+    gdiObjects.textPool = {};
+    gdiObjects.poolSize = 0;
+    gdiObjects.lastUsedCount = 0;
 end
 
--- Clear GDI text objects
 local function clearGDI()
     isVisible = false;
     gdiObjects.background:set_visible(false);
     gdiObjects.title:set_visible(false);
-    for _, text in ipairs(gdiObjects.skillchainTexts) do
-        text:set_visible(false);
+    
+    -- Only hide objects that were previously used
+    for i = 1, gdiObjects.lastUsedCount do
+        gdiObjects.textPool[i]:set_visible(false);
     end
+    gdiObjects.lastUsedCount = 0;
 end
 
 -- Move GDI Anchor
@@ -134,7 +150,35 @@ local function moveGDIAnchor()
     gdiObjects.background:set_position_y(cache.settings.anchor.y);
 end
 
--- Update GDI display with skillchains
+local function ensurePoolSize(requiredSize)
+    if requiredSize > gdiObjects.maxPoolSize then
+        requiredSize = gdiObjects.maxPoolSize;
+    end
+    
+    -- Grow pool if needed
+    while gdiObjects.poolSize < requiredSize do
+        local text = gdi:create_object(cache.settings.font);
+        text:set_visible(false);
+        table.insert(gdiObjects.textPool, text);
+        gdiObjects.poolSize = gdiObjects.poolSize + 1;
+    end
+end
+
+local function shrinkPool()
+    -- Shrink pool if it's much larger than needed (keep buffer)
+    local targetSize = math.max(gdiObjects.minPoolSize, gdiObjects.lastUsedCount + 20);
+    
+    while gdiObjects.poolSize > targetSize do
+        local text = table.remove(gdiObjects.textPool);
+        if text then
+            gdi:destroy_object(text);
+            gdiObjects.poolSize = gdiObjects.poolSize - 1;
+        else
+            break;
+        end
+    end
+end
+
 local function updateGDI(skillchains)
     isVisible = true;
 
@@ -144,35 +188,59 @@ local function updateGDI(skillchains)
     local layout = cache.settings.layout;
     local resultsTable = SkillchainCore.buildSkillchainTable(skillchains);
     local sortedResults, orderedResults = SkillchainCore.sortSkillchainTable(resultsTable, debugMode);
-    local y_offset = 40; -- Starting y-offset
-    local textIndex = 1; -- Track text object index
-    local columnOffset = 0; -- Track horizontal offset for new columns
-    local entriesInColumn = 0; -- Track lines in the current column
-    local maxColumnHeight = 0; -- Track the tallest column height
-
+    
+    local y_offset = 40;
+    local textIndex = 1;
+    local columnOffset = 0;
+    local entriesInColumn = 0;
+    local maxColumnHeight = 0;
+    
+    -- Count required objects first
+    local requiredObjects = 0;
     for _, result in ipairs(orderedResults) do
         local openers = sortedResults[result];
+        requiredObjects = requiredObjects + 1; -- Header
+        for _, openerData in ipairs(openers) do
+            requiredObjects = requiredObjects + #openerData.closers;
+        end
+    end
+    
+    -- Ensure pool has enough objects
+    ensurePoolSize(requiredObjects);
+    
+    -- Track if we hit the limit
+    local hitLimit = false;
+    
+    -- Render results
+    for _, result in ipairs(orderedResults) do
+        if textIndex > gdiObjects.poolSize then
+            hitLimit = true;
+            break;
+        end
+        
+        local openers = sortedResults[result];
 
-        -- Move to the next column if the first line of this header would exceed the limit
+        -- Move to next column if needed
         if entriesInColumn + 1 > layout.entriesPerColumn then
-            maxColumnHeight = math.max(maxColumnHeight, y_offset); -- Update max height for the current column
-            columnOffset = columnOffset + layout.columnWidth; -- Shift to the next column
-            y_offset = 40; -- Reset y-offset for the new column
-            entriesInColumn = 0; -- Reset entry count for the new column
+            maxColumnHeight = math.max(maxColumnHeight, y_offset);
+            columnOffset = columnOffset + layout.columnWidth;
+            y_offset = 40;
+            entriesInColumn = 0;
         end
 
         -- Display skillchain result header
-        local header = gdiObjects.skillchainTexts[textIndex];
-        if not header then break; end
+        local header = gdiObjects.textPool[textIndex];
         local chainInfo = skills.ChainInfo[result];
         local burstElements = chainInfo and chainInfo.burst or {};
         local elementsText = table.concat(burstElements, ', ');
         local color = skills.GetPropertyColor(result);
-        header:set_text(('%s [%s]'):format(result, elementsText));
+        
+        header:set_text(string.format('%s [%s]', result, elementsText));
         header:set_font_color(color);
         header:set_position_x(cache.settings.anchor.x + 10 + columnOffset);
         header:set_position_y(cache.settings.anchor.y + y_offset);
         header:set_visible(true);
+        
         textIndex = textIndex + 1;
         y_offset = y_offset + layout.entriesHeight;
         entriesInColumn = entriesInColumn + 1;
@@ -180,50 +248,64 @@ local function updateGDI(skillchains)
         -- Display each opener and closer
         for _, openerData in ipairs(openers) do
             for _, closerData in ipairs(openerData.closers) do
-                local comboText = gdiObjects.skillchainTexts[textIndex];
-                if not comboText then break; end
+                if textIndex > gdiObjects.poolSize then
+                    hitLimit = true;
+                    break;
+                end
+                
+                local comboText = gdiObjects.textPool[textIndex];
 
                 -- Check for level 3 skillchains (Light or Darkness)
                 local isReversible = (result == 'Light' or result == 'Darkness');
-                if isReversible and cache.both then
-                    comboText:set_text(('  %s ↔ %s'):format(openerData.opener, closerData.closer));
-                else
-                    comboText:set_text(('  %s → %s'):format(openerData.opener, closerData.closer));
-                end
-
+                local arrow = (isReversible and cache.both) and '↔' or '→';
+                
+                comboText:set_text(string.format('  %s %s %s', openerData.opener, arrow, closerData.closer));
                 comboText:set_font_color(cache.settings.font.font_color);
                 comboText:set_position_x(cache.settings.anchor.x + 20 + columnOffset);
                 comboText:set_position_y(cache.settings.anchor.y + y_offset);
                 comboText:set_visible(true);
+                
                 textIndex = textIndex + 1;
                 y_offset = y_offset + layout.entriesHeight;
                 entriesInColumn = entriesInColumn + 1;
             end
+            
+            if hitLimit then break; end
         end
+        
+        if hitLimit then break; end
     end
 
-    -- If results exceeded available text objects, show a truncation notice.
-    local textLimit = #gdiObjects.skillchainTexts;
-    if textIndex > textLimit then
-        local notice = gdiObjects.skillchainTexts[textLimit];
+    -- Track how many objects we actually used
+    gdiObjects.lastUsedCount = textIndex - 1;
+    
+    -- Show truncation notice if we hit the limit
+    if hitLimit and gdiObjects.poolSize > 0 then
+        local notice = gdiObjects.textPool[gdiObjects.poolSize];
         notice:set_text('⚠ Results trimmed. Add filters such as job:weapon or limit number of weapons in job or level=2.');
-        notice:set_font_color(0xFFFF5555); -- light red highlight
+        notice:set_font_color(0xFFFF5555);
         notice:set_position_x(cache.settings.anchor.x + 5);
         notice:set_position_y(cache.settings.anchor.y - 20);
         notice:set_visible(true);
     end
 
-    -- Ensure maxColumnHeight accounts for the last column
+    -- Update max column height
     maxColumnHeight = math.max(maxColumnHeight, y_offset);
 
     -- Adjust background dimensions
-    gdiObjects.background:set_height(maxColumnHeight + 5); -- Add padding to the height
-    gdiObjects.background:set_width(columnOffset + layout.columnWidth); -- Adjust width based on total columns
+    gdiObjects.background:set_height(maxColumnHeight + 5);
+    gdiObjects.background:set_width(columnOffset + layout.columnWidth);
+    
+    -- Shrink pool if oversized (do this after a delay to avoid thrashing)
+    if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then
+        shrinkPool();
+    end
 end
 
+-- ============================================================================
 -- Event handler for addon loading
+-- ============================================================================
 ashita.events.register('load', 'load_cb', function()
-    --print('[SkillchainCalc] Addon loaded.');
     cache.settings = settings.load(sccSettings);
     applyDefaultsToCache();
     initGDIObjects();
@@ -268,7 +350,6 @@ local function ParseSkillchains(isStep)
             return;
         end
 
-        -- Resolve single token (weapon / job / job:weapons)
         local wsList = SkillchainCore.resolveTokenToSkills(cache.token1);
         if (not wsList) then
             print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
@@ -276,10 +357,7 @@ local function ParseSkillchains(isStep)
             return;
         end
 
-        -- Property → WS-property → resulting chain
         local combinations = SkillchainCore.calculateStepSkillchains(wsList);
-
-        -- both has no meaning in step mode
         cache.both = false;
 
         displaySkillchainResults(combinations, 'step');
@@ -290,7 +368,6 @@ local function ParseSkillchains(isStep)
         return;
     end
 
-    -- Resolve tokens (weapon types OR jobs)
     local skills1 = SkillchainCore.resolveTokenToSkills(cache.token1);
     local skills2 = SkillchainCore.resolveTokenToSkills(cache.token2);
 
@@ -301,18 +378,6 @@ local function ParseSkillchains(isStep)
         return;
     end
 
-    --[[ debugging
-    print('Skills1:');
-    for _, skill1 in pairs(skills1) do
-        print(skill1.en .. ' ');
-    end
-    print('Skills2:');
-    for _, skill2 in pairs(skills2) do
-        print(skill2.en .. ' ');
-    end
-    ]]--
-
-    -- Calculate combinations (respect /scc both)
     local combinations = SkillchainCore.calculateSkillchains(skills1, skills2, cache.both);
 
     displaySkillchainResults(combinations);
@@ -323,9 +388,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
         local req = SkillchainGUI.DrawWindow(cache);
         if req ~= nil then
-            -- Anchor change from Settings tab
             if req.anchorChanged then
-                -- cache.settings.anchor.x/y already updated by GUI
                 moveGDIAnchor();
                 settings.save();
                 if isVisible then
@@ -333,7 +396,6 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 end
             end
 
-            -- Defaults updated from Calculator tab
             if req.updateDefaults then
                 applyDefaultsToCache();
                 settings.save();
@@ -342,19 +404,16 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 end
             end
 
-            -- Clear from GUI
             if req.clear then
                 clearGDI();
                 resetCacheFull();
                 return;
             end
 
-            -- Normal calculator request
             if req.token1 ~= nil then
                 cache.token1 = req.token1;
                 cache.token2 = req.token2;
 
-                -- Start from current defaults, then override with GUI state.
                 applyDefaultsToCache();
                 if req.level ~= nil then
                     cache.level = req.level;
@@ -380,12 +439,9 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
-    -- Block the command to prevent further processing
     e.blocked = true;
 
-    -----------------------------------------------------------------------
-    -- Settings-style commands: setx / sety / setlevel / setboth
-    -----------------------------------------------------------------------
+    -- Settings-style commands
     local validCommand = false;
     if #args > 2 then
         if (args[2]:any('setx', 'sety')) then
@@ -393,10 +449,9 @@ ashita.events.register('command', 'command_cb', function(e)
             if value and value >= 0 then
                 if (args[2] == 'setx') then
                     cache.settings.anchor.x = value;
-                else --if args[2] == 'sety' then
+                else
                     cache.settings.anchor.y = value;
                 end
-                -- Update the GDI objects to reflect the new position
                 moveGDIAnchor();
                 print('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
                 validCommand = true;
@@ -425,7 +480,6 @@ ashita.events.register('command', 'command_cb', function(e)
             end
         end
 
-
         if (validCommand) then
             settings.save();
             if (isVisible) then
@@ -435,15 +489,12 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    -----------------------------------------------------------------------
-    -- 1-arg utility commands: clear / debug / status / help
-    -----------------------------------------------------------------------
+    -- 1-arg utility commands
     if (#args == 2) then
         if (args[2] == 'clear') then
             clearGDI();
             resetCacheFull();
 
-            -- Also close the ImGui GUI when clearing from CLI
             if (SkillchainGUI ~= nil) then
                 SkillchainGUI.SetVisible(false);
             end
@@ -457,6 +508,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('Status of Default Filter:');
             print(' Skillchain Level: Skillchains Level ' .. cache.settings.default.level .. ' or higher.')
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
+            print(' GDI Pool Size: ' .. gdiObjects.poolSize .. ' (last used: ' .. gdiObjects.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
             print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both]');
@@ -472,8 +524,6 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate skillchains in both directions.');
-            --print('Usage: /scc step <token> [level] [sc:<element>]');
-            --print(' Tokens can be weapon types, jobs, or job:weapon filters:');
             print('Usage: /scc setx #       -- set x anchor');
             print('Usage: /scc sety #       -- set y anchor');
             print('Usage: /scc setlevel #   -- set default level filter');
@@ -484,10 +534,8 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    -- Ensure we have the necessary arguments
     if (#args < 3) then
         if (#args == 1) then
-            -- bare /scc → open GUI + show hint
             if SkillchainGUI ~= nil then
                 SkillchainGUI.SetVisible(true);
             end
@@ -510,7 +558,7 @@ ashita.events.register('command', 'command_cb', function(e)
         elseif lower == 'both' then
             both = true;
         elseif lower:sub(1, 3) == 'sc:' then
-            scElement = lower:sub(4);   -- already lowercase
+            scElement = lower:sub(4);
         else
             print('[SkillchainCalc] Invalid argument: ' .. param);
             print('/scc help -- for usage help');
@@ -518,19 +566,15 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    -- Optimization: If the weapon types are the same, set 'both' to nil
     if args[2] == args[3] then
         both = nil;
     end
 
-    -- Check if we doing Step vs Combo calculator
-    --local isStep = args[2]:lower() == 'step';
     local isStep = false;
 
     cache.token1 = isStep and args[3] or args[2];
     cache.token2 = isStep and nil or args[3];
 
-    -- Start from defaults, then override with explicit CLI args
     applyDefaultsToCache();
     if level ~= nil then
         cache.level = level;
@@ -544,7 +588,6 @@ ashita.events.register('command', 'command_cb', function(e)
 
     ParseSkillchains(isStep);
 
-    -- Auto-open GUI with current CLI inputs (pair mode only)
     if (not isStep) and SkillchainGUI ~= nil then
         SkillchainGUI.OpenFromCli(cache);
     end
@@ -552,6 +595,5 @@ end);
 
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
-    --print('[SkillchainCalc] Addon unloaded.');
     destroyGDIObjects();
 end);
