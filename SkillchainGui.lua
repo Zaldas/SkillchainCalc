@@ -11,6 +11,8 @@ local SkillchainCore = require('SkillchainCore');
 local SkillchainGUI = {};
 local showWindow    = { false };
 
+local filtersOpen = false;
+
 -- Shared width for each job column.
 local JOB_COLUMN_WIDTH = 160;
 
@@ -419,94 +421,78 @@ local function DrawCalculatorTab(cache)
     local request = nil;
 
     -----------------------------------------------------------------------
-    -- TOP SECTION: Filters
+    -- TOP SECTION: Filters (Collapsible)
     -----------------------------------------------------------------------
-    DrawGradientHeader('Filters', imgui.GetContentRegionAvail());
-
-    local filterWidth = JOB_COLUMN_WIDTH * 2;
-
-    -- Element filter
-    imgui.Text('Skillchain Element (sc:<element>)');
-    HelpMarker('Filter by skillchain element. Matches CLI sc:<element>, e.g. sc:ice, sc:fire, sc:any.');
-
-    local baseX  = imgui.GetCursorPosX();
-    local indent = 5;
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.PushItemWidth(filterWidth - indent);
-    state.elementIndex = DrawCombo('##scelement', elementItems, state.elementIndex);
-    imgui.PopItemWidth();
-
-    imgui.Spacing();
-
-    -- Level filter
-    imgui.Text('Skillchain Level (1, 2, 3)');
-    HelpMarker('Filter by skillchain tier. 1 = basic, 2 = tier 2, 3 = tier 3/4.');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.PushItemWidth(filterWidth - indent);
-    local lvl = { state.level };
-    if imgui.SliderInt('##sclevel', lvl, 1, 3) then
-        state.level = lvl[1];
+    if imgui.IsWindowAppearing() then
+        imgui.SetNextItemOpen(false, ImGuiCond_Always);
     end
-    imgui.PopItemWidth();
+
+    filtersOpen = imgui.CollapsingHeader('Filters');
+
+    if filtersOpen then
+        local filterWidth = JOB_COLUMN_WIDTH * 2;
+
+        -- Element filter
+        imgui.Text('Skillchain Element (sc:<element>)');
+
+        local baseX  = imgui.GetCursorPosX();
+        local indent = 5;
+
+        imgui.SetCursorPosX(baseX + indent);
+        imgui.PushItemWidth(filterWidth - indent);
+        state.elementIndex = DrawCombo('##scelement', elementItems, state.elementIndex);
+        imgui.PopItemWidth();
 
         imgui.Spacing();
 
-    -- Both directions
-    local both = { state.both };
+        -- Level filter
+        imgui.Text('Skillchain Level (1, 2, 3)');
+        imgui.SetCursorPosX(baseX + indent);
+        imgui.PushItemWidth(filterWidth - indent);
+        local lvl = { state.level };
+        if imgui.SliderInt('##sclevel', lvl, 1, 3) then
+            state.level = lvl[1];
+        end
+        imgui.PopItemWidth();
 
-    -- Checkbox first (left side)
-    if imgui.Checkbox('##both', both) then
-        state.both = both[1];
-    end
+        imgui.Spacing();
 
-    imgui.SameLine();
-
-    -- Label
-    imgui.Text('Both Directions (both)');
-
-    -- Help marker at end of label
-    HelpMarker('Show both A->B and B->A chains when they differ. Matches CLI "both".');
-
-    imgui.Spacing();
-
-    -----------------------------------------------------------------------
-    -- Set Defaults button (centered, with ? tooltip marker on the right)
-    -----------------------------------------------------------------------
-    do
-        local avail = imgui.GetContentRegionAvail();
-        local btnW  = 130;
-        local btnH  = 0;
-
-        -- center horizontally
-        local curX   = imgui.GetCursorPosX();
-        local startX = curX + (avail - btnW) * 0.5;
-        imgui.SetCursorPosX(startX);
-
-        -- Ghost style
-        imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-        imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
-        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
-
-        -- The button
-        if imgui.Button('Set Defaults', { btnW, btnH }) then
-            local def = (cache and cache.settings and cache.settings.default) or {};
-            def.level = state.level;
-            def.both  = state.both;
-            cache.settings.default = def;
-
-            request = request or {};
-            request.updateDefaults = true;
+        -- Both directions
+        local both = { state.both };
+        if imgui.Checkbox('Both Directions (both)', both) then
+            state.both = both[1];
         end
 
-        imgui.PopStyleColor(3);
-        imgui.PopStyleVar(1);
+        imgui.Spacing();
 
-        -- Add (?) help marker to the *right* of the button
-        imgui.SameLine();
-        HelpMarker('Save current Level and Both as your default behavior for GUI and CLI.');
+        -- Set Defaults button (inside collapse)
+        do
+            local avail  = imgui.GetContentRegionAvail();
+            local btnW   = 130;
+            local startX = imgui.GetCursorPosX() + (avail - btnW) * 0.5;
+            imgui.SetCursorPosX(startX);
+
+            imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+            imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
+            imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
+            imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
+
+            if imgui.Button('Set Defaults', { btnW, 0 }) then
+                local def = (cache and cache.settings and cache.settings.default) or {};
+                def.level = state.level;
+                def.both  = state.both;
+                cache.settings.default = def;
+
+                request = request or {};
+                request.updateDefaults = true;
+            end
+
+            imgui.PopStyleColor(3);
+            imgui.PopStyleVar(1);
+
+            imgui.SameLine();
+            HelpMarker('Save current Level and Both as your default behavior for GUI and CLI.');
+        end
     end
 
     imgui.Separator();
@@ -849,10 +835,16 @@ function SkillchainGUI.DrawWindow(cache)
     local count2     = countJobWeapons(job2Id);
     local maxWeapons = math.max(count1, count2);
 
-    local rows     = 13;    -- rows of static gui 
-    local rowsWeapons = maxWeapons;
+    local rowsBase      = 7;   -- everything except filters
+    local rowsFilters   = 6;   -- element + level + both + spacing
+    local rowsWeapons   = maxWeapons;
 
-    local totalRows  = rows + rowsWeapons;
+    local totalRows = rowsBase + rowsWeapons;
+
+    if filtersOpen then
+        totalRows = totalRows + rowsFilters;
+    end
+
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local winHeight  = totalRows * lineHeight;
 
