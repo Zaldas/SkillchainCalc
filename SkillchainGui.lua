@@ -192,7 +192,7 @@ local function calculateTabHeight(tabName, maxWeapons, includeSubjob)
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local paddingAdjust = 0;
     if tabName == 'Calculator' then
-        paddingAdjust = -7;
+        paddingAdjust = -6;
         -- Base rows: header + job combos + buttons + spacing
         local rowsBase    = 6;
         local rowsWeapons = maxWeapons or 0;
@@ -200,7 +200,7 @@ local function calculateTabHeight(tabName, maxWeapons, includeSubjob)
         local rowsSubjob = includeSubjob and 1 or 0;
         return (rowsBase + rowsWeapons + rowsSubjob) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
-        paddingAdjust = 6;
+        paddingAdjust = -7;
         -- Filters tab: 4 sections (Element, Level, Both, Subjob) + buttons + Calculate button
         return 19 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
