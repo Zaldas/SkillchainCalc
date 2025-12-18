@@ -17,6 +17,11 @@ local settings       = require('settings');
 local SkillchainGUI  = require('skillchaingui');
 
 local debugMode = false; -- Debug mode flag
+
+-- Soft cap configuration: minimum results to show after a header before allowing column split
+-- This prevents columns with just a header and 1-4 results
+local minResultsAfterHeader = 8;
+
 local sccSettings = T{
     font = {
         font_family = 'Arial',
@@ -51,7 +56,8 @@ local sccSettings = T{
     },
     default = {
         level = 1,
-        both = false
+        both = false,
+        includeSubjob = false
     },
 };
 
@@ -195,56 +201,98 @@ local function updateGDI(skillchains)
     local columnOffset = 0;
     local entriesInColumn = 0;
     local maxColumnHeight = 0;
-    
+
     -- Count required objects first
+    -- Account for headers that may be repeated when splitting across columns
     local requiredObjects = 0;
     for _, result in ipairs(orderedResults) do
         local openers = sortedResults[result];
-        requiredObjects = requiredObjects + 1; -- Header
+        local resultCount = 0;
         for _, openerData in ipairs(openers) do
-            requiredObjects = requiredObjects + #openerData.closers;
+            resultCount = resultCount + #openerData.closers;
         end
+
+        -- Estimate how many times this skillchain's header might appear
+        -- If results span multiple columns, we need multiple headers
+        -- Worst case: header every (minResultsAfterHeader + 1) entries after the first header
+        local headerCount = 1; -- At least one header
+        if resultCount > layout.entriesPerColumn then
+            -- Rough estimate: one header per column segment
+            headerCount = math.ceil(resultCount / (layout.entriesPerColumn - 1));
+        end
+
+        requiredObjects = requiredObjects + headerCount + resultCount;
     end
-    
+
     -- Ensure pool has enough objects
     ensurePoolSize(requiredObjects);
     
     -- Track if we hit the limit
     local hitLimit = false;
     
+    -- Helper function to display a skillchain header
+    local function displayHeader(result, color, elementsText)
+        if textIndex > gdiObjects.poolSize then
+            return false;
+        end
+
+        local header = gdiObjects.textPool[textIndex];
+        header:set_text(string.format('%s [%s]', result, elementsText));
+        header:set_font_color(color);
+        header:set_position_x(cache.settings.anchor.x + 10 + columnOffset);
+        header:set_position_y(cache.settings.anchor.y + y_offset);
+        header:set_visible(true);
+
+        textIndex = textIndex + 1;
+        y_offset = y_offset + layout.entriesHeight;
+        entriesInColumn = entriesInColumn + 1;
+
+        return true;
+    end
+
     -- Render results
     for _, result in ipairs(orderedResults) do
         if textIndex > gdiObjects.poolSize then
             hitLimit = true;
             break;
         end
-        
-        local openers = sortedResults[result];
 
-        -- Move to next column if needed
-        if entriesInColumn + 1 > layout.entriesPerColumn then
+        local openers = sortedResults[result];
+        local chainInfo = skills.ChainInfo[result];
+        local burstElements = chainInfo and chainInfo.burst or {};
+        local elementsText = table.concat(burstElements, ', ');
+        local color = skills.GetPropertyColor(result);
+
+        -- Count total entries for this skillchain (header + all combos)
+        local totalEntries = 1; -- header
+        for _, openerData in ipairs(openers) do
+            totalEntries = totalEntries + #openerData.closers;
+        end
+
+        -- Soft cap logic: if we're near the column limit and adding this skillchain
+        -- would only fit the header or very few results, move to next column instead
+        local spaceLeft = layout.entriesPerColumn - entriesInColumn;
+
+        if spaceLeft > 0 and spaceLeft <= minResultsAfterHeader then
+            -- Not enough space for header + minimum results, move to next column
             maxColumnHeight = math.max(maxColumnHeight, y_offset);
             columnOffset = columnOffset + layout.columnWidth;
             y_offset = 40;
             entriesInColumn = 0;
         end
 
-        -- Display skillchain result header
-        local header = gdiObjects.textPool[textIndex];
-        local chainInfo = skills.ChainInfo[result];
-        local burstElements = chainInfo and chainInfo.burst or {};
-        local elementsText = table.concat(burstElements, ', ');
-        local color = skills.GetPropertyColor(result);
-        
-        header:set_text(string.format('%s [%s]', result, elementsText));
-        header:set_font_color(color);
-        header:set_position_x(cache.settings.anchor.x + 10 + columnOffset);
-        header:set_position_y(cache.settings.anchor.y + y_offset);
-        header:set_visible(true);
-        
-        textIndex = textIndex + 1;
-        y_offset = y_offset + layout.entriesHeight;
-        entriesInColumn = entriesInColumn + 1;
+        -- Display initial header
+        if not displayHeader(result, color, elementsText) then
+            hitLimit = true;
+            break;
+        end
+
+        -- Track how many results we've shown for this skillchain section
+        local resultsShownInSection = 0;
+        local totalResultsCount = 0; -- Total count of all results for this skillchain
+        for _, openerData in ipairs(openers) do
+            totalResultsCount = totalResultsCount + #openerData.closers;
+        end
 
         -- Display each opener and closer
         for _, openerData in ipairs(openers) do
@@ -253,27 +301,57 @@ local function updateGDI(skillchains)
                     hitLimit = true;
                     break;
                 end
-                
+
+                -- Calculate how many results remain (including this one)
+                local resultsRemaining = totalResultsCount - resultsShownInSection;
+
+                -- Check if we need to move to next column before displaying this entry
+                -- Conditions:
+                -- 1. We've exceeded the soft cap (30 entries)
+                -- 2. We've shown at least minResultsAfterHeader (5) results after the last header
+                -- 3. Remaining results would make a new column worthwhile
+                --    New column needs: header (1) + at least minResultsAfterHeader (5) results = 6+ entries
+                --    So we need resultsRemaining >= minResultsAfterHeader + 1
+                local shouldSplit = entriesInColumn + 1 > layout.entriesPerColumn and
+                                   resultsShownInSection >= minResultsAfterHeader and
+                                   resultsRemaining >= minResultsAfterHeader + 1;
+
+                if shouldSplit then
+                    maxColumnHeight = math.max(maxColumnHeight, y_offset);
+                    columnOffset = columnOffset + layout.columnWidth;
+                    y_offset = 40;
+                    entriesInColumn = 0;
+                    -- NOTE: Do NOT reset resultsShownInSection here!
+                    -- It needs to keep counting to properly calculate resultsRemaining
+
+                    -- Re-display the header in the new column
+                    if not displayHeader(result, color, elementsText) then
+                        hitLimit = true;
+                        break;
+                    end
+                end
+
                 local comboText = gdiObjects.textPool[textIndex];
 
                 -- Check for level 3 skillchains (Light or Darkness)
                 local isReversible = (result == 'Light' or result == 'Darkness');
                 local arrow = (isReversible and cache.both) and '↔' or '→';
-                
+
                 comboText:set_text(string.format('  %s %s %s', openerData.opener, arrow, closerData.closer));
                 comboText:set_font_color(cache.settings.font.font_color);
                 comboText:set_position_x(cache.settings.anchor.x + 20 + columnOffset);
                 comboText:set_position_y(cache.settings.anchor.y + y_offset);
                 comboText:set_visible(true);
-                
+
                 textIndex = textIndex + 1;
                 y_offset = y_offset + layout.entriesHeight;
                 entriesInColumn = entriesInColumn + 1;
+                resultsShownInSection = resultsShownInSection + 1;
             end
-            
+
             if hitLimit then break; end
         end
-        
+
         if hitLimit then break; end
     end
 
