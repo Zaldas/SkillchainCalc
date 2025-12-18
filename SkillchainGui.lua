@@ -11,8 +11,6 @@ local SkillchainCore = require('SkillchainCore');
 local SkillchainGUI = {};
 local showWindow    = { false };
 
-local filtersOpen = false;
-
 -- Shared width for each job column.
 local JOB_COLUMN_WIDTH = 160;
 
@@ -169,11 +167,36 @@ local state = {
     job2LastId    = nil,
     job1Weapons   = nil,
     job2Weapons   = nil,
+
+    -- track active tab for dynamic height
+    activeTab     = 'Calculator',
+
+    -- counter to force tab bar reset
+    tabBarCounter = 0,
 };
 
 -----------------------------------------------------------------------
 -- Helpers
 -----------------------------------------------------------------------
+local function calculateTabHeight(tabName, maxWeapons)
+    local lineHeight = imgui.GetFrameHeightWithSpacing();
+
+    if tabName == 'Calculator' then
+        -- Base rows: header + job combos + buttons + spacing
+        local rowsBase    = 6;
+        local rowsWeapons = maxWeapons or 0;
+        return (rowsBase + rowsWeapons) * lineHeight;
+    elseif tabName == 'Filters' then
+        -- Filters tab: 3 sections (Element, Level, Both) + buttons
+        return 15 * lineHeight;
+    elseif tabName == 'Settings' then
+        -- Settings tab: Anchor (header + 2 sliders) + Defaults (header + 2 lines) + CLI (header + 4 lines)
+        return 14 * lineHeight;
+    end
+
+    return 400; -- fallback
+end
+
 local function DrawCombo(label, items, currentIndex)
     local idx   = currentIndex or 1;
     if idx < 1 or idx > #items then
@@ -209,7 +232,7 @@ local function HelpMarker(text)
     end
 end
 
--- Gradient header helper: color → transparent with small text padding.
+-- Gradient header helper: color â†’ transparent with small text padding.
 local function DrawGradientHeader(text, width)
     local drawlist = imgui.GetWindowDrawList();
     local x, y     = imgui.GetCursorScreenPos();
@@ -421,85 +444,7 @@ local function DrawCalculatorTab(cache)
     local request = nil;
 
     -----------------------------------------------------------------------
-    -- TOP SECTION: Filters (Collapsible)
-    -----------------------------------------------------------------------
-    if imgui.IsWindowAppearing() then
-        imgui.SetNextItemOpen(false, ImGuiCond_Always);
-    end
-
-    filtersOpen = imgui.CollapsingHeader('Filters');
-
-    if filtersOpen then
-        local filterWidth = JOB_COLUMN_WIDTH * 2;
-
-        -- Element filter
-        imgui.Text('Skillchain Element (sc:<element>)');
-
-        local baseX  = imgui.GetCursorPosX();
-        local indent = 5;
-
-        imgui.SetCursorPosX(baseX + indent);
-        imgui.PushItemWidth(filterWidth - indent);
-        state.elementIndex = DrawCombo('##scelement', elementItems, state.elementIndex);
-        imgui.PopItemWidth();
-
-        imgui.Spacing();
-
-        -- Level filter
-        imgui.Text('Skillchain Level (1, 2, 3)');
-        imgui.SetCursorPosX(baseX + indent);
-        imgui.PushItemWidth(filterWidth - indent);
-        local lvl = { state.level };
-        if imgui.SliderInt('##sclevel', lvl, 1, 3) then
-            state.level = lvl[1];
-        end
-        imgui.PopItemWidth();
-
-        imgui.Spacing();
-
-        -- Both directions
-        local both = { state.both };
-        if imgui.Checkbox('Both Directions (both)', both) then
-            state.both = both[1];
-        end
-
-        imgui.Spacing();
-
-        -- Set Defaults button (inside collapse)
-        do
-            local avail  = imgui.GetContentRegionAvail();
-            local btnW   = 130;
-            local startX = imgui.GetCursorPosX() + (avail - btnW) * 0.5;
-            imgui.SetCursorPosX(startX);
-
-            imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-            imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
-            imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
-            imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
-
-            if imgui.Button('Set Defaults', { btnW, 0 }) then
-                local def = (cache and cache.settings and cache.settings.default) or {};
-                def.level = state.level;
-                def.both  = state.both;
-                cache.settings.default = def;
-
-                request = request or {};
-                request.updateDefaults = true;
-            end
-
-            imgui.PopStyleColor(3);
-            imgui.PopStyleVar(1);
-
-            imgui.SameLine();
-            HelpMarker('Save current Level and Both as your default behavior for GUI and CLI.');
-        end
-    end
-
-    imgui.Separator();
-    imgui.Spacing();
-
-    -----------------------------------------------------------------------
-    -- MIDDLE SECTION: Jobs + weapons
+    -- Jobs + weapons section
     -----------------------------------------------------------------------
     DrawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
 
@@ -625,15 +570,123 @@ local function DrawCalculatorTab(cache)
         state.job1Weapons = resetWeapons(curJob1Id);
         state.job2Weapons = resetWeapons(curJob2Id);
 
-        -- Reset SC element back to Any
-        state.elementIndex = 1;
+        request = { clear = true };
+    end
 
-        -- Reset GUI level/both to stored defaults
+    imgui.PopStyleColor(3);
+    imgui.PopStyleVar(1);
+
+    return request;
+end
+
+local function DrawFiltersTab(cache)
+    local request = nil;
+
+    -----------------------------------------------------------------------
+    -- Element Filter
+    -----------------------------------------------------------------------
+    DrawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
+
+    local baseX  = imgui.GetCursorPosX();
+    local indent = 5;
+    local filterWidth = JOB_COLUMN_WIDTH * 2;
+
+    imgui.Text('Filter results by burst element:');
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.PushItemWidth(filterWidth - indent);
+    state.elementIndex = DrawCombo('##scelement', elementItems, state.elementIndex);
+    imgui.PopItemWidth();
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Level Filter
+    -----------------------------------------------------------------------
+    DrawGradientHeader('Skillchain Level (1, 2, 3)', imgui.GetContentRegionAvail());
+
+    imgui.Text('Minimum skillchain tier:');
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.PushItemWidth(filterWidth - indent);
+    local lvl = { state.level };
+    if imgui.SliderInt('##sclevel', lvl, 1, 3) then
+        state.level = lvl[1];
+    end
+    imgui.PopItemWidth();
+
+    imgui.Spacing();
+    imgui.Text('  1 = All skillchains');
+    imgui.Text('  2 = Level 2+ only');
+    imgui.Text('  3 = Level 3 only');
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Both Directions
+    -----------------------------------------------------------------------
+    DrawGradientHeader('Calculate Both Directions', imgui.GetContentRegionAvail());
+
+    local both = { state.both };
+    if imgui.Checkbox('Calculate skillchains in both directions', both) then
+        state.both = both[1];
+    end
+
+    imgui.SameLine();
+    HelpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1.\nNote: Light/Darkness chains suppress reverse duplicates.');
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Action Buttons
+    -----------------------------------------------------------------------
+    local availWidth   = imgui.GetContentRegionAvail();
+    local buttonWidth  = 140;
+    local spacing      = 10;
+    local totalWidth   = buttonWidth * 2 + spacing;
+
+    if availWidth > totalWidth then
+        local startX = imgui.GetCursorPosX() + ((availWidth - totalWidth) / 2);
+        imgui.SetCursorPosX(startX);
+    end
+
+    -- Set Defaults button
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
+
+    if imgui.Button('Set as Defaults', { buttonWidth, 0 }) then
+        local def = (cache and cache.settings and cache.settings.default) or {};
+        def.level = state.level;
+        def.both  = state.both;
+        cache.settings.default = def;
+
+        request = request or {};
+        request.updateDefaults = true;
+    end
+
+    imgui.PopStyleColor(3);
+    imgui.PopStyleVar(1);
+
+    imgui.SameLine();
+
+    -- Reset Filters button (ghost style)
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+    imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
+    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
+
+    if imgui.Button('Reset Filters', { buttonWidth, 0 }) then
+        -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
         state.level = def.level or 1;
         state.both  = def.both  or false;
-
-        request = { clear = true };
+        state.elementIndex = 1;
     end
 
     imgui.PopStyleColor(3);
@@ -777,6 +830,8 @@ function SkillchainGUI.Toggle()
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
+        state.activeTab = 'Calculator';
+        state.tabBarCounter = state.tabBarCounter + 1;
     end
 end
 
@@ -785,6 +840,8 @@ function SkillchainGUI.SetVisible(v)
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
+        state.activeTab = 'Calculator';
+        state.tabBarCounter = state.tabBarCounter + 1;
     end
 end
 
@@ -824,10 +881,10 @@ function SkillchainGUI.DrawWindow(cache)
         end
 
         state.initialized   = true;
-        state.openedFromCli = false; -- reset after init
+        state.openedFromCli = false;
     end
 
-    -- derive current jobs to estimate height
+    -- derive current jobs to estimate height for Calculator tab
     local job1Id = jobItems[state.job1Index] or jobItems[1];
     local job2Id = jobItems[state.job2Index] or jobItems[2];
 
@@ -835,18 +892,8 @@ function SkillchainGUI.DrawWindow(cache)
     local count2     = countJobWeapons(job2Id);
     local maxWeapons = math.max(count1, count2);
 
-    local rowsBase      = 7;   -- everything except filters
-    local rowsFilters   = 6;   -- element + level + both + spacing
-    local rowsWeapons   = maxWeapons;
-
-    local totalRows = rowsBase + rowsWeapons;
-
-    if filtersOpen then
-        totalRows = totalRows + rowsFilters;
-    end
-
-    local lineHeight = imgui.GetFrameHeightWithSpacing();
-    local winHeight  = totalRows * lineHeight;
+    -- Calculate window height based on active tab
+    local winHeight = calculateTabHeight(state.activeTab, maxWeapons);
 
     imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
 
@@ -862,9 +909,15 @@ function SkillchainGUI.DrawWindow(cache)
     end
 
     local request = nil;
-    if imgui.BeginTabBar('##scc_tabs') then
+
+    -- Use counter in tab bar ID to force reset on window open
+    local tabBarId = string.format('##scc_tabs_%d', state.tabBarCounter);
+    if imgui.BeginTabBar(tabBarId, ImGuiTabBarFlags_None) then
         -- Calculator tab
         if imgui.BeginTabItem('Calculator') then
+            if state.activeTab ~= 'Calculator' then
+                state.activeTab = 'Calculator';
+            end
             local r = DrawCalculatorTab(cache);
             if r then
                 request = r;
@@ -872,8 +925,26 @@ function SkillchainGUI.DrawWindow(cache)
             imgui.EndTabItem();
         end
 
+        -- Filters tab
+        if imgui.BeginTabItem('Filters') then
+            if state.activeTab ~= 'Filters' then
+                state.activeTab = 'Filters';
+            end
+            local r = DrawFiltersTab(cache);
+            if r then
+                request = request or {};
+                for k, v in pairs(r) do
+                    request[k] = v;
+                end
+            end
+            imgui.EndTabItem();
+        end
+
         -- Settings tab
         if imgui.BeginTabItem('Settings') then
+            if state.activeTab ~= 'Settings' then
+                state.activeTab = 'Settings';
+            end
             local r = DrawSettingsTab(cache);
             if r then
                 request = request or {};
