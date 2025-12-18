@@ -125,12 +125,19 @@ local function getJobWeaponList(jobId)
     return list;
 end
 
-local function buildToken(jobId, weaponSel)
+local function buildToken(jobId, weaponSel, subJobId)
     if not jobId then
         return nil;
     end
 
     local jobTok   = jobId:lower();
+
+    -- Add subjob if provided
+    if subJobId then
+        local subJobTok = subJobId:lower();
+        jobTok = string.format('%s/%s', jobTok, subJobTok);
+    end
+
     local selected = {};
     local list     = getJobWeaponList(jobId);
 
@@ -159,9 +166,15 @@ local state = {
     elementIndex  = 1,
     both          = false,
 
+    -- subjob filter
+    includeSubjob = false,
+
     -- middle section
     job1Index     = 1,
     job2Index     = 2,
+
+    job1SubIndex  = 2,  -- Different from job1Index
+    job2SubIndex  = 1,  -- Different from job2Index
 
     job1LastId    = nil,
     job2LastId    = nil,
@@ -170,28 +183,30 @@ local state = {
 
     -- track active tab for dynamic height
     activeTab     = 'Calculator',
-
-    -- counter to force tab bar reset
-    tabBarCounter = 0,
 };
 
 -----------------------------------------------------------------------
 -- Helpers
 -----------------------------------------------------------------------
-local function calculateTabHeight(tabName, maxWeapons)
+local function calculateTabHeight(tabName, maxWeapons, includeSubjob)
     local lineHeight = imgui.GetFrameHeightWithSpacing();
-
+    local paddingAdjust = 0;
     if tabName == 'Calculator' then
+        paddingAdjust = -7;
         -- Base rows: header + job combos + buttons + spacing
         local rowsBase    = 6;
         local rowsWeapons = maxWeapons or 0;
-        return (rowsBase + rowsWeapons) * lineHeight;
+        -- Add extra rows for subjob dropdowns if enabled
+        local rowsSubjob = includeSubjob and 1 or 0;
+        return (rowsBase + rowsWeapons + rowsSubjob) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
-        -- Filters tab: 3 sections (Element, Level, Both) + buttons
-        return 15 * lineHeight;
+        paddingAdjust = 6;
+        -- Filters tab: 4 sections (Element, Level, Both, Subjob) + buttons
+        return 17 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
+        --paddingAdjust = 0;
         -- Settings tab: Anchor (header + 2 sliders) + Defaults (header + 2 lines) + CLI (header + 4 lines)
-        return 14 * lineHeight;
+        return 15 * lineHeight + paddingAdjust;
     end
 
     return 400; -- fallback
@@ -340,8 +355,8 @@ local function applyTokenToSide(side, token)
         return;
     end
 
-    -- Let core parse "job" or "job:weapon1,weapon2"
-    local jobId, allowedWeapons = SkillchainCore.getJobAndWeaponsFromToken(token);
+    -- Let core parse "job", "job:weapon1,weapon2", or "mainjob/subjob:weapon"
+    local jobId, allowedWeapons, subJobId = SkillchainCore.getJobAndWeaponsFromToken(token);
     if not jobId then
         return;
     end
@@ -351,7 +366,18 @@ local function applyTokenToSide(side, token)
         return;
     end
 
+    -- Ignore subjob if it's the same as main job
+    if subJobId and subJobId == jobId then
+        subJobId = nil;
+    end
+
     local idx = findJobIndex(jobId) or 1;
+    local subIdx = 1;
+    if subJobId then
+        subIdx = findJobIndex(subJobId) or 1;
+        state.includeSubjob = true;  -- Auto-enable subjob filter if token contains subjob
+    end
+
     local sel = {};
 
     -- If the token had an explicit weapon list (job:weapon1,weapon2)
@@ -380,13 +406,15 @@ local function applyTokenToSide(side, token)
     end
 
     if side == 1 then
-        state.job1Index  = idx;
-        state.job1LastId = jobId;
-        state.job1Weapons = sel;
+        state.job1Index    = idx;
+        state.job1SubIndex = subIdx;
+        state.job1LastId   = jobId;
+        state.job1Weapons  = sel;
     else
-        state.job2Index  = idx;
-        state.job2LastId = jobId;
-        state.job2Weapons = sel;
+        state.job2Index    = idx;
+        state.job2SubIndex = subIdx;
+        state.job2LastId   = jobId;
+        state.job2Weapons  = sel;
     end
 end
 
@@ -457,7 +485,8 @@ local function DrawCalculatorTab(cache)
     imgui.SetColumnWidth(2, JOB_COLUMN_WIDTH);
 
     -- Row 1: job combos + arrow
-    imgui.PushItemWidth(JOB_COLUMN_WIDTH - 8);
+    imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
+    local prevJob1Index = state.job1Index;
     state.job1Index = DrawCombo('##fromjob', jobItems, state.job1Index);
     imgui.PopItemWidth();
 
@@ -474,9 +503,52 @@ local function DrawCalculatorTab(cache)
     end
 
     imgui.NextColumn();
-    imgui.PushItemWidth(JOB_COLUMN_WIDTH - 8);
+    imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
+    local prevJob2Index = state.job2Index;
     state.job2Index = DrawCombo('##tojob', jobItems, state.job2Index);
     imgui.PopItemWidth();
+
+    -- Row 1.5: subjob combos (if enabled)
+    if state.includeSubjob then
+        imgui.NextColumn();
+        local curX = imgui.GetCursorPosX();
+        imgui.SetCursorPosX(curX + 5);
+        imgui.Text('/');
+        imgui.SameLine();
+        imgui.PushItemWidth(JOB_COLUMN_WIDTH - 30);
+        local prevJob1SubIndex = state.job1SubIndex;
+        state.job1SubIndex = DrawCombo('##fromsubjob', jobItems, state.job1SubIndex);
+        imgui.PopItemWidth();
+
+        imgui.NextColumn();
+        -- Empty center column for subjobs
+
+        imgui.NextColumn();
+        curX = imgui.GetCursorPosX();
+        imgui.SetCursorPosX(curX + 5);
+        imgui.Text('/');
+        imgui.SameLine();
+        imgui.PushItemWidth(JOB_COLUMN_WIDTH - 30);
+        local prevJob2SubIndex = state.job2SubIndex;
+        state.job2SubIndex = DrawCombo('##tosubjob', jobItems, state.job2SubIndex);
+        imgui.PopItemWidth();
+
+        -- Prevent main and subjob from being the same - swap them if they match
+        -- If subjob changed and now matches main, swap main to previous subjob
+        if state.job1SubIndex == state.job1Index and prevJob1SubIndex ~= state.job1SubIndex then
+            state.job1Index = prevJob1SubIndex;
+        end
+        if state.job2SubIndex == state.job2Index and prevJob2SubIndex ~= state.job2SubIndex then
+            state.job2Index = prevJob2SubIndex;
+        end
+        -- If main job changed and now matches subjob, swap subjob to previous main
+        if state.job1Index == state.job1SubIndex and prevJob1Index ~= state.job1Index then
+            state.job1SubIndex = prevJob1Index;
+        end
+        if state.job2Index == state.job2SubIndex and prevJob2Index ~= state.job2Index then
+            state.job2SubIndex = prevJob2Index;
+        end
+    end
 
     -- Re-resolve job IDs after selection
     job1Id = jobItems[state.job1Index] or jobItems[1];
@@ -524,8 +596,16 @@ local function DrawCalculatorTab(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
 
     if imgui.Button('Calculate', { buttonWidth, 0 }) then
-        local token1 = buildToken(job1Id, state.job1Weapons);
-        local token2 = buildToken(job2Id, state.job2Weapons);
+        local job1SubId = nil;
+        local job2SubId = nil;
+
+        if state.includeSubjob then
+            job1SubId = jobItems[state.job1SubIndex];
+            job2SubId = jobItems[state.job2SubIndex];
+        end
+
+        local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
+        local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
 
         local lvlVal    = state.level or 1;
         local elemTok   = elementTokens[state.elementIndex] or '';
@@ -635,7 +715,24 @@ local function DrawFiltersTab(cache)
     end
 
     imgui.SameLine();
-    HelpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1.\nNote: Light/Darkness chains suppress reverse duplicates.');
+    HelpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Include Subjob Filter
+    -----------------------------------------------------------------------
+    DrawGradientHeader('Include Subjob', imgui.GetContentRegionAvail());
+
+    local includeSubjob = { state.includeSubjob };
+    if imgui.Checkbox('Enable subjob selection in Calculator tab', includeSubjob) then
+        state.includeSubjob = includeSubjob[1];
+    end
+
+    imgui.SameLine();
+    HelpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n (e.g., marksmanship).');
 
     imgui.Spacing();
     imgui.Separator();
@@ -664,6 +761,7 @@ local function DrawFiltersTab(cache)
         local def = (cache and cache.settings and cache.settings.default) or {};
         def.level = state.level;
         def.both  = state.both;
+        def.includeSubjob = state.includeSubjob;
         cache.settings.default = def;
 
         request = request or {};
@@ -686,6 +784,7 @@ local function DrawFiltersTab(cache)
         local def = (cache and cache.settings and cache.settings.default) or {};
         state.level = def.level or 1;
         state.both  = def.both  or false;
+        state.includeSubjob = def.includeSubjob or false;
         state.elementIndex = 1;
     end
 
@@ -752,10 +851,13 @@ local function DrawSettingsTab(cache)
     local def = cache.settings.default or {};
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Default Level: %s", tostring(def.level)));
+    imgui.Text(string.format("Default Level:   %s", tostring(def.level)));
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Default Both:  %s", tostring(def.both)));
+    imgui.Text(string.format("Default Both:    %s", tostring(def.both)));
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Default Subjob:  %s", tostring(def.includeSubjob or false)));
 
     -----------------------------------------------------------------------
     -- How to update defaults (CLI instructions)
@@ -769,6 +871,9 @@ local function DrawSettingsTab(cache)
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setboth <true|false>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setsubjob <true|false>');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setx <value>');
@@ -798,6 +903,10 @@ function SkillchainGUI.OpenFromCli(cache)
         state.both = def.both or false;
     end
 
+    -- Don't set includeSubjob yet - let applyTokenToSide detect it from tokens first
+    -- We'll set it from defaults after if it wasn't set by tokens
+    local initialSubjob = def.includeSubjob or false;
+
     -- Element from cache.scElement
     state.elementIndex = 1;
     if cache.scElement then
@@ -811,11 +920,19 @@ function SkillchainGUI.OpenFromCli(cache)
     end
 
     -- Jobs + weapons from token1 / token2
+    -- These may set state.includeSubjob = true if tokens contain subjobs
     if cache.token1 then
         applyTokenToSide(1, cache.token1);
     end
     if cache.token2 then
         applyTokenToSide(2, cache.token2);
+    end
+
+    -- Only override includeSubjob if explicitly set to true in cache, or use defaults if tokens didn't enable it
+    if cache.includeSubjob == true then
+        state.includeSubjob = true;
+    elseif not state.includeSubjob then
+        state.includeSubjob = initialSubjob;
     end
 
     -- Tell DrawWindow "don't re-init from defaults"
@@ -831,7 +948,6 @@ function SkillchainGUI.Toggle()
         state.initialized = false;
         state.openedFromCli = false;
         state.activeTab = 'Calculator';
-        state.tabBarCounter = state.tabBarCounter + 1;
     end
 end
 
@@ -841,7 +957,6 @@ function SkillchainGUI.SetVisible(v)
         state.initialized = false;
         state.openedFromCli = false;
         state.activeTab = 'Calculator';
-        state.tabBarCounter = state.tabBarCounter + 1;
     end
 end
 
@@ -866,6 +981,12 @@ function SkillchainGUI.DrawWindow(cache)
                 state.both = def.both;
             else
                 state.both = false;
+            end
+
+            if def.includeSubjob ~= nil then
+                state.includeSubjob = def.includeSubjob;
+            else
+                state.includeSubjob = false;
             end
         end
 
@@ -893,7 +1014,7 @@ function SkillchainGUI.DrawWindow(cache)
     local maxWeapons = math.max(count1, count2);
 
     -- Calculate window height based on active tab
-    local winHeight = calculateTabHeight(state.activeTab, maxWeapons);
+    local winHeight = calculateTabHeight(state.activeTab, maxWeapons, state.includeSubjob);
 
     imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
 
@@ -910,9 +1031,7 @@ function SkillchainGUI.DrawWindow(cache)
 
     local request = nil;
 
-    -- Use counter in tab bar ID to force reset on window open
-    local tabBarId = string.format('##scc_tabs_%d', state.tabBarCounter);
-    if imgui.BeginTabBar(tabBarId, ImGuiTabBarFlags_None) then
+    if imgui.BeginTabBar('##scc_tabs', ImGuiTabBarFlags_None) then
         -- Calculator tab
         if imgui.BeginTabItem('Calculator') then
             if state.activeTab ~= 'Calculator' then

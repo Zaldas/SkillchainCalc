@@ -79,6 +79,7 @@ local function applyDefaultsToCache()
     local def = (cache.settings and cache.settings.default) or (sccSettings and sccSettings.default) or {};
     cache.level = def.level or 1;
     cache.both  = def.both  or false;
+    cache.includeSubjob = def.includeSubjob or false;
 end
 
 local function resetCacheFull()
@@ -478,6 +479,15 @@ ashita.events.register('command', 'command_cb', function(e)
             else
                 print('[SkillchainCalc] Invalid value for setboth. Must be true or false.');
             end
+        elseif (args[2] == 'setsubjob') then
+            if (args[3]:any('true', 'false')) then
+                local s = args[3] == 'true';
+                cache.settings.default.includeSubjob = s;
+                print('[SkillchainCalc] Set subjob filter default = ' .. args[3]);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for setsubjob. Must be true or false.');
+            end
         end
 
         if (validCommand) then
@@ -508,28 +518,32 @@ ashita.events.register('command', 'command_cb', function(e)
             print('Status of Default Filter:');
             print(' Skillchain Level: Skillchains Level ' .. cache.settings.default.level .. ' or higher.')
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
+            print(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
             print(' GDI Pool Size: ' .. gdiObjects.poolSize .. ' (last used: ' .. gdiObjects.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
             print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both]');
-            print(' Tokens can be weapon types, jobs, or job:weapon filters:');
+            print(' Tokens can be weapon types, jobs, job:weapon, or job/subjob filters:');
             print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
             print('                katana, gkt, club, staff, archery, mm, smn');
             print('  Jobs: WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD, RNG');
             print('        SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH');
             print('  Job+Weapon: thf:sword   (THF, sword WS only)');
-            print('               war:ga,polearm (WAR, GA and Polearm WS only)');
+            print('              war:ga,polearm (WAR, GA and Polearm WS only)');
+            print('  Job+Subjob: nin/war     (NIN main, WAR subjob)');
+            print('              nin/war:dagger (NIN/WAR, dagger WS only)');
             print(' [level] optional integer 1-3 that filters skillchain level;');
             print('  e.g. 2 only shows level 2 and 3 skillchains. 1 or empty = all.');
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate skillchains in both directions.');
-            print('Usage: /scc setx #       -- set x anchor');
-            print('Usage: /scc sety #       -- set y anchor');
-            print('Usage: /scc setlevel #   -- set default level filter');
-            print('Usage: /scc setboth true -- set default both flag');
-            print('Usage: /scc status       -- show current defaults');
-            print('Usage: /scc              -- open gui interface');
+            print('Usage: /scc setx #         -- set x anchor');
+            print('Usage: /scc sety #         -- set y anchor');
+            print('Usage: /scc setlevel #     -- set default level filter');
+            print('Usage: /scc setboth true   -- set default both flag');
+            print('Usage: /scc setsubjob true -- set default subjob filter');
+            print('Usage: /scc status         -- show current defaults');
+            print('Usage: /scc                -- open gui interface');
             return;
         end
     end
@@ -572,8 +586,22 @@ ashita.events.register('command', 'command_cb', function(e)
 
     local isStep = false;
 
-    cache.token1 = isStep and args[3] or args[2];
-    cache.token2 = isStep and nil or args[3];
+    -- Helper function to strip duplicate subjobs from tokens like "nin/nin:mm" -> "nin:mm"
+    local function stripDuplicateSubjob(token)
+        if not token or type(token) ~= 'string' then
+            return token;
+        end
+        -- Match pattern: job/job or job/job:weapons
+        local mainJob, subJob, weapons = token:match('^([^/:]+)/([^/:]+):?(.*)$');
+        if mainJob and subJob and mainJob:lower() == subJob:lower() then
+            -- Same job, strip the subjob part
+            return weapons and weapons ~= '' and (mainJob .. ':' .. weapons) or mainJob;
+        end
+        return token;
+    end
+
+    cache.token1 = stripDuplicateSubjob(isStep and args[3] or args[2]);
+    cache.token2 = stripDuplicateSubjob(isStep and nil or args[3]);
 
     applyDefaultsToCache();
     if level ~= nil then
