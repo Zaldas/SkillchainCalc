@@ -1,13 +1,24 @@
-# Skillchain Calculator
-
-<img align="right" alt="image" src="https://github.com/user-attachments/assets/35fdb593-d6cf-404b-b3ae-adbbc5f7478a" />
-  
+# Skillchain Calculator   
+   
+<img align="right" alt="image" width="500" height="1575" alt="skillchaincalcaddon" src="https://github.com/user-attachments/assets/d37da06e-5aff-409b-84dd-dd5a2d0ca008" />
+   
 Display skillchains possible given an opening weapon type and closing weapon type.  
 Now with ImGui interface to input parameters!!!  
 
+### GUI Interface  
+&ensp;Three Tabs:  
+&ensp;&ensp;Calculate - Has the Jobs and Weapons  
+&ensp;&ensp;Filters - Filters to help narrow and adjust calculation  
+&ensp;&ensp;&ensp;Skillchain Element - element that you want to focus on for resulting skllchain  
+&ensp;&ensp;&ensp;Skillchain Level - level of skillchain to include  
+&ensp;&ensp;&ensp;Both Directions - calculates skillchains in both directions of jobs selected  
+&ensp;&ensp;&ensp;SubJob - Enables the use of Subjobs to define skillchain options  
+&ensp;&ensp;Settings - Has the position of results window, and default filter settings  
+  
 #### Usage: 
 &ensp;`/scc` -- opens the GUI interface  
 &ensp;`/scc token1 token2 [level] [both] [sc:element]`  
+&ensp;`/scc clear` -- closes addon
   
 ### <ins>Tokens can be one of the following:</ins>  
 
@@ -22,7 +33,9 @@ Now with ImGui interface to input parameters!!!
 
 #### Job + Weapon Filters:  
 &ensp;Use the syntax `job:weapon` or `job:weapon1,weapon2` to limit WS by weapon type  
+&ensp;Can also define subjob: `main/sub:weapon` to include subjob accessible weaponskills  
 &ensp;e.g. `/scc thf:sword war:ga,polearm`  
+&ensp;e.g. `/scc nin/rng:mm,katana drk/sam`  
 
 #### Primary Weapon Auto-Limit:  
 &ensp;If a plain job token is used (e.g. `thf`), the job’s `primaryWeapons` list defined in Jobs.lua is used.  
@@ -46,7 +59,7 @@ Now with ImGui interface to input parameters!!!
 &ensp;/scc thf war  
 &ensp;/scc thf:sword war:ga  
 &ensp;/scc thf war sc:ice  
-&ensp;/scc nin drk:ga 2 both  
+&ensp;/scc nin/rng:mm,katana drk:ga 2 both  
 
 #### Commands:  
 &ensp;/scc -- opens GUI window  
@@ -55,8 +68,9 @@ Now with ImGui interface to input parameters!!!
 &ensp;/scc sety # -- set y anchor  
 &ensp;/scc setlevel # -- set default level filter (1–3)  
 &ensp;/scc setboth true|false -- set default for 'both' param  
+&ensp;/scc setsubjob true|false -- set default for enabling subjob in GUI  
 &ensp;/scc status -- show default filter status  
-&ensp;/scc clear -- clear out window  
+&ensp;/scc clear -- clear out windows; close addon  
 &ensp;/scc debug -- enable debugging  
 
 #### Files:  
