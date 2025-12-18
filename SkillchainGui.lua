@@ -201,8 +201,8 @@ local function calculateTabHeight(tabName, maxWeapons, includeSubjob)
         return (rowsBase + rowsWeapons + rowsSubjob) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
         paddingAdjust = 6;
-        -- Filters tab: 4 sections (Element, Level, Both, Subjob) + buttons
-        return 17 * lineHeight + paddingAdjust;
+        -- Filters tab: 4 sections (Element, Level, Both, Subjob) + buttons + Calculate button
+        return 19 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
         -- Settings tab: Anchor (header + 2 sliders) + Defaults (header + 2 lines) + CLI (header + 4 lines)
@@ -786,6 +786,61 @@ local function DrawFiltersTab(cache)
         state.both  = def.both  or false;
         state.includeSubjob = def.includeSubjob or false;
         state.elementIndex = 1;
+    end
+
+    imgui.PopStyleColor(3);
+    imgui.PopStyleVar(1);
+
+    imgui.Spacing();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Calculate Button (centered)
+    -----------------------------------------------------------------------
+    local calcButtonWidth = 200;
+    availWidth = imgui.GetContentRegionAvail();
+
+    if availWidth > calcButtonWidth then
+        local startX = imgui.GetCursorPosX() + ((availWidth - calcButtonWidth) / 2);
+        imgui.SetCursorPosX(startX);
+    end
+
+    -- Calculate button (primary style)
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
+    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
+
+    if imgui.Button('Calculate', { calcButtonWidth, 0 }) then
+        -- Get current jobs from Calculator tab state
+        local job1Id = jobItems[state.job1Index] or jobItems[1];
+        local job2Id = jobItems[state.job2Index] or jobItems[2];
+
+        local job1SubId = nil;
+        local job2SubId = nil;
+
+        if state.includeSubjob then
+            job1SubId = jobItems[state.job1SubIndex];
+            job2SubId = jobItems[state.job2SubIndex];
+        end
+
+        -- Ensure weapon selections exist
+        ensureJobWeaponSelection(1, job1Id);
+        ensureJobWeaponSelection(2, job2Id);
+
+        local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
+        local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
+
+        local lvlVal    = state.level or 1;
+        local elemTok   = elementTokens[state.elementIndex] or '';
+        local scElement = (elemTok ~= '' and elemTok) or nil;
+
+        request = request or {};
+        request.token1    = token1;
+        request.token2    = token2;
+        request.level     = lvlVal;
+        request.both      = state.both;
+        request.scElement = scElement;
     end
 
     imgui.PopStyleColor(3);
