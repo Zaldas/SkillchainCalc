@@ -173,7 +173,8 @@ end
 
 -- allow optional weapon filter set
 -- subJobId is optional; if provided, it will be used to filter weaponskills that have subjob restrictions
-function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId)
+-- customLevel is optional; if provided, it will be used to calculate skill caps instead of MAX_LEVEL
+function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId, customLevel)
     local job = jobs[jobId];
     if not job or not job.weapons then
         return nil;
@@ -189,10 +190,11 @@ function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId)
     end
 
     local result = {};
+    local levelToUse = customLevel or MAX_LEVEL;
 
     for weaponKey, cfg in pairs(job.weapons) do
         if (not weaponFilter) or weaponFilter[weaponKey] then
-            local maxSkill = getSkillCapFromRank(cfg.skillRank, MAX_LEVEL);
+            local maxSkill = getSkillCapFromRank(cfg.skillRank, levelToUse);
             local weaponSkills = skills[weaponKey];
 
             if weaponSkills then
@@ -209,7 +211,7 @@ function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId)
     return (#result > 0) and result or nil;
 end
 
-function SkillchainCore.resolveTokenToSkills(token, subJobId)
+function SkillchainCore.resolveTokenToSkills(token, subJobId, customLevel)
     if not token or type(token) ~= 'string' then
         return nil;
     end
@@ -222,7 +224,7 @@ function SkillchainCore.resolveTokenToSkills(token, subJobId)
     if jobId then
         -- Use tokenSubJobId if present, otherwise fall back to parameter subJobId
         local effectiveSubJob = tokenSubJobId or subJobId;
-        return SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, effectiveSubJob);
+        return SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, customLevel);
     end
 
     -- 1) Weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
@@ -249,14 +251,14 @@ function SkillchainCore.resolveTokenToSkills(token, subJobId)
         local mainJobId = SkillchainCore.getJobIdFromToken(mainJobPart);
         local parsedSubJobId = SkillchainCore.getJobIdFromToken(subJobPart);
         if mainJobId then
-            return SkillchainCore.buildSkillListForJob(mainJobId, nil, parsedSubJobId);
+            return SkillchainCore.buildSkillListForJob(mainJobId, nil, parsedSubJobId, customLevel);
         end
     end
 
     -- Plain job token
     local plainJobId = SkillchainCore.getJobIdFromToken(raw);
     if plainJobId then
-        return SkillchainCore.buildSkillListForJob(plainJobId, nil, subJobId);
+        return SkillchainCore.buildSkillListForJob(plainJobId, nil, subJobId, customLevel);
     end
 
     return nil;
