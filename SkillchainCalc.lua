@@ -17,6 +17,7 @@ local settings       = require('settings');
 local SkillchainGUI  = require('skillchaingui');
 
 local debugMode = false; -- Debug mode flag
+local MAX_LEVEL = 75;
 
 -- Soft cap configuration: minimum results to show after a header before allowing column split
 -- This prevents columns with just a header and 1-4 results
