@@ -32,7 +32,7 @@ Now with ImGui interface to input parameters!!!
 
 #### Jobs:  
 &ensp;WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD,  
-&ensp;RNG, SAM, NIN, DRG, SMN, BLU, COR, DNC, SCH  
+&ensp;RNG, SAM, NIN, DRG, SMN 
 
 #### Job + Weapon Filters:  
 &ensp;Use the syntax `job:weapon` or `job:weapon1,weapon2` to limit WS by weapon type  
