@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '2.1';
+addon.version   = '2.2';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
@@ -58,7 +58,8 @@ local sccSettings = T{
     default = {
         level = 1,
         both = false,
-        includeSubjob = false
+        includeSubjob = false,
+        useCustomLevel = false
     },
 };
 
@@ -79,6 +80,7 @@ local cache = {
     both = false,
     scElement = nil,
     stepMode = false,
+    customLevel = nil,
     settings = sccSettings;
 };
 
@@ -430,7 +432,7 @@ local function ParseSkillchains(isStep)
             return;
         end
 
-        local wsList = SkillchainCore.resolveTokenToSkills(cache.token1);
+        local wsList = SkillchainCore.resolveTokenToSkills(cache.token1, nil, cache.customLevel);
         if (not wsList) then
             print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
             clearGDI();
@@ -448,8 +450,8 @@ local function ParseSkillchains(isStep)
         return;
     end
 
-    local skills1 = SkillchainCore.resolveTokenToSkills(cache.token1);
-    local skills2 = SkillchainCore.resolveTokenToSkills(cache.token2);
+    local skills1 = SkillchainCore.resolveTokenToSkills(cache.token1, nil, cache.customLevel);
+    local skills2 = SkillchainCore.resolveTokenToSkills(cache.token2, nil, cache.customLevel);
 
     if (not skills1 or not skills2) then
         print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
@@ -503,6 +505,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 end
 
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
+                cache.customLevel = req.customLevel;
 
                 ParseSkillchains(cache.stepMode);
             end
@@ -601,7 +604,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' GDI Pool Size: ' .. gdiObjects.poolSize .. ' (last used: ' .. gdiObjects.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
-            print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both]');
+            print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both] [lvl:#]');
             print(' Tokens can be weapon types, jobs, job:weapon, or job/subjob filters:');
             print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
             print('                katana, gkt, club, staff, archery, mm, smn');
@@ -616,6 +619,8 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate skillchains in both directions.');
+            print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(MAX_LEVEL));
+            print('  e.g. lvl:50 or level:50');
             print('Usage: /scc setx #         -- set x anchor');
             print('Usage: /scc sety #         -- set y anchor');
             print('Usage: /scc setlevel #     -- set default level filter');
@@ -641,6 +646,7 @@ ashita.events.register('command', 'command_cb', function(e)
     local level     = nil;
     local both      = nil;
     local scElement = nil;
+    local customLevel = nil;
 
     for i = 4, #args do
         local param = args[i];
@@ -652,6 +658,16 @@ ashita.events.register('command', 'command_cb', function(e)
             both = true;
         elseif lower:sub(1, 3) == 'sc:' then
             scElement = lower:sub(4);
+        elseif lower:sub(1, 4) == 'lvl:' or lower:sub(1, 6) == 'level:' then
+            -- Extract level value after the colon
+            local colonPos = lower:find(':');
+            local lvlVal = tonumber(lower:sub(colonPos + 1));
+            if lvlVal and lvlVal >= 1 and lvlVal <= MAX_LEVEL then
+                customLevel = lvlVal;
+            else
+                print(('[SkillchainCalc] Invalid level value. Must be between 1 and %d.'):format(MAX_LEVEL));
+                return;
+            end
         else
             print('[SkillchainCalc] Invalid argument: ' .. param);
             print('/scc help -- for usage help');
@@ -692,6 +708,7 @@ ashita.events.register('command', 'command_cb', function(e)
 
     cache.scElement = scElement and scElement:lower() or nil;
     cache.stepMode = isStep;
+    cache.customLevel = customLevel;
 
     ParseSkillchains(isStep);
 

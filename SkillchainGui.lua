@@ -169,6 +169,10 @@ local state = {
     -- subjob filter
     includeSubjob = false,
 
+    -- custom level filter
+    useCustomLevel = false,
+    customLevel    = 1,
+
     -- middle section
     job1Index     = 1,
     job2Index     = 2,
@@ -188,7 +192,7 @@ local state = {
 -----------------------------------------------------------------------
 -- Helpers
 -----------------------------------------------------------------------
-local function calculateTabHeight(tabName, maxWeapons, includeSubjob)
+local function calculateTabHeight(tabName, tabState, maxWeapons)
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local paddingAdjust = 0;
     if tabName == 'Calculator' then
@@ -197,12 +201,15 @@ local function calculateTabHeight(tabName, maxWeapons, includeSubjob)
         local rowsBase    = 6;
         local rowsWeapons = maxWeapons or 0;
         -- Add extra rows for subjob dropdowns if enabled
-        local rowsSubjob = includeSubjob and 1 or 0;
-        return (rowsBase + rowsWeapons + rowsSubjob) * lineHeight + paddingAdjust;
+        local rowsSubjob = tabState.includeSubjob and 1 or 0;
+        -- Add extra row for custom level dropdown if enabled
+        local rowsLevel = tabState.useCustomLevel and 1 or 0;
+        return (rowsBase + rowsWeapons + rowsSubjob + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
         paddingAdjust = -7;
-        -- Filters tab: 4 sections (Element, Level, Both, Subjob) + buttons + Calculate button
-        return 19 * lineHeight + paddingAdjust;
+        -- Filters tab: Advanced Filters header + 3 checkboxes + Element section + Level section + buttons + Calculate button
+        -- Advanced Filters (header + 3 checkboxes with help) + Element section (header + text + combo) + Level section (header + text + slider + 3 lines text) + buttons + Calculate
+        return 23 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
         -- Settings tab: Anchor (header + 2 sliders) + Defaults (header + 2 lines) + CLI (header + 4 lines)
@@ -472,6 +479,47 @@ local function DrawCalculatorTab(cache)
     local request = nil;
 
     -----------------------------------------------------------------------
+    -- Custom Level section (if enabled)
+    -----------------------------------------------------------------------
+    if state.useCustomLevel then
+        DrawGradientHeader('Character Level', imgui.GetContentRegionAvail());
+
+        local baseX  = imgui.GetCursorPosX();
+        local indent = 5;
+        local filterWidth = JOB_COLUMN_WIDTH * 2;
+
+        imgui.SetCursorPosX(baseX + indent);
+        imgui.Text('Level:');
+        imgui.SameLine();
+
+        -- Build level items list from SkillRanks
+        local skillranks = require('SkillRanks');
+        local maxLevel = 75; -- Default to 75 if not available from parent
+        if cache and cache.settings then
+            -- Try to get MAX_LEVEL from parent scope
+            for i = 99, 1, -1 do
+                if skillranks.Cap['lvl'] and skillranks.Cap['lvl'][i] then
+                    maxLevel = i;
+                    break;
+                end
+            end
+        end
+
+        local levelItems = {};
+        for i = 1, maxLevel do
+            table.insert(levelItems, tostring(i));
+        end
+
+        imgui.PushItemWidth(100);
+        state.customLevel = DrawCombo('##customlevel', levelItems, state.customLevel);
+        imgui.PopItemWidth();
+
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Spacing();
+    end
+
+    -----------------------------------------------------------------------
     -- Jobs + weapons section
     -----------------------------------------------------------------------
     DrawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
@@ -618,6 +666,7 @@ local function DrawCalculatorTab(cache)
             level     = lvlVal,
             both      = state.both,
             scElement = scElement,
+            customLevel = state.useCustomLevel and state.customLevel or nil,
         };
     end
 
@@ -662,14 +711,14 @@ end
 local function DrawFiltersTab(cache)
     local request = nil;
 
+    local baseX  = imgui.GetCursorPosX();
+    local indent = 5;
+    local filterWidth = JOB_COLUMN_WIDTH * 2;
+
     -----------------------------------------------------------------------
     -- Element Filter
     -----------------------------------------------------------------------
     DrawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
-
-    local baseX  = imgui.GetCursorPosX();
-    local indent = 5;
-    local filterWidth = JOB_COLUMN_WIDTH * 2;
 
     imgui.Text('Filter results by burst element:');
     imgui.SetCursorPosX(baseX + indent);
@@ -705,34 +754,36 @@ local function DrawFiltersTab(cache)
     imgui.Spacing();
 
     -----------------------------------------------------------------------
-    -- Both Directions
+    -- Advanced Filters Section
     -----------------------------------------------------------------------
-    DrawGradientHeader('Calculate Both Directions', imgui.GetContentRegionAvail());
+    DrawGradientHeader('Advanced Filters', imgui.GetContentRegionAvail());
 
+    -- Custom Level Checkbox
+    imgui.SetCursorPosX(baseX + indent);
+    local useCustomLevel = { state.useCustomLevel };
+    if imgui.Checkbox('Enable custom character level', useCustomLevel) then
+        state.useCustomLevel = useCustomLevel[1];
+    end
+    imgui.SameLine();
+    HelpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
+
+    -- Both Directions Checkbox
+    imgui.SetCursorPosX(baseX + indent);
     local both = { state.both };
     if imgui.Checkbox('Calculate skillchains in both directions', both) then
         state.both = both[1];
     end
-
     imgui.SameLine();
     HelpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
 
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    -----------------------------------------------------------------------
-    -- Include Subjob Filter
-    -----------------------------------------------------------------------
-    DrawGradientHeader('Include Subjob', imgui.GetContentRegionAvail());
-
+    -- Include Subjob Checkbox
+    imgui.SetCursorPosX(baseX + indent);
     local includeSubjob = { state.includeSubjob };
     if imgui.Checkbox('Enable subjob selection in Calculator tab', includeSubjob) then
         state.includeSubjob = includeSubjob[1];
     end
-
     imgui.SameLine();
-    HelpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n (e.g., marksmanship).');
+    HelpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
 
     imgui.Spacing();
     imgui.Separator();
@@ -762,6 +813,7 @@ local function DrawFiltersTab(cache)
         def.level = state.level;
         def.both  = state.both;
         def.includeSubjob = state.includeSubjob;
+        def.useCustomLevel = state.useCustomLevel;
         cache.settings.default = def;
 
         request = request or {};
@@ -785,6 +837,7 @@ local function DrawFiltersTab(cache)
         state.level = def.level or 1;
         state.both  = def.both  or false;
         state.includeSubjob = def.includeSubjob or false;
+        state.useCustomLevel = def.useCustomLevel or false;
         state.elementIndex = 1;
     end
 
@@ -841,6 +894,7 @@ local function DrawFiltersTab(cache)
         request.level     = lvlVal;
         request.both      = state.both;
         request.scElement = scElement;
+        request.customLevel = state.useCustomLevel and state.customLevel or nil;
     end
 
     imgui.PopStyleColor(3);
@@ -990,6 +1044,14 @@ function SkillchainGUI.OpenFromCli(cache)
         state.includeSubjob = initialSubjob;
     end
 
+    -- Custom level from CLI
+    if cache.customLevel then
+        state.useCustomLevel = true;
+        state.customLevel = cache.customLevel;
+    else
+        state.useCustomLevel = def.useCustomLevel or false;
+    end
+
     -- Tell DrawWindow "don't re-init from defaults"
     state.initialized   = true;
     state.openedFromCli = true;
@@ -1043,6 +1105,12 @@ function SkillchainGUI.DrawWindow(cache)
             else
                 state.includeSubjob = false;
             end
+
+            if def.useCustomLevel ~= nil then
+                state.useCustomLevel = def.useCustomLevel;
+            else
+                state.useCustomLevel = false;
+            end
         end
 
         state.elementIndex = 1;
@@ -1069,7 +1137,7 @@ function SkillchainGUI.DrawWindow(cache)
     local maxWeapons = math.max(count1, count2);
 
     -- Calculate window height based on active tab
-    local winHeight = calculateTabHeight(state.activeTab, maxWeapons, state.includeSubjob);
+    local winHeight = calculateTabHeight(state.activeTab, state, maxWeapons);
 
     imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
 
