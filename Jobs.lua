@@ -34,18 +34,18 @@ jobs.aliases = {
 jobs.WAR = {
     primaryWeapons = { 'ga', 'axe' },
     weapons = {
-        ga       = { maxSkill = 276 },
-        axe      = { maxSkill = 269 },
-        gs       = { maxSkill = 256 },
-        scythe   = { maxSkill = 256 },
-        sword    = { maxSkill = 250 },
-        staff    = { maxSkill = 250 },
-        polearm  = { maxSkill = 240 },
-        dagger   = { maxSkill = 240 },
-        club     = { maxSkill = 240 },
-        h2h      = { maxSkill = 210 },
-        archery  = { maxSkill = 210 },
-        mm       = { maxSkill = 210 },
+        ga       = { skillRank = 'A+' },
+        axe      = { skillRank = 'A-' },
+        gs       = { skillRank = 'B+' },
+        scythe   = { skillRank = 'B+' },
+        sword    = { skillRank = 'B' },
+        staff    = { skillRank = 'B' },
+        polearm  = { skillRank = 'B-' },
+        dagger   = { skillRank = 'B-' },
+        club     = { skillRank = 'B-' },
+        h2h      = { skillRank = 'D' },
+        archery  = { skillRank = 'D' },
+        mm       = { skillRank = 'E' },
     },
 }
 -- Primary Weapons per Job
@@ -53,155 +53,155 @@ jobs.WAR = {
 jobs.MNK = {
     primaryWeapons = { 'h2h' },
     weapons = {
-        h2h   = { maxSkill = 276 },
-        staff = { maxSkill = 250 },
-        club  = { maxSkill = 230 },
+        h2h   = { skillRank = 'A+' },
+        staff = { skillRank = 'B' },
+        club  = { skillRank = 'C+' },
     },
 }
 
 jobs.WHM = {
     primaryWeapons = { 'club' },
     weapons = {
-        club  = { maxSkill = 256 },
-        staff = { maxSkill = 230 },
+        club  = { skillRank = 'B+' },
+        staff = { skillRank = 'C+' },
     },
 }
 
 jobs.BLM = {
     primaryWeapons = { 'staff' },
     weapons = {
-        staff  = { maxSkill = 240 },
-        club   = { maxSkill = 230 },
-        dagger = { maxSkill = 210 },
-        scythe = { maxSkill = 200 },
+        staff  = { skillRank = 'B-' },
+        club   = { skillRank = 'C+' },
+        dagger = { skillRank = 'D' },
+        scythe = { skillRank = 'F' },
     },
 }
 
 jobs.RDM = {
     primaryWeapons = { 'sword', 'dagger' },
     weapons = {
-        dagger  = { maxSkill = 250 },
-        sword   = { maxSkill = 250 },
-        club    = { maxSkill = 210 },
-        archery = { maxSkill = 210 },
-        mm      = { maxSkill = 189 },
+        dagger  = { skillRank = 'B' },
+        sword   = { skillRank = 'B' },
+        club    = { skillRank = 'D' },
+        archery = { skillRank = 'D' },
+        mm      = { skillRank = 'F' },
     },
 }
 
 jobs.THF = {
     primaryWeapons = { 'dagger' },
     weapons = {
-        dagger  = { maxSkill = 269 },
-        mm      = { maxSkill = 230 },
-        archery = { maxSkill = 220 },
-        sword   = { maxSkill = 210 },
-        club    = { maxSkill = 200 },
-        h2h     = { maxSkill = 200 },
+        dagger  = { skillRank = 'A+' },
+        mm      = { skillRank = 'C+' },
+        archery = { skillRank = 'C-' },
+        sword   = { skillRank = 'D' },
+        club    = { skillRank = 'E' },
+        h2h     = { skillRank = 'E' },
     },
 }
 
 jobs.PLD = {
     primaryWeapons = { 'sword', 'gs' },
     weapons = {
-        sword   = { maxSkill = 276 },
-        club    = { maxSkill = 269 },
-        staff   = { maxSkill = 269 },
-        gs      = { maxSkill = 250 },
-        dagger  = { maxSkill = 220 },
-        polearm = { maxSkill = 200 },
+        sword   = { skillRank = 'A+' },
+        club    = { skillRank = 'A-' },
+        staff   = { skillRank = 'A-' },
+        gs      = { skillRank = 'B' },
+        dagger  = { skillRank = 'C-' },
+        polearm = { skillRank = 'F' },
     },
 }
 
 jobs.DRK = {
     primaryWeapons = { 'scythe', 'gs' },
     weapons = {
-        scythe = { maxSkill = 276 },
-        gs     = { maxSkill = 269 },
-        axe    = { maxSkill = 240 },
-        ga     = { maxSkill = 240 },
-        sword  = { maxSkill = 240 },
-        dagger = { maxSkill = 225 },
-        club   = { maxSkill = 220 },
+        scythe = { skillRank = 'A+' },
+        gs     = { skillRank = 'A-' },
+        axe    = { skillRank = 'B-' },
+        ga     = { skillRank = 'B-' },
+        sword  = { skillRank = 'B-' },
+        dagger = { skillRank = 'C' },
+        club   = { skillRank = 'C-' },
     },
 }
 
 jobs.BST = {
     primaryWeapons = { 'axe' },
     weapons = {
-        axe    = { maxSkill = 269 },
-        scythe = { maxSkill = 240 },
-        dagger = { maxSkill = 230 },
-        club   = { maxSkill = 210 },
-        sword  = { maxSkill = 200 },
+        axe    = { skillRank = 'A+' },
+        scythe = { skillRank = 'B-' },
+        dagger = { skillRank = 'C+' },
+        club   = { skillRank = 'D' },
+        sword  = { skillRank = 'F' },
     },
 }
 
 jobs.BRD = {
     primaryWeapons = { 'dagger' },
     weapons = {
-        dagger = { maxSkill = 240 },
-        staff  = { maxSkill = 230 },
-        sword  = { maxSkill = 220 },
-        club   = { maxSkill = 210 },
+        dagger = { skillRank = 'B-' },
+        staff  = { skillRank = 'C+' },
+        sword  = { skillRank = 'C-' },
+        club   = { skillRank = 'D' },
     },
 }
 
 jobs.RNG = {
     primaryWeapons = { 'archery', 'mm' },
     weapons = {
-        axe     = { maxSkill = 240 },
-        dagger  = { maxSkill = 240 },
-        sword   = { maxSkill = 210 },
-        club    = { maxSkill = 200 },
-        archery = { maxSkill = 269 },
-        mm      = { maxSkill = 269 },
+        axe     = { skillRank = 'B-' },
+        dagger  = { skillRank = 'B-' },
+        sword   = { skillRank = 'D' },
+        club    = { skillRank = 'E' },
+        archery = { skillRank = 'A-' },
+        mm      = { skillRank = 'A-' },
     },
 }
 
 jobs.SAM = {
     primaryWeapons = { 'gkt' },
     weapons = {
-        gkt     = { maxSkill = 276 },
-        polearm = { maxSkill = 240 },
-        sword   = { maxSkill = 250 },
-        archery = { maxSkill = 225 },
-        club    = { maxSkill = 210 },
-        dagger  = { maxSkill = 200 },
+        gkt     = { skillRank = 'A+' },
+        polearm = { skillRank = 'B-' },
+        sword   = { skillRank = 'C+' },
+        archery = { skillRank = 'C+' },
+        club    = { skillRank = 'E' },
+        dagger  = { skillRank = 'E' },
     },
 }
 
 jobs.NIN = {
     primaryWeapons = { 'katana' },
     weapons = {
-        katana  = { maxSkill = 269 },
-        dagger  = { maxSkill = 230 },
-        sword   = { maxSkill = 225 },
-        gkt     = { maxSkill = 220 },
-        h2h     = { maxSkill = 200 },
-        club    = { maxSkill = 200 },
-        archery = { maxSkill = 200 },
-        mm      = { maxSkill = 225 },
+        katana  = { skillRank = 'A+' },
+        dagger  = { skillRank = 'C+' },
+        sword   = { skillRank = 'C' },
+        gkt     = { skillRank = 'C-' },
+        h2h     = { skillRank = 'E' },
+        club    = { skillRank = 'E' },
+        archery = { skillRank = 'E' },
+        mm      = { skillRank = 'C' },
     },
 }
 
 jobs.DRG = {
     primaryWeapons = { 'polearm' },
     weapons = {
-        polearm = { maxSkill = 276 },
-        staff   = { maxSkill = 240 },
-        sword   = { maxSkill = 220 },
-        club    = { maxSkill = 200 },
-        dagger  = { maxSkill = 200 },
+        polearm = { skillRank = 'A+' },
+        staff   = { skillRank = 'B-' },
+        sword   = { skillRank = 'C-' },
+        club    = { skillRank = 'E' },
+        dagger  = { skillRank = 'E' },
     },
 }
 
 jobs.SMN = {
     primaryWeapons = { 'avatar' },
     weapons = {
-        avatar = { maxSkill = 75 },     -- avatar skills are based on level
-        staff  = { maxSkill = 250 },
-        club   = { maxSkill = 230 },
-        dagger = { maxSkill = 200 },
+        avatar = { skillRank = 'lvl' },     -- avatar skills are based on level
+        staff  = { skillRank = 'B' },
+        club   = { skillRank = 'C' },
+        dagger = { skillRank = 'E' },
     },
 }
 

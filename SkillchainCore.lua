@@ -4,8 +4,20 @@
 require('common');
 local skills = require('skills');
 local jobs   = require('jobs');
+local SkillRanks = require('SkillRanks');
 
 local SkillchainCore = {};
+local MAX_LEVEL = 75;
+
+-- Helper function to get skill cap from rank and level
+local function getSkillCapFromRank(skillRank, level)
+    if not skillRank or not SkillRanks.Cap[skillRank] then
+        return 999;
+    end
+
+    local levelToUse = level or MAX_LEVEL;
+    return SkillRanks.Cap[skillRank][levelToUse] or 999;
+end
 
 -- Job / WS resolution helpers
 function SkillchainCore.getJobIdFromToken(token)
@@ -180,7 +192,7 @@ function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId)
 
     for weaponKey, cfg in pairs(job.weapons) do
         if (not weaponFilter) or weaponFilter[weaponKey] then
-            local maxSkill     = cfg.maxSkill or 999;
+            local maxSkill = getSkillCapFromRank(cfg.skillRank, MAX_LEVEL);
             local weaponSkills = skills[weaponKey];
 
             if weaponSkills then
