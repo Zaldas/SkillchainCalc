@@ -45,7 +45,7 @@ Now with ImGui interface to input parameters!!!
 &ensp;Example: `/scc thf war` is internally treated as `/scc thf:dagger war:ga,axe`  
 
 *[#]*
-&ensp;Optional value that filters skillchain tier
+&ensp;Optional number value that filters skillchain tier
 &ensp;2 only shows tier 2 and 3 skillchains
 &ensp;1 or empty shows all
 
