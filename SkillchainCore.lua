@@ -29,6 +29,91 @@ end
 --   "nin/war:dagger,katana"  -> NIN/WAR, dagger+katana
 -- ============================================================================
 
+-- ============================================================================
+-- Job and Weapon Utilities
+-- ============================================================================
+
+-- Cache for ordered weapon lists per job
+local jobWeaponListCache = {};
+
+-- Public: Get ordered weapon list for a job
+-- Returns weapons in order: primaryWeapons first, then remaining weapons
+function SkillchainCore.getWeaponsForJob(jobId)
+    if not jobId then
+        return {};
+    end
+
+    -- Check cache
+    local cached = jobWeaponListCache[jobId];
+    if cached then
+        return cached;
+    end
+
+    local job = jobs[jobId];
+    if not job or not job.weapons then
+        jobWeaponListCache[jobId] = {};
+        return jobWeaponListCache[jobId];
+    end
+
+    local list = {};
+    local listed = {};
+
+    -- Primary weapons first (if defined)
+    if type(job.primaryWeapons) == 'table' then
+        for _, w in ipairs(job.primaryWeapons) do
+            if job.weapons[w] and not listed[w] then
+                table.insert(list, w);
+                listed[w] = true;
+            end
+        end
+    end
+
+    -- Then all remaining weapons
+    for w, _ in pairs(job.weapons) do
+        if not listed[w] then
+            table.insert(list, w);
+            listed[w] = true;
+        end
+    end
+
+    jobWeaponListCache[jobId] = list;
+    return list;
+end
+
+-- Public: Build a token string from job, weapon selection, and optional subjob
+-- Input: jobId (string), weaponSelection (table like {dagger=true, katana=true}), subJobId (string, optional)
+-- Output: token string like "nin:dagger,katana" or "nin/war:dagger"
+function SkillchainCore.buildTokenFromSelection(jobId, weaponSelection, subJobId)
+    if not jobId then
+        return nil;
+    end
+
+    local jobTok = jobId:lower();
+
+    -- Add subjob if provided
+    if subJobId then
+        local subJobTok = subJobId:lower();
+        jobTok = string.format('%s/%s', jobTok, subJobTok);
+    end
+
+    -- Build weapon list in proper order
+    local selectedWeapons = {};
+    local weaponList = SkillchainCore.getWeaponsForJob(jobId);
+
+    for _, w in ipairs(weaponList) do
+        if weaponSelection and weaponSelection[w] then
+            table.insert(selectedWeapons, w);
+        end
+    end
+
+    -- Append weapons if any selected
+    if #selectedWeapons > 0 then
+        return string.format('%s:%s', jobTok, table.concat(selectedWeapons, ','));
+    else
+        return jobTok;
+    end
+end
+
 -- Helper: Resolve job abbreviation or name to job ID
 function SkillchainCore.getJobIdFromToken(token)
     if not token or type(token) ~= 'string' then

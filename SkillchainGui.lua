@@ -79,79 +79,14 @@ do
 end
 
 -----------------------------------------------------------------------
--- Per-job weapon ordering, built from jobs.lua
--- primaryWeapons first (in order), then remaining weapons in table order.
+-- Helper wrappers for Core functions (for backwards compatibility)
 -----------------------------------------------------------------------
-local jobWeaponLists = {};
-
 local function getJobWeaponList(jobId)
-    if not jobId then
-        return {};
-    end
-
-    local cached = jobWeaponLists[jobId];
-    if cached then
-        return cached;
-    end
-
-    local job = jobsData[jobId];
-    if not job or not job.weapons then
-        jobWeaponLists[jobId] = {};
-        return jobWeaponLists[jobId];
-    end
-
-    local list   = {};
-    local listed = {};
-
-    -- Primary weapons first (if defined).
-    if type(job.primaryWeapons) == 'table' then
-        for _, w in ipairs(job.primaryWeapons) do
-            if job.weapons[w] and not listed[w] then
-                table.insert(list, w);
-                listed[w] = true;
-            end
-        end
-    end
-
-    -- Then all remaining weapons as defined in jobs.lua.
-    for w, _ in pairs(job.weapons) do
-        if not listed[w] then
-            table.insert(list, w);
-            listed[w] = true;
-        end
-    end
-
-    jobWeaponLists[jobId] = list;
-    return list;
+    return SkillchainCore.getWeaponsForJob(jobId);
 end
 
 local function buildToken(jobId, weaponSel, subJobId)
-    if not jobId then
-        return nil;
-    end
-
-    local jobTok   = jobId:lower();
-
-    -- Add subjob if provided
-    if subJobId then
-        local subJobTok = subJobId:lower();
-        jobTok = string.format('%s/%s', jobTok, subJobTok);
-    end
-
-    local selected = {};
-    local list     = getJobWeaponList(jobId);
-
-    for _, w in ipairs(list) do
-        if weaponSel and weaponSel[w] then
-            table.insert(selected, w);
-        end
-    end
-
-    if #selected > 0 then
-        return string.format('%s:%s', jobTok, table.concat(selected, ','));
-    else
-        return jobTok;
-    end
+    return SkillchainCore.buildTokenFromSelection(jobId, weaponSel, subJobId);
 end
 
 -----------------------------------------------------------------------
