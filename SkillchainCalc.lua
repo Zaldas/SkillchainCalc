@@ -89,9 +89,9 @@ local function resetCacheFull()
     applyDefaultsToCache();
 end
 
-local function updateGDI(skillchains)
-    local resultsTable = SkillchainCore.buildSkillchainTable(skillchains);
-    local sortedResults, orderedResults = SkillchainCore.sortSkillchainTable(resultsTable, debugMode);
+local function renderResults(skillchains)
+    local resultsTable = SkillchainCore.BuildSkillchainTable(skillchains);
+    local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable, debugMode);
 
     SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.both, minResultsAfterHeader);
 end
@@ -120,15 +120,15 @@ local function displaySkillchainResults(combinations, label)
         return;
     end
 
-    local filteredCombinations = SkillchainCore.filterSkillchainsByLevel(combinations, cache.level);
+    local filteredCombinations = SkillchainCore.FilterSkillchainsByLevel(combinations, cache.level);
 
     if cache.scElement then
-        filteredCombinations = SkillchainCore.filterSkillchainsByElement(filteredCombinations, cache.scElement);
+        filteredCombinations = SkillchainCore.FilterSkillchainsByElement(filteredCombinations, cache.scElement);
     end
 
     if (#filteredCombinations > 0) then
         SkillchainRenderer.clear();
-        updateGDI(filteredCombinations);
+        renderResults(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
         print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.level));
@@ -136,20 +136,20 @@ local function displaySkillchainResults(combinations, label)
     end
 end
 
-local function ParseSkillchains(isStep)
+local function parseSkillchains(isStep)
     if isStep then
         if (not cache.token1) then
             return;
         end
 
-        local wsList = SkillchainCore.resolveTokenToSkills(cache.token1, nil, cache.customLevel);
+        local wsList = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.customLevel);
         if (not wsList) then
             print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
             SkillchainRenderer.clear();
             return;
         end
 
-        local combinations = SkillchainCore.calculateStepSkillchains(wsList);
+        local combinations = SkillchainCore.CalculateStepSkillchains(wsList);
         cache.both = false;
 
         displaySkillchainResults(combinations, 'step');
@@ -160,8 +160,8 @@ local function ParseSkillchains(isStep)
         return;
     end
 
-    local skills1 = SkillchainCore.resolveTokenToSkills(cache.token1, nil, cache.customLevel);
-    local skills2 = SkillchainCore.resolveTokenToSkills(cache.token2, nil, cache.customLevel);
+    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.customLevel);
+    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.token2, nil, cache.customLevel);
 
     if (not skills1 or not skills2) then
         print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
@@ -170,7 +170,7 @@ local function ParseSkillchains(isStep)
         return;
     end
 
-    local combinations = SkillchainCore.calculateSkillchains(skills1, skills2, cache.both);
+    local combinations = SkillchainCore.CalculateSkillchains(skills1, skills2, cache.both);
 
     displaySkillchainResults(combinations);
 end
@@ -184,7 +184,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 SkillchainRenderer.updateAnchor(cache.settings);
                 settings.save();
                 if SkillchainRenderer.isVisible() then
-                    ParseSkillchains(cache.stepMode);
+                    parseSkillchains(cache.stepMode);
                 end
             end
 
@@ -192,7 +192,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 applyDefaultsToCache();
                 settings.save();
                 if SkillchainRenderer.isVisible() then
-                    ParseSkillchains(cache.stepMode);
+                    parseSkillchains(cache.stepMode);
                 end
             end
 
@@ -217,7 +217,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
                 cache.customLevel = req.customLevel;
 
-                ParseSkillchains(cache.stepMode);
+                parseSkillchains(cache.stepMode);
             end
         end
     else
@@ -285,7 +285,7 @@ ashita.events.register('command', 'command_cb', function(e)
         if (validCommand) then
             settings.save();
             if (isVisible) then
-                ParseSkillchains(cache.stepMode);
+                parseSkillchains(cache.stepMode);
             end
             return;
         end
@@ -420,7 +420,7 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.stepMode = isStep;
     cache.customLevel = customLevel;
 
-    ParseSkillchains(isStep);
+    parseSkillchains(isStep);
 
     if (not isStep) and SkillchainGUI ~= nil then
         SkillchainGUI.OpenFromCli(cache);

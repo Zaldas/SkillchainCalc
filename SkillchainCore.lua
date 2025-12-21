@@ -38,7 +38,7 @@ local jobWeaponListCache = {};
 
 -- Public: Get ordered weapon list for a job
 -- Returns weapons in order: primaryWeapons first, then remaining weapons
-function SkillchainCore.getWeaponsForJob(jobId)
+function SkillchainCore.GetWeaponsForJob(jobId)
     if not jobId then
         return {};
     end
@@ -83,7 +83,7 @@ end
 -- Public: Build a token string from job, weapon selection, and optional subjob
 -- Input: jobId (string), weaponSelection (table like {dagger=true, katana=true}), subJobId (string, optional)
 -- Output: token string like "nin:dagger,katana" or "nin/war:dagger"
-function SkillchainCore.buildTokenFromSelection(jobId, weaponSelection, subJobId)
+function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId)
     if not jobId then
         return nil;
     end
@@ -98,7 +98,7 @@ function SkillchainCore.buildTokenFromSelection(jobId, weaponSelection, subJobId
 
     -- Build weapon list in proper order
     local selectedWeapons = {};
-    local weaponList = SkillchainCore.getWeaponsForJob(jobId);
+    local weaponList = SkillchainCore.GetWeaponsForJob(jobId);
 
     for _, w in ipairs(weaponList) do
         if weaponSelection and weaponSelection[w] then
@@ -115,7 +115,7 @@ function SkillchainCore.buildTokenFromSelection(jobId, weaponSelection, subJobId
 end
 
 -- Helper: Resolve job abbreviation or name to job ID
-function SkillchainCore.getJobIdFromToken(token)
+function SkillchainCore.GetJobIdFromToken(token)
     if not token or type(token) ~= 'string' then
         return nil;
     end
@@ -191,7 +191,7 @@ end
 
 -- Public: Parse a complete token into its components
 -- This is the unified token parser that handles all formats
-function SkillchainCore.getJobAndWeaponsFromToken(token)
+function SkillchainCore.GetJobAndWeaponsFromToken(token)
     if not token or type(token) ~= 'string' then
         return nil, nil, nil;
     end
@@ -224,7 +224,7 @@ function SkillchainCore.getJobAndWeaponsFromToken(token)
     end
 end
 
-function SkillchainCore.isJobAllowedForWs(ws, mainJobId, subJobId)
+function SkillchainCore.IsJobAllowedForWs(ws, mainJobId, subJobId)
     local restrictions = ws.JobRestrictions;
     local allowSubjob = ws.allowSubjob or false;
 
@@ -269,7 +269,7 @@ end
 -- allow optional weapon filter set
 -- subJobId is optional; if provided, it will be used to filter weaponskills that have subjob restrictions
 -- customLevel is optional; if provided, it will be used to calculate skill caps instead of MAX_LEVEL
-function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId, customLevel)
+function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, customLevel)
     local job = jobs[jobId];
     if not job or not job.weapons then
         return nil;
@@ -295,7 +295,7 @@ function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId, cu
             if weaponSkills then
                 for _, ws in pairs(weaponSkills) do
                     local wsSkill = ws.skill or 0;
-                    if wsSkill <= maxSkill and SkillchainCore.isJobAllowedForWs(ws, jobId, subJobId) then
+                    if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId) then
                         table.insert(result, ws);
                     end
                 end
@@ -311,7 +311,7 @@ end
 --   - Job tokens: "nin", "nin/war", "thf:dagger", "nin/war:katana,dagger"
 --   - Weapon tokens: "katana", "ga" (returns all skills for that weapon type)
 -- The subJobId parameter is used as a fallback if the token doesn't specify a subjob
-function SkillchainCore.resolveTokenToSkills(token, subJobId, customLevel)
+function SkillchainCore.ResolveTokenToSkills(token, subJobId, customLevel)
     if not token or type(token) ~= 'string' then
         return nil;
     end
@@ -319,11 +319,11 @@ function SkillchainCore.resolveTokenToSkills(token, subJobId, customLevel)
     local lower = token:lower();
 
     -- Strategy 1: Try parsing as job token (handles all job formats)
-    local jobId, allowedWeapons, tokenSubJobId = SkillchainCore.getJobAndWeaponsFromToken(token);
+    local jobId, allowedWeapons, tokenSubJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
     if jobId then
         -- Use tokenSubJobId if present, otherwise fall back to parameter subJobId
         local effectiveSubJob = tokenSubJobId or subJobId;
-        return SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, customLevel);
+        return SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, customLevel);
     end
 
     -- Strategy 2: Try as weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
@@ -483,7 +483,7 @@ end
 -- Public API
 
 -- Normal WS→WS combinations.
-function SkillchainCore.calculateSkillchains(wsList1, wsList2, both)
+function SkillchainCore.CalculateSkillchains(wsList1, wsList2, both)
     if not wsList1 or not wsList2 then
         return {};
     end
@@ -491,7 +491,7 @@ function SkillchainCore.calculateSkillchains(wsList1, wsList2, both)
 end
 
 -- Step mode: Property→WS combinations.
-function SkillchainCore.calculateStepSkillchains(wsList)
+function SkillchainCore.CalculateStepSkillchains(wsList)
     if not wsList then
         return {};
     end
@@ -506,7 +506,7 @@ function SkillchainCore.calculateStepSkillchains(wsList)
     return buildCombinations(properties, wsList, { both = false });
 end
 
-function SkillchainCore.filterSkillchainsByLevel(combinations, minLevel)
+function SkillchainCore.FilterSkillchainsByLevel(combinations, minLevel)
     local filteredResults = {};
     minLevel = minLevel or 1;
 
@@ -520,7 +520,7 @@ function SkillchainCore.filterSkillchainsByLevel(combinations, minLevel)
     return filteredResults;
 end
 
-function SkillchainCore.filterSkillchainsByElement(combinations, elementToken)
+function SkillchainCore.FilterSkillchainsByElement(combinations, elementToken)
     if not elementToken or elementToken == '' then
         return combinations;
     end
@@ -544,7 +544,7 @@ function SkillchainCore.filterSkillchainsByElement(combinations, elementToken)
     return filteredResults;
 end
 
-function SkillchainCore.buildSkillchainTable(skillchains)
+function SkillchainCore.BuildSkillchainTable(skillchains)
     local resultsTable = {};
 
     for _, combo in ipairs(skillchains) do
@@ -603,7 +603,7 @@ function SkillchainCore.buildSkillchainTable(skillchains)
     return resultsTable;
 end
 
-function SkillchainCore.sortSkillchainTable(resultsTable, debugMode)
+function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     local sortedResults  = {};
     local orderedResults = {};
 
