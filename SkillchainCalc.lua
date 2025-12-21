@@ -96,9 +96,7 @@ local function renderResults(skillchains)
     SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.both, minResultsAfterHeader);
 end
 
--- ============================================================================
 -- Event handler for addon loading
--- ============================================================================
 ashita.events.register('load', 'load_cb', function()
     cache.settings = settings.load(sccSettings);
     applyDefaultsToCache();

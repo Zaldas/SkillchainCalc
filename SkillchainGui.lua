@@ -130,6 +130,7 @@ local state = {
 local function calculateTabHeight(tabName, tabState, maxWeapons)
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local paddingAdjust = 0;
+    -- All values are manually tweaked to make GUI look good
     if tabName == 'Calculator' then
         paddingAdjust = -6;
         -- Base rows: header + job combos + buttons + spacing
@@ -142,12 +143,9 @@ local function calculateTabHeight(tabName, tabState, maxWeapons)
         return (rowsBase + rowsWeapons + rowsSubjob + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
         paddingAdjust = 5;
-        -- Filters tab: Advanced Filters header + 3 checkboxes + Element section + Level section + buttons + Calculate button
-        -- Advanced Filters (header + 3 checkboxes with help) + Element section (header + text + combo) + Level section (header + text + slider + 3 lines text) + buttons + Calculate
         return 18 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
-        -- Settings tab: Anchor (header + 2 sliders) + Defaults (header + 2 lines) + CLI (header + 4 lines)
         return 15 * lineHeight + paddingAdjust;
     end
 
@@ -189,7 +187,7 @@ local function helpMarker(text)
     end
 end
 
--- Gradient header helper: color â†’ transparent with small text padding.
+-- Gradient header helper: color > transparent with small text padding.
 local function drawGradientHeader(text, width)
     local drawlist = imgui.GetWindowDrawList();
     local x, y     = imgui.GetCursorScreenPos();

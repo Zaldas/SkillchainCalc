@@ -198,7 +198,7 @@ jobs.DRG = {
 jobs.SMN = {
     primaryWeapons = { 'avatar' },
     weapons = {
-        avatar = { skillRank = 'lvl' },     -- avatar skills are based on level
+        avatar = { skillRank = 'Level' },     -- avatar skills are based on level
         staff  = { skillRank = 'B' },
         club   = { skillRank = 'C' },
         dagger = { skillRank = 'E' },
