@@ -131,7 +131,7 @@ end
 
 function SkillchainCore.isJobAllowedForWs(ws, mainJobId, subJobId)
     local restrictions = ws.JobRestrictions;
-    local subRestrict = ws.subRestrict or false;
+    local allowSubjob = ws.allowSubjob or false;
 
     -- No restrictions means everyone can use it
     if not restrictions then
@@ -147,10 +147,10 @@ function SkillchainCore.isJobAllowedForWs(ws, mainJobId, subJobId)
         end
     end
 
-    -- If subRestrict=true, the WS can be used by:
+    -- If allowSubjob=true, the WS can be used by:
     -- 1. Main job in list (with any subjob), OR
     -- 2. Subjob in list (with any main job that has the weapon skill)
-    if subRestrict then
+    if allowSubjob then
         if mainInList then
             return true;  -- Main job matches, any subjob is fine
         end
