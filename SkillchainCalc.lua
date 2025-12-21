@@ -12,9 +12,9 @@ require('imgui_compat');
 
 local SkillchainCore     = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
+local SkillchainGUI      = require('SkillchainGui');
 local gdi                = require('gdifonts.include');
 local settings           = require('settings');
-local SkillchainGUI      = require('skillchaingui');
 
 local debugMode = false; -- Debug mode flag
 local MAX_LEVEL = 75;

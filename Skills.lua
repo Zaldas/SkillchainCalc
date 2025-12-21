@@ -203,7 +203,7 @@ skills.katana = { -- Katana; only NIN has skill
     [132] = {en='Blade: Chi',    skillchain={'Impaction','Transfixion'},        skill=150},
     [133] = {en='Blade: Ei',     skillchain={'Compression'},                    skill=175},
     [134] = {en='Blade: Jin',    skillchain={'Detonation','Impaction'},         skill=200},
-    [135] = {en='Blade: Ten¹',   skillchain={'Gravitation'},                    skill=225},
+    [135] = {en='Blade: Ten',   skillchain={'Gravitation'},                     skill=225},
     [136] = {en='Blade: Ku¹',    skillchain={'Gravitation','Transfixion'},      skill=250},
     -- Relic WS treat as high end
     [137] = {en='Blade: Metsu²', skillchain={'Darkness','Fragmentation'},       skill=250},

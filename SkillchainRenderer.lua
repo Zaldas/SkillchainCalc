@@ -2,7 +2,7 @@
 -- Handles all GDI rendering for skillchain results display
 
 require('common');
-local skills = require('skills');
+local skills = require('Skills');
 
 local SkillchainRenderer = {};
 
