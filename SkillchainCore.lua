@@ -19,7 +19,17 @@ local function getSkillCapFromRank(skillRank, level)
     return SkillRanks.Cap[skillRank][levelToUse] or 999;
 end
 
--- Job / WS resolution helpers
+-- ============================================================================
+-- Parses tokens in the following formats:
+--   "nin"                    -> NIN job, no weapons, no subjob
+--   "nin/war"                -> NIN main, WAR subjob, no weapons
+--   "nin:dagger"             -> NIN job, dagger only, no subjob
+--   "nin:dagger,katana"      -> NIN job, dagger+katana, no subjob
+--   "nin/war:dagger"         -> NIN/WAR, dagger only
+--   "nin/war:dagger,katana"  -> NIN/WAR, dagger+katana
+-- ============================================================================
+
+-- Helper: Resolve job abbreviation or name to job ID
 function SkillchainCore.getJobIdFromToken(token)
     if not token or type(token) ~= 'string' then
         return nil;
@@ -38,95 +48,95 @@ function SkillchainCore.getJobIdFromToken(token)
     return nil;
 end
 
--- parse "job:weapon1,weapon2" or "mainjob/subjob:weapon1,weapon2" style tokens
-local function parseJobWeaponToken(token)
-    if not token or type(token) ~= 'string' then
+-- Helper: Parse weapon list string into a set of valid weapon keys for a job
+-- Input: "dagger,katana", jobId
+-- Output: { dagger = true, katana = true } or nil if no valid weapons
+local function parseWeaponList(weaponString, jobId)
+    if not weaponString or not jobId then
         return nil;
     end
 
-    local jobPart, weaponPart = token:match('^([^:]+):(.+)$');
-    if not jobPart or not weaponPart then
-        return nil;
-    end
-
-    -- Check if jobPart contains a subjob delimiter (/)
-    local mainJobPart, subJobPart = jobPart:match('^([^/]+)/(.+)$');
-    local mainJobId, subJobId;
-
-    if mainJobPart and subJobPart then
-        -- Has subjob: mainjob/subjob format
-        mainJobId = SkillchainCore.getJobIdFromToken(mainJobPart);
-        subJobId = SkillchainCore.getJobIdFromToken(subJobPart);
-        if not mainJobId then
-            return nil;
-        end
-    else
-        -- No subjob: just mainjob
-        mainJobId = SkillchainCore.getJobIdFromToken(jobPart);
-        subJobId = nil;
-        if not mainJobId then
-            return nil;
-        end
-    end
-
-    local job = jobs[mainJobId];
+    local job = jobs[jobId];
     if not job or not job.weapons then
         return nil;
     end
 
     local allowedWeapons = {};
 
-    -- weaponPart can be "sword" or "ga,polearm" etc.
-    for w in weaponPart:gmatch('[^,]+') do
-        local key = w:lower():gsub('%s+', '');
+    -- weaponString can be "sword" or "ga,polearm" etc.
+    for w in weaponString:gmatch('[^,]+') do
+        local key = w:lower():gsub('%s+', '');  -- normalize
         local weaponKey = key;
 
+        -- Resolve aliases (e.g., "ga" -> "greataxe")
         if skills.aliases and skills.aliases[key] then
             weaponKey = skills.aliases[key];
         end
 
+        -- Only add if job can use this weapon and it exists in skills data
         if job.weapons[weaponKey] and skills[weaponKey] then
             allowedWeapons[weaponKey] = true;
         end
     end
 
-    if not next(allowedWeapons) then
-        -- nothing valid for this job, treat as invalid token
-        return nil;
-    end
-
-    return mainJobId, allowedWeapons, subJobId;
+    return next(allowedWeapons) and allowedWeapons or nil;
 end
 
+-- Helper: Parse job part of token (handles "job" or "job/subjob")
+-- Returns: mainJobId, subJobId (or nil if no subjob)
+local function parseJobPart(jobString)
+    if not jobString or type(jobString) ~= 'string' then
+        return nil, nil;
+    end
+
+    -- Check for subjob delimiter
+    local mainJobPart, subJobPart = jobString:match('^([^/]+)/(.+)$');
+
+    if mainJobPart and subJobPart then
+        -- Has subjob: "nin/war"
+        local mainJobId = SkillchainCore.getJobIdFromToken(mainJobPart);
+        local subJobId = SkillchainCore.getJobIdFromToken(subJobPart);
+        return mainJobId, subJobId;
+    else
+        -- No subjob: just "nin"
+        local jobId = SkillchainCore.getJobIdFromToken(jobString);
+        return jobId, nil;
+    end
+end
+
+-- Public: Parse a complete token into its components
+-- This is the unified token parser that handles all formats
 function SkillchainCore.getJobAndWeaponsFromToken(token)
     if not token or type(token) ~= 'string' then
         return nil, nil, nil;
     end
 
-    -- First try full job:weapon1,weapon2 or mainjob/subjob:weapon syntax
-    local mainJobId, allowedWeapons, subJobId = parseJobWeaponToken(token);
-    if mainJobId then
-        return mainJobId, allowedWeapons, subJobId;
-    end
+    -- Try to split on colon first: "job:weapons" or "job/subjob:weapons"
+    local jobPart, weaponPart = token:match('^([^:]+):(.+)$');
 
-    -- Fall back to plain job token ("nin", "NIN", etc.) or "nin/war" format
-    local mainJobPart, subJobPart = token:match('^([^/]+)/(.+)$');
-    if mainJobPart and subJobPart then
-        -- Has subjob but no weapon specified
-        local mainId = SkillchainCore.getJobIdFromToken(mainJobPart);
-        local subId = SkillchainCore.getJobIdFromToken(subJobPart);
-        if mainId then
-            return mainId, nil, subId;
+    if jobPart and weaponPart then
+        -- Has weapon specification
+        local mainJobId, subJobId = parseJobPart(jobPart);
+        if not mainJobId then
+            return nil, nil, nil;
         end
-    end
 
-    -- Plain job token
-    local plainJobId = SkillchainCore.getJobIdFromToken(token);
-    if plainJobId then
-        return plainJobId, nil, nil;
-    end
+        local allowedWeapons = parseWeaponList(weaponPart, mainJobId);
+        if not allowedWeapons then
+            -- Invalid weapons for this job
+            return nil, nil, nil;
+        end
 
-    return nil, nil, nil;
+        return mainJobId, allowedWeapons, subJobId;
+    else
+        -- No weapon specification, just job or job/subjob
+        local mainJobId, subJobId = parseJobPart(token);
+        if mainJobId then
+            return mainJobId, nil, subJobId;
+        end
+
+        return nil, nil, nil;
+    end
 end
 
 function SkillchainCore.isJobAllowedForWs(ws, mainJobId, subJobId)
@@ -211,23 +221,27 @@ function SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, subJobId, cu
     return (#result > 0) and result or nil;
 end
 
+-- Public: Resolve a token to a list of weapon skills
+-- Token formats supported:
+--   - Job tokens: "nin", "nin/war", "thf:dagger", "nin/war:katana,dagger"
+--   - Weapon tokens: "katana", "ga" (returns all skills for that weapon type)
+-- The subJobId parameter is used as a fallback if the token doesn't specify a subjob
 function SkillchainCore.resolveTokenToSkills(token, subJobId, customLevel)
     if not token or type(token) ~= 'string' then
         return nil;
     end
 
-    local raw   = token;
     local lower = token:lower();
 
-    -- 0) Job+weapon filter, e.g. "thf:sword", "war:ga,polearm", "nin/war:dagger"
-    local jobId, allowedWeapons, tokenSubJobId = parseJobWeaponToken(raw);
+    -- Strategy 1: Try parsing as job token (handles all job formats)
+    local jobId, allowedWeapons, tokenSubJobId = SkillchainCore.getJobAndWeaponsFromToken(token);
     if jobId then
         -- Use tokenSubJobId if present, otherwise fall back to parameter subJobId
         local effectiveSubJob = tokenSubJobId or subJobId;
         return SkillchainCore.buildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, customLevel);
     end
 
-    -- 1) Weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
+    -- Strategy 2: Try as weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
     local weaponKey = lower;
 
     if skills.aliases and skills.aliases[lower] then
@@ -244,23 +258,7 @@ function SkillchainCore.resolveTokenToSkills(token, subJobId, customLevel)
         return skills[lower];
     end
 
-    -- 2) Job name / abbreviation, e.g. "nin", "ninja", "drk", or "nin/war"
-    local mainJobPart, subJobPart = raw:match('^([^/]+)/(.+)$');
-    if mainJobPart and subJobPart then
-        -- Has subjob but no weapon specified
-        local mainJobId = SkillchainCore.getJobIdFromToken(mainJobPart);
-        local parsedSubJobId = SkillchainCore.getJobIdFromToken(subJobPart);
-        if mainJobId then
-            return SkillchainCore.buildSkillListForJob(mainJobId, nil, parsedSubJobId, customLevel);
-        end
-    end
-
-    -- Plain job token
-    local plainJobId = SkillchainCore.getJobIdFromToken(raw);
-    if plainJobId then
-        return SkillchainCore.buildSkillListForJob(plainJobId, nil, subJobId, customLevel);
-    end
-
+    -- No match found
     return nil;
 end
 
