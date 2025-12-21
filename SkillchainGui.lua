@@ -82,11 +82,11 @@ end
 -- Helper wrappers for Core functions (for backwards compatibility)
 -----------------------------------------------------------------------
 local function getJobWeaponList(jobId)
-    return SkillchainCore.getWeaponsForJob(jobId);
+    return SkillchainCore.GetWeaponsForJob(jobId);
 end
 
 local function buildToken(jobId, weaponSel, subJobId)
-    return SkillchainCore.buildTokenFromSelection(jobId, weaponSel, subJobId);
+    return SkillchainCore.BuildTokenFromSelection(jobId, weaponSel, subJobId);
 end
 
 -----------------------------------------------------------------------
@@ -154,7 +154,7 @@ local function calculateTabHeight(tabName, tabState, maxWeapons)
     return 400; -- fallback
 end
 
-local function DrawCombo(label, items, currentIndex)
+local function drawCombo(label, items, currentIndex)
     local idx   = currentIndex or 1;
     if idx < 1 or idx > #items then
         idx = 1;
@@ -177,7 +177,7 @@ local function DrawCombo(label, items, currentIndex)
     return idx;
 end
 
-local function HelpMarker(text)
+local function helpMarker(text)
     imgui.SameLine();
     imgui.TextDisabled('(?)');
     if imgui.IsItemHovered() then
@@ -190,7 +190,7 @@ local function HelpMarker(text)
 end
 
 -- Gradient header helper: color â†’ transparent with small text padding.
-local function DrawGradientHeader(text, width)
+local function drawGradientHeader(text, width)
     local drawlist = imgui.GetWindowDrawList();
     local x, y     = imgui.GetCursorScreenPos();
     local lineH    = imgui.GetTextLineHeightWithSpacing();
@@ -298,7 +298,7 @@ local function applyTokenToSide(side, token)
     end
 
     -- Let core parse "job", "job:weapon1,weapon2", or "mainjob/subjob:weapon"
-    local jobId, allowedWeapons, subJobId = SkillchainCore.getJobAndWeaponsFromToken(token);
+    local jobId, allowedWeapons, subJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
     if not jobId then
         return;
     end
@@ -401,7 +401,7 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
     end
 end
 
-local function DrawCalculatorTab(cache)
+local function drawCalculatorTab(cache)
     -- Current job IDs based on indices
     local job1Id = jobItems[state.job1Index] or jobItems[1];
     local job2Id = jobItems[state.job2Index] or jobItems[2];
@@ -417,7 +417,7 @@ local function DrawCalculatorTab(cache)
     -- Custom Level section (if enabled)
     -----------------------------------------------------------------------
     if state.useCustomLevel then
-        DrawGradientHeader('Character Level', imgui.GetContentRegionAvail());
+        drawGradientHeader('Character Level', imgui.GetContentRegionAvail());
 
         local baseX  = imgui.GetCursorPosX();
         local indent = 5;
@@ -446,7 +446,7 @@ local function DrawCalculatorTab(cache)
         end
 
         imgui.PushItemWidth(100);
-        state.customLevel = DrawCombo('##customlevel', levelItems, state.customLevel);
+        state.customLevel = drawCombo('##customlevel', levelItems, state.customLevel);
         imgui.PopItemWidth();
 
         imgui.Spacing();
@@ -457,7 +457,7 @@ local function DrawCalculatorTab(cache)
     -----------------------------------------------------------------------
     -- Jobs + weapons section
     -----------------------------------------------------------------------
-    DrawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
+    drawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
 
     ensureJobWeaponSelection(1, job1Id);
     ensureJobWeaponSelection(2, job2Id);
@@ -470,7 +470,7 @@ local function DrawCalculatorTab(cache)
     -- Row 1: job combos + arrow
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
     local prevJob1Index = state.job1Index;
-    state.job1Index = DrawCombo('##fromjob', jobItems, state.job1Index);
+    state.job1Index = drawCombo('##fromjob', jobItems, state.job1Index);
     imgui.PopItemWidth();
 
     imgui.NextColumn();
@@ -488,7 +488,7 @@ local function DrawCalculatorTab(cache)
     imgui.NextColumn();
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
     local prevJob2Index = state.job2Index;
-    state.job2Index = DrawCombo('##tojob', jobItems, state.job2Index);
+    state.job2Index = drawCombo('##tojob', jobItems, state.job2Index);
     imgui.PopItemWidth();
 
     -- Row 1.5: subjob combos (if enabled)
@@ -500,7 +500,7 @@ local function DrawCalculatorTab(cache)
         imgui.SameLine();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 30);
         local prevJob1SubIndex = state.job1SubIndex;
-        state.job1SubIndex = DrawCombo('##fromsubjob', jobItems, state.job1SubIndex);
+        state.job1SubIndex = drawCombo('##fromsubjob', jobItems, state.job1SubIndex);
         imgui.PopItemWidth();
 
         imgui.NextColumn();
@@ -513,7 +513,7 @@ local function DrawCalculatorTab(cache)
         imgui.SameLine();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 30);
         local prevJob2SubIndex = state.job2SubIndex;
-        state.job2SubIndex = DrawCombo('##tosubjob', jobItems, state.job2SubIndex);
+        state.job2SubIndex = drawCombo('##tosubjob', jobItems, state.job2SubIndex);
         imgui.PopItemWidth();
 
         -- Prevent main and subjob from being the same - swap them if they match
@@ -643,7 +643,7 @@ local function DrawCalculatorTab(cache)
     return request;
 end
 
-local function DrawFiltersTab(cache)
+local function drawFiltersTab(cache)
     local request = nil;
 
     local baseX  = imgui.GetCursorPosX();
@@ -653,12 +653,12 @@ local function DrawFiltersTab(cache)
     -----------------------------------------------------------------------
     -- Element Filter
     -----------------------------------------------------------------------
-    DrawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
+    drawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
 
     imgui.Text('Filter results by burst element:');
     imgui.SetCursorPosX(baseX + indent);
     imgui.PushItemWidth(filterWidth - indent);
-    state.elementIndex = DrawCombo('##scelement', elementItems, state.elementIndex);
+    state.elementIndex = drawCombo('##scelement', elementItems, state.elementIndex);
     imgui.PopItemWidth();
 
     imgui.Spacing();
@@ -668,7 +668,7 @@ local function DrawFiltersTab(cache)
     -----------------------------------------------------------------------
     -- Level Filter
     -----------------------------------------------------------------------
-    DrawGradientHeader('Skillchain Level (1, 2, 3)', imgui.GetContentRegionAvail());
+    drawGradientHeader('Skillchain Level (1, 2, 3)', imgui.GetContentRegionAvail());
 
     imgui.Text('Minimum skillchain tier:');
     imgui.SetCursorPosX(baseX + indent);
@@ -691,7 +691,7 @@ local function DrawFiltersTab(cache)
     -----------------------------------------------------------------------
     -- Advanced Filters Section
     -----------------------------------------------------------------------
-    DrawGradientHeader('Advanced Filters', imgui.GetContentRegionAvail());
+    drawGradientHeader('Advanced Filters', imgui.GetContentRegionAvail());
 
     -- Custom Level Checkbox
     imgui.SetCursorPosX(baseX + indent);
@@ -700,7 +700,7 @@ local function DrawFiltersTab(cache)
         state.useCustomLevel = useCustomLevel[1];
     end
     imgui.SameLine();
-    HelpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
+    helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
     -- Both Directions Checkbox
     imgui.SetCursorPosX(baseX + indent);
@@ -709,7 +709,7 @@ local function DrawFiltersTab(cache)
         state.both = both[1];
     end
     imgui.SameLine();
-    HelpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
+    helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
 
     -- Include Subjob Checkbox
     imgui.SetCursorPosX(baseX + indent);
@@ -718,7 +718,7 @@ local function DrawFiltersTab(cache)
         state.includeSubjob = includeSubjob[1];
     end
     imgui.SameLine();
-    HelpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
+    helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
 
     imgui.Spacing();
     imgui.Separator();
@@ -838,7 +838,7 @@ local function DrawFiltersTab(cache)
     return request;
 end
 
-local function DrawSettingsTab(cache)
+local function drawSettingsTab(cache)
     local request = nil;
 
     if not cache or not cache.settings or not cache.settings.anchor then
@@ -863,7 +863,7 @@ local function DrawSettingsTab(cache)
     local maxY   = scaling.window.h - colH - pad;
     if maxY < pad then maxY = pad; end
 
-    DrawGradientHeader('Results Window Anchor (top-left)', imgui.GetContentRegionAvail());
+    drawGradientHeader('Results Window Anchor (top-left)', imgui.GetContentRegionAvail());
     imgui.Spacing();
 
     -- 5px indent
@@ -890,7 +890,7 @@ local function DrawSettingsTab(cache)
     -- Stored Default Filter Status (read-only)
     -----------------------------------------------------------------------
     imgui.Separator();
-    DrawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
+    drawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
 
     local def = cache.settings.default or {};
 
@@ -908,7 +908,7 @@ local function DrawSettingsTab(cache)
     -----------------------------------------------------------------------
     imgui.Spacing();
     imgui.Separator();
-    DrawGradientHeader('How to Update Defaults (CLI)', imgui.GetContentRegionAvail());
+    drawGradientHeader('How to Update Defaults (CLI)', imgui.GetContentRegionAvail());
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setlevel <1-3>');
@@ -1095,7 +1095,7 @@ function SkillchainGUI.DrawWindow(cache)
             if state.activeTab ~= 'Calculator' then
                 state.activeTab = 'Calculator';
             end
-            local r = DrawCalculatorTab(cache);
+            local r = drawCalculatorTab(cache);
             if r then
                 request = r;
             end
@@ -1107,7 +1107,7 @@ function SkillchainGUI.DrawWindow(cache)
             if state.activeTab ~= 'Filters' then
                 state.activeTab = 'Filters';
             end
-            local r = DrawFiltersTab(cache);
+            local r = drawFiltersTab(cache);
             if r then
                 request = request or {};
                 for k, v in pairs(r) do
@@ -1122,7 +1122,7 @@ function SkillchainGUI.DrawWindow(cache)
             if state.activeTab ~= 'Settings' then
                 state.activeTab = 'Settings';
             end
-            local r = DrawSettingsTab(cache);
+            local r = drawSettingsTab(cache);
             if r then
                 request = request or {};
                 for k, v in pairs(r) do
