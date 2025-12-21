@@ -10,11 +10,11 @@ addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 require('common');
 require('imgui_compat');
 
-local skills         = require('skills');
-local SkillchainCore = require('SkillchainCore');
-local gdi            = require('gdifonts.include');
-local settings       = require('settings');
-local SkillchainGUI  = require('skillchaingui');
+local SkillchainCore     = require('SkillchainCore');
+local SkillchainRenderer = require('SkillchainRenderer');
+local gdi                = require('gdifonts.include');
+local settings           = require('settings');
+local SkillchainGUI      = require('skillchaingui');
 
 local debugMode = false; -- Debug mode flag
 local MAX_LEVEL = 75;
@@ -63,16 +63,6 @@ local sccSettings = T{
     },
 };
 
-local gdiObjects = {
-    title = nil,
-    background = nil,
-    textPool = {},          -- Active text objects
-    poolSize = 0,           -- Current pool size
-    maxPoolSize = 150,      -- Hard cap
-    minPoolSize = 20,       -- Minimum to keep alive
-    lastUsedCount = 0,      -- Track last frame usage
-};
-
 local cache = {
     token1 = nil,
     token2 = nil,
@@ -99,289 +89,11 @@ local function resetCacheFull()
     applyDefaultsToCache();
 end
 
-local isVisible = false;
-
-local function initGDIObjects()
-    gdiObjects.title = gdi:create_object(cache.settings.title_font);
-    gdiObjects.title:set_text('Skillchains');
-    gdiObjects.title:set_position_x(cache.settings.anchor.x + 5);
-    gdiObjects.title:set_position_y(cache.settings.anchor.y);
-
-    gdiObjects.background = gdi:create_rect(cache.settings.bg);
-    gdiObjects.background:set_position_x(cache.settings.anchor.x);
-    gdiObjects.background:set_position_y(cache.settings.anchor.y);
-
-    -- Start with minimum pool size
-    for i = 1, gdiObjects.minPoolSize do
-        local text = gdi:create_object(cache.settings.font);
-        text:set_visible(false);
-        table.insert(gdiObjects.textPool, text);
-    end
-    gdiObjects.poolSize = gdiObjects.minPoolSize;
-end
-
-local function destroyGDIObjects()
-    if gdiObjects.title then
-        gdi:destroy_object(gdiObjects.title);
-        gdiObjects.title = nil;
-    end
-    
-    if gdiObjects.background then
-        gdi:destroy_object(gdiObjects.background);
-        gdiObjects.background = nil;
-    end
-    
-    for _, text in ipairs(gdiObjects.textPool) do
-        gdi:destroy_object(text);
-    end
-    gdiObjects.textPool = {};
-    gdiObjects.poolSize = 0;
-    gdiObjects.lastUsedCount = 0;
-end
-
-local function clearGDI()
-    isVisible = false;
-    gdiObjects.background:set_visible(false);
-    gdiObjects.title:set_visible(false);
-    
-    -- Only hide objects that were previously used
-    for i = 1, gdiObjects.lastUsedCount do
-        gdiObjects.textPool[i]:set_visible(false);
-    end
-    gdiObjects.lastUsedCount = 0;
-end
-
--- Move GDI Anchor
-local function moveGDIAnchor()
-    gdiObjects.title:set_position_x(cache.settings.anchor.x + 5);
-    gdiObjects.title:set_position_y(cache.settings.anchor.y);
-
-    gdiObjects.background:set_position_x(cache.settings.anchor.x);
-    gdiObjects.background:set_position_y(cache.settings.anchor.y);
-end
-
-local function ensurePoolSize(requiredSize)
-    if requiredSize > gdiObjects.maxPoolSize then
-        requiredSize = gdiObjects.maxPoolSize;
-    end
-    
-    -- Grow pool if needed
-    while gdiObjects.poolSize < requiredSize do
-        local text = gdi:create_object(cache.settings.font);
-        text:set_visible(false);
-        table.insert(gdiObjects.textPool, text);
-        gdiObjects.poolSize = gdiObjects.poolSize + 1;
-    end
-end
-
-local function shrinkPool()
-    -- Shrink pool if it's much larger than needed (keep buffer)
-    local targetSize = math.max(gdiObjects.minPoolSize, gdiObjects.lastUsedCount + 20);
-    
-    while gdiObjects.poolSize > targetSize do
-        local text = table.remove(gdiObjects.textPool);
-        if text then
-            gdi:destroy_object(text);
-            gdiObjects.poolSize = gdiObjects.poolSize - 1;
-        else
-            break;
-        end
-    end
-end
-
 local function updateGDI(skillchains)
-    isVisible = true;
-
-    gdiObjects.background:set_visible(true);
-    gdiObjects.title:set_visible(true);
-
-    local layout = cache.settings.layout;
     local resultsTable = SkillchainCore.buildSkillchainTable(skillchains);
     local sortedResults, orderedResults = SkillchainCore.sortSkillchainTable(resultsTable, debugMode);
-    
-    local y_offset = 40;
-    local textIndex = 1;
-    local columnOffset = 0;
-    local entriesInColumn = 0;
-    local maxColumnHeight = 0;
 
-    -- Count required objects first
-    -- Account for headers that may be repeated when splitting across columns
-    local requiredObjects = 0;
-    for _, result in ipairs(orderedResults) do
-        local openers = sortedResults[result];
-        local resultCount = 0;
-        for _, openerData in ipairs(openers) do
-            resultCount = resultCount + #openerData.closers;
-        end
-
-        -- Estimate how many times this skillchain's header might appear
-        -- If results span multiple columns, we need multiple headers
-        -- Worst case: header every (minResultsAfterHeader + 1) entries after the first header
-        local headerCount = 1; -- At least one header
-        if resultCount > layout.entriesPerColumn then
-            -- Rough estimate: one header per column segment
-            headerCount = math.ceil(resultCount / (layout.entriesPerColumn - 1));
-        end
-
-        requiredObjects = requiredObjects + headerCount + resultCount;
-    end
-
-    -- Ensure pool has enough objects
-    ensurePoolSize(requiredObjects);
-    
-    -- Track if we hit the limit
-    local hitLimit = false;
-    
-    -- Helper function to display a skillchain header
-    local function displayHeader(result, color, elementsText)
-        if textIndex > gdiObjects.poolSize then
-            return false;
-        end
-
-        local header = gdiObjects.textPool[textIndex];
-        header:set_text(string.format('%s [%s]', result, elementsText));
-        header:set_font_color(color);
-        header:set_position_x(cache.settings.anchor.x + 10 + columnOffset);
-        header:set_position_y(cache.settings.anchor.y + y_offset);
-        header:set_visible(true);
-
-        textIndex = textIndex + 1;
-        y_offset = y_offset + layout.entriesHeight;
-        entriesInColumn = entriesInColumn + 1;
-
-        return true;
-    end
-
-    -- Render results
-    for _, result in ipairs(orderedResults) do
-        if textIndex > gdiObjects.poolSize then
-            hitLimit = true;
-            break;
-        end
-
-        local openers = sortedResults[result];
-        local chainInfo = skills.ChainInfo[result];
-        local burstElements = chainInfo and chainInfo.burst or {};
-        local elementsText = table.concat(burstElements, ', ');
-        local color = skills.GetPropertyColor(result);
-
-        -- Count total entries for this skillchain (header + all combos)
-        local totalEntries = 1; -- header
-        for _, openerData in ipairs(openers) do
-            totalEntries = totalEntries + #openerData.closers;
-        end
-
-        -- Soft cap logic: if we're near the column limit and adding this skillchain
-        -- would only fit the header or very few results, move to next column instead
-        local spaceLeft = layout.entriesPerColumn - entriesInColumn;
-
-        if spaceLeft > 0 and spaceLeft <= minResultsAfterHeader then
-            -- Not enough space for header + minimum results, move to next column
-            maxColumnHeight = math.max(maxColumnHeight, y_offset);
-            columnOffset = columnOffset + layout.columnWidth;
-            y_offset = 40;
-            entriesInColumn = 0;
-        end
-
-        -- Display initial header
-        if not displayHeader(result, color, elementsText) then
-            hitLimit = true;
-            break;
-        end
-
-        -- Track how many results we've shown for this skillchain section
-        local resultsShownInSection = 0;
-        local totalResultsCount = 0; -- Total count of all results for this skillchain
-        for _, openerData in ipairs(openers) do
-            totalResultsCount = totalResultsCount + #openerData.closers;
-        end
-
-        -- Display each opener and closer
-        for _, openerData in ipairs(openers) do
-            for _, closerData in ipairs(openerData.closers) do
-                if textIndex > gdiObjects.poolSize then
-                    hitLimit = true;
-                    break;
-                end
-
-                -- Calculate how many results remain (including this one)
-                local resultsRemaining = totalResultsCount - resultsShownInSection;
-
-                -- Check if we need to move to next column before displaying this entry
-                -- Conditions:
-                -- 1. We've exceeded the soft cap (30 entries)
-                -- 2. We've shown at least minResultsAfterHeader (5) results after the last header
-                -- 3. Remaining results would make a new column worthwhile
-                --    New column needs: header (1) + at least minResultsAfterHeader (5) results = 6+ entries
-                --    So we need resultsRemaining >= minResultsAfterHeader + 1
-                local shouldSplit = entriesInColumn + 1 > layout.entriesPerColumn and
-                                   resultsShownInSection >= minResultsAfterHeader and
-                                   resultsRemaining >= minResultsAfterHeader + 1;
-
-                if shouldSplit then
-                    maxColumnHeight = math.max(maxColumnHeight, y_offset);
-                    columnOffset = columnOffset + layout.columnWidth;
-                    y_offset = 40;
-                    entriesInColumn = 0;
-                    -- NOTE: Do NOT reset resultsShownInSection here!
-                    -- It needs to keep counting to properly calculate resultsRemaining
-
-                    -- Re-display the header in the new column
-                    if not displayHeader(result, color, elementsText) then
-                        hitLimit = true;
-                        break;
-                    end
-                end
-
-                local comboText = gdiObjects.textPool[textIndex];
-
-                -- Check for level 3 skillchains (Light or Darkness)
-                local isReversible = (result == 'Light' or result == 'Darkness');
-                local arrow = (isReversible and cache.both) and '↔' or '→';
-
-                comboText:set_text(string.format('  %s %s %s', openerData.opener, arrow, closerData.closer));
-                comboText:set_font_color(cache.settings.font.font_color);
-                comboText:set_position_x(cache.settings.anchor.x + 20 + columnOffset);
-                comboText:set_position_y(cache.settings.anchor.y + y_offset);
-                comboText:set_visible(true);
-
-                textIndex = textIndex + 1;
-                y_offset = y_offset + layout.entriesHeight;
-                entriesInColumn = entriesInColumn + 1;
-                resultsShownInSection = resultsShownInSection + 1;
-            end
-
-            if hitLimit then break; end
-        end
-
-        if hitLimit then break; end
-    end
-
-    -- Track how many objects we actually used
-    gdiObjects.lastUsedCount = textIndex - 1;
-    
-    -- Show truncation notice if we hit the limit
-    if hitLimit and gdiObjects.poolSize > 0 then
-        local notice = gdiObjects.textPool[gdiObjects.poolSize];
-        notice:set_text('⚠ Results trimmed. Add filters such as job:weapon or limit number of weapons in job or level=2.');
-        notice:set_font_color(0xFFFF5555);
-        notice:set_position_x(cache.settings.anchor.x + 5);
-        notice:set_position_y(cache.settings.anchor.y - 20);
-        notice:set_visible(true);
-    end
-
-    -- Update max column height
-    maxColumnHeight = math.max(maxColumnHeight, y_offset);
-
-    -- Adjust background dimensions
-    gdiObjects.background:set_height(maxColumnHeight + 5);
-    gdiObjects.background:set_width(columnOffset + layout.columnWidth);
-    
-    -- Shrink pool if oversized (do this after a delay to avoid thrashing)
-    if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then
-        shrinkPool();
-    end
+    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.both, minResultsAfterHeader);
 end
 
 -- ============================================================================
@@ -390,23 +102,21 @@ end
 ashita.events.register('load', 'load_cb', function()
     cache.settings = settings.load(sccSettings);
     applyDefaultsToCache();
-    initGDIObjects();
-    clearGDI();
+    SkillchainRenderer.initialize(gdi, cache.settings);
 
     settings.register('settings', 'settings_update', function(s)
         if (s ~= nil) then
-            destroyGDIObjects();
+            SkillchainRenderer.destroy();
             cache.settings = s;
             applyDefaultsToCache();
-            initGDIObjects();
-            clearGDI();
+            SkillchainRenderer.initialize(gdi, cache.settings);
         end
     end)
 end);
 
 local function displaySkillchainResults(combinations, label)
     if not combinations then
-        clearGDI();
+        SkillchainRenderer.clear();
         return;
     end
 
@@ -417,12 +127,12 @@ local function displaySkillchainResults(combinations, label)
     end
 
     if (#filteredCombinations > 0) then
-        clearGDI();
+        SkillchainRenderer.clear();
         updateGDI(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
         print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.level));
-        clearGDI();
+        SkillchainRenderer.clear();
     end
 end
 
@@ -435,7 +145,7 @@ local function ParseSkillchains(isStep)
         local wsList = SkillchainCore.resolveTokenToSkills(cache.token1, nil, cache.customLevel);
         if (not wsList) then
             print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
-            clearGDI();
+            SkillchainRenderer.clear();
             return;
         end
 
@@ -456,7 +166,7 @@ local function ParseSkillchains(isStep)
     if (not skills1 or not skills2) then
         print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
             tostring(cache.token1) .. ', ' .. tostring(cache.token2));
-        clearGDI();
+        SkillchainRenderer.clear();
         return;
     end
 
@@ -471,9 +181,9 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
         local req = SkillchainGUI.DrawWindow(cache);
         if req ~= nil then
             if req.anchorChanged then
-                moveGDIAnchor();
+                SkillchainRenderer.updateAnchor(cache.settings);
                 settings.save();
-                if isVisible then
+                if SkillchainRenderer.isVisible() then
                     ParseSkillchains(cache.stepMode);
                 end
             end
@@ -481,13 +191,13 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             if req.updateDefaults then
                 applyDefaultsToCache();
                 settings.save();
-                if isVisible then
+                if SkillchainRenderer.isVisible() then
                     ParseSkillchains(cache.stepMode);
                 end
             end
 
             if req.clear then
-                clearGDI();
+                SkillchainRenderer.clear();
                 resetCacheFull();
                 return;
             end
@@ -511,7 +221,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             end
         end
     else
-        clearGDI();
+        SkillchainRenderer.clear();
     end
 end);
 
@@ -535,7 +245,7 @@ ashita.events.register('command', 'command_cb', function(e)
                 else
                     cache.settings.anchor.y = value;
                 end
-                moveGDIAnchor();
+                SkillchainRenderer.updateAnchor(cache.settings);
                 print('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
                 validCommand = true;
             else
@@ -584,7 +294,7 @@ ashita.events.register('command', 'command_cb', function(e)
     -- 1-arg utility commands
     if (#args == 2) then
         if (args[2] == 'clear') then
-            clearGDI();
+            SkillchainRenderer.clear();
             resetCacheFull();
 
             if (SkillchainGUI ~= nil) then
@@ -719,5 +429,5 @@ end);
 
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
-    destroyGDIObjects();
+    SkillchainRenderer.destroy();
 end);
