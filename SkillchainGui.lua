@@ -1,10 +1,10 @@
--- skillchaingui.lua
+-- SkillchainGui.lua
 -- ImGui input window for SkillchainCalc (GDI shows results).
 
 require('common');
 local imgui    = require('imgui');
-local jobsData = require('jobs');
-local skills   = require('skills');
+local jobsData = require('Jobs');
+local skills   = require('Skills');
 local scaling  = require('scaling');
 local SkillchainCore = require('SkillchainCore');
 

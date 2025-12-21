@@ -2,8 +2,8 @@
 -- Core parsing / filtering / sorting logic for SkillchainCalc.
 
 require('common');
-local skills = require('skills');
-local jobs   = require('jobs');
+local skills = require('Skills');
+local jobs   = require('Jobs');
 local SkillRanks = require('SkillRanks');
 
 local SkillchainCore = {};
