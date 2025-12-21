@@ -179,12 +179,12 @@ local function parseJobPart(jobString)
 
     if mainJobPart and subJobPart then
         -- Has subjob: "nin/war"
-        local mainJobId = SkillchainCore.getJobIdFromToken(mainJobPart);
-        local subJobId = SkillchainCore.getJobIdFromToken(subJobPart);
+        local mainJobId = SkillchainCore.GetJobIdFromToken(mainJobPart);
+        local subJobId = SkillchainCore.GetJobIdFromToken(subJobPart);
         return mainJobId, subJobId;
     else
         -- No subjob: just "nin"
-        local jobId = SkillchainCore.getJobIdFromToken(jobString);
+        local jobId = SkillchainCore.GetJobIdFromToken(jobString);
         return jobId, nil;
     end
 end
