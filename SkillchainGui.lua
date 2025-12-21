@@ -138,13 +138,13 @@ local function calculateTabHeight(tabName, tabState, maxWeapons)
         -- Add extra rows for subjob dropdowns if enabled
         local rowsSubjob = tabState.includeSubjob and 1 or 0;
         -- Add extra row for custom level dropdown if enabled
-        local rowsLevel = tabState.useCustomLevel and 1 or 0;
+        local rowsLevel = tabState.useCustomLevel and 2.5 or 0;
         return (rowsBase + rowsWeapons + rowsSubjob + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
-        paddingAdjust = -7;
+        paddingAdjust = 5;
         -- Filters tab: Advanced Filters header + 3 checkboxes + Element section + Level section + buttons + Calculate button
         -- Advanced Filters (header + 3 checkboxes with help) + Element section (header + text + combo) + Level section (header + text + slider + 3 lines text) + buttons + Calculate
-        return 23 * lineHeight + paddingAdjust;
+        return 18 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
         -- Settings tab: Anchor (header + 2 sliders) + Defaults (header + 2 lines) + CLI (header + 4 lines)
