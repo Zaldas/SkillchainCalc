@@ -190,6 +190,30 @@ local function helpMarker(text)
     end
 end
 
+-- Styled button helper: handles primary (blue) and ghost (transparent) button styles
+local function styledButton(label, size, isPrimary)
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
+
+    if isPrimary then
+        -- Primary button style (blue)
+        imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
+        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
+    else
+        -- Ghost button style (transparent)
+        imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
+        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
+    end
+
+    local clicked = imgui.Button(label, size);
+
+    imgui.PopStyleColor(3);
+    imgui.PopStyleVar(1);
+
+    return clicked;
+end
+
 -- Gradient header helper: color > transparent with small text padding.
 local function drawGradientHeader(text, width)
     local drawlist = imgui.GetWindowDrawList();
@@ -597,27 +621,14 @@ local function drawCalculatorTab()
     end
 
     -- Primary action: Calculate
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
-
-    if imgui.Button('Calculate', { buttonWidth, 0 }) then
+    if styledButton('Calculate', { buttonWidth, 0 }, true) then
         request = buildCalculationRequest();
     end
-
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
 
     imgui.SameLine();
 
     -- Secondary action: Clear (ghost button style)
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-    imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
-    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
-
-    if imgui.Button('Clear', { buttonWidth, 0 }) then
+    if styledButton('Clear', { buttonWidth, 0 }, false) then
         local curJob1Id = jobItems[state.job1Index];
         local curJob2Id = jobItems[state.job2Index];
 
@@ -626,9 +637,6 @@ local function drawCalculatorTab()
 
         request = { clear = true };
     end
-
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
 
     return request;
 end
@@ -728,12 +736,7 @@ local function drawFiltersTab()
     end
 
     -- Set Defaults button
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
-
-    if imgui.Button('Set as Defaults', { buttonWidth, 0 }) then
+    if styledButton('Set as Defaults', { buttonWidth, 0 }, true) then
         local def = (cache and cache.settings and cache.settings.default) or {};
         def.scLevel = state.scLevel;
         def.both  = state.both;
@@ -745,18 +748,10 @@ local function drawFiltersTab()
         request.updateDefaults = true;
     end
 
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
-
     imgui.SameLine();
 
     -- Reset Filters button (ghost style)
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-    imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
-    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
-
-    if imgui.Button('Reset Filters', { buttonWidth, 0 }) then
+    if styledButton('Reset Filters', { buttonWidth, 0 }, false) then
         -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
         state.scLevel = def.scLevel or 1;
@@ -765,9 +760,6 @@ local function drawFiltersTab()
         state.useCustomLevel = def.useCharLevel or false;
         state.elementIndex = 1;
     end
-
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
 
     imgui.Spacing();
     imgui.Spacing();
@@ -784,12 +776,7 @@ local function drawFiltersTab()
     end
 
     -- Calculate button (primary style)
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-    imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
-    imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
-
-    if imgui.Button('Calculate', { calcButtonWidth, 0 }) then
+    if styledButton('Calculate', { calcButtonWidth, 0 }, true) then
         -- Ensure weapon selections exist for current jobs
         local job1Id = jobItems[state.job1Index] or jobItems[1];
         local job2Id = jobItems[state.job2Index] or jobItems[2];
@@ -798,9 +785,6 @@ local function drawFiltersTab()
 
         request = buildCalculationRequest();
     end
-
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
 
     return request;
 end
