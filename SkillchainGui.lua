@@ -106,7 +106,7 @@ local state = {
 
     -- custom level filter
     useCustomLevel = false,
-    customLevel    = 1,
+    customLevel    = 75,
 
     -- middle section
     job1Index     = 1,
@@ -146,7 +146,7 @@ local function calculateTabHeight(tabName, tabState, maxWeapons)
         return 18 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
-        return 15 * lineHeight + paddingAdjust;
+        return 17 * lineHeight + paddingAdjust;
     end
 
     return 400; -- fallback
@@ -422,8 +422,11 @@ local function drawCalculatorTab(cache)
         local filterWidth = JOB_COLUMN_WIDTH * 2;
 
         imgui.SetCursorPosX(baseX + indent);
+        local LABEL_PADDING = 3
+        imgui.SetCursorPosY(imgui.GetCursorPosY() + LABEL_PADDING);
         imgui.Text('Level:');
         imgui.SameLine();
+        imgui.SetCursorPosY(imgui.GetCursorPosY() - LABEL_PADDING);
 
         -- Build level items list from SkillRanks
         local skillranks = require('SkillRanks');
@@ -743,10 +746,10 @@ local function drawFiltersTab(cache)
 
     if imgui.Button('Set as Defaults', { buttonWidth, 0 }) then
         local def = (cache and cache.settings and cache.settings.default) or {};
-        def.level = state.level;
+        def.scLevel = state.level;
         def.both  = state.both;
         def.includeSubjob = state.includeSubjob;
-        def.useCustomLevel = state.useCustomLevel;
+        def.useCharLevel = state.useCustomLevel;
         cache.settings.default = def;
 
         request = request or {};
@@ -767,10 +770,10 @@ local function drawFiltersTab(cache)
     if imgui.Button('Reset Filters', { buttonWidth, 0 }) then
         -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
-        state.level = def.level or 1;
+        state.level = def.scLevel or 1;
         state.both  = def.both  or false;
         state.includeSubjob = def.includeSubjob or false;
-        state.useCustomLevel = def.useCustomLevel or false;
+        state.useCustomLevel = def.useCharLevel or false;
         state.elementIndex = 1;
     end
 
@@ -893,13 +896,16 @@ local function drawSettingsTab(cache)
     local def = cache.settings.default or {};
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Default Level:   %s", tostring(def.level)));
+    imgui.Text(string.format("SkillChain Level: %s", tostring(def.scLevel)));
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Default Both:    %s", tostring(def.both)));
+    imgui.Text(string.format("Enable Char Lvl:  %s", tostring(def.useCharLevel or false)));
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Default Subjob:  %s", tostring(def.includeSubjob or false)));
+    imgui.Text(string.format("Enable Both:      %s", tostring(def.both or false)));
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Enable Subjob:    %s", tostring(def.includeSubjob or false)));
 
     -----------------------------------------------------------------------
     -- How to update defaults (CLI instructions)
@@ -909,7 +915,10 @@ local function drawSettingsTab(cache)
     drawGradientHeader('How to Update Defaults (CLI)', imgui.GetContentRegionAvail());
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setlevel <1-3>');
+    imgui.Text('/scc setsclevel <1-3>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setcharlevel <true|false>');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setboth <true|false>');
@@ -937,7 +946,7 @@ function SkillchainGUI.OpenFromCli(cache)
     local def = (cache.settings and cache.settings.default) or {};
 
     -- Filters from CLI (with fallback to defaults)
-    state.level = cache.level or def.level or 1;
+    state.level = cache.level or def.scLevel or 1;
 
     if cache.both ~= nil then
         state.both = cache.both;
@@ -982,7 +991,7 @@ function SkillchainGUI.OpenFromCli(cache)
         state.useCustomLevel = true;
         state.customLevel = cache.customLevel;
     else
-        state.useCustomLevel = def.useCustomLevel or false;
+        state.useCustomLevel = def.useCharLevel or false;
     end
 
     -- Tell DrawWindow "don't re-init from defaults"
@@ -1025,7 +1034,7 @@ function SkillchainGUI.DrawWindow(cache)
 
         -- Only apply defaults when NOT opened from CLI
         if not state.openedFromCli then
-            state.level = def.level or 1;
+            state.level = def.scLevel or 1;
 
             if def.both ~= nil then
                 state.both = def.both;
@@ -1039,8 +1048,8 @@ function SkillchainGUI.DrawWindow(cache)
                 state.includeSubjob = false;
             end
 
-            if def.useCustomLevel ~= nil then
-                state.useCustomLevel = def.useCustomLevel;
+            if def.useCharLevel ~= nil then
+                state.useCustomLevel = def.useCharLevel;
             else
                 state.useCustomLevel = false;
             end

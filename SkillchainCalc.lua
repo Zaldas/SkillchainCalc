@@ -56,10 +56,10 @@ local sccSettings = T{
         entriesHeight = 20,
     },
     default = {
-        level = 1,
+        scLevel = 1,
         both = false,
         includeSubjob = false,
-        useCustomLevel = false
+        useCharLevel = false
     },
 };
 
@@ -76,7 +76,7 @@ local cache = {
 
 local function applyDefaultsToCache()
     local def = (cache.settings and cache.settings.default) or (sccSettings and sccSettings.default) or {};
-    cache.level = def.level or 1;
+    cache.level = def.scLevel or 1;
     cache.both  = def.both  or false;
     cache.includeSubjob = def.includeSubjob or false;
 end
@@ -249,15 +249,25 @@ ashita.events.register('command', 'command_cb', function(e)
             else
                 print('[SkillchainCalc] Invalid value for setx or sety. Must be a non-negative number.');
             end
-        elseif (args[2] == 'setlevel') then
+        elseif (args[2] == 'setsclevel') then
             if (args[3]:any('1', '2', '3')) then
                 local l = tonumber(args[3]);
-                cache.settings.default.level = l;
+                cache.settings.default.scLevel = l;
                 applyDefaultsToCache();
-                print('[SkillchainCalc] Set default level: ' .. args[3]);
+                print('[SkillchainCalc] Set default skillchain level: ' .. args[3]);
                 validCommand = true;
             else
-                print('[SkillchainCalc] Invalid value for setlevel. Must be a 1, 2, or 3.');
+                print('[SkillchainCalc] Invalid value for setsclevel. Must be a 1, 2, or 3.');
+            end
+        elseif (args[2] == 'setcharlevel') then
+            if (args[3]:any('true', 'false')) then
+                local b = args[3] == 'true';
+                cache.settings.default.useCharLevel = b;
+                applyDefaultsToCache();
+                print('[SkillchainCalc] Set custom character level filter = ' .. args[3]);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for setcharlevel. Must be true or false.');
             end
         elseif (args[2] == 'setboth') then
             if (args[3]:any('true', 'false')) then
@@ -306,9 +316,10 @@ ashita.events.register('command', 'command_cb', function(e)
             return;
         elseif (args[2] == 'status') then
             print('Status of Default Filter:');
-            print(' Skillchain Level: Skillchains Level ' .. cache.settings.default.level .. ' or higher.')
+            print(' Skillchain Level: Skillchains Level ' .. cache.settings.default.scLevel .. ' or higher.')
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             print(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
+            print(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
             print(' GDI Pool Size: ' .. gdiObjects.poolSize .. ' (last used: ' .. gdiObjects.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
@@ -329,12 +340,13 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [both] optional keyword to calculate skillchains in both directions.');
             print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(MAX_LEVEL));
             print('  e.g. lvl:50 or level:50');
-            print('Usage: /scc setx #         -- set x anchor');
-            print('Usage: /scc sety #         -- set y anchor');
-            print('Usage: /scc setlevel #     -- set default level filter');
-            print('Usage: /scc setboth true   -- set default both flag');
-            print('Usage: /scc setsubjob true -- set default subjob filter');
-            print('Usage: /scc status         -- show current defaults');
+            print('Usage: /scc setx #             -- set x anchor');
+            print('Usage: /scc sety #             -- set y anchor');
+            print('Usage: /scc setsclevel #       -- set default skillchain level filter');
+            print('Usage: /scc setcharlevel true  -- enable/disable custom character level');
+            print('Usage: /scc setboth true       -- set default both flag');
+            print('Usage: /scc setsubjob true     -- set default subjob filter');
+            print('Usage: /scc status             -- show current defaults');
             print('Usage: /scc                -- open gui interface');
             return;
         end
