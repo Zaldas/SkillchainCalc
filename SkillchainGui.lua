@@ -428,10 +428,10 @@ local function drawCalculatorTab(cache)
         imgui.SameLine();
         imgui.SetCursorPosY(imgui.GetCursorPosY() - LABEL_PADDING);
 
-        -- Build character level dropdown (75 to 1, descending)
+        -- Build character level dropdown (1 to 75, ascending)
         local maxLevel = 75;
         local levelItems = {};
-        for i = maxLevel, 1, -1 do
+        for i = 1, maxLevel do
             table.insert(levelItems, tostring(i));
         end
 
