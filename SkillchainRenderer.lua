@@ -87,6 +87,13 @@ function SkillchainRenderer.isVisible()
     return isVisible;
 end
 
+function SkillchainRenderer.getPoolInfo()
+    return {
+        poolSize = gdiObjects.poolSize,
+        lastUsedCount = gdiObjects.lastUsedCount
+    };
+end
+
 -- ============================================================================
 -- Anchor Management
 -- ============================================================================

@@ -17,7 +17,6 @@ local gdi                = require('gdifonts.include');
 local settings           = require('settings');
 
 local debugMode = false; -- Debug mode flag
-local MAX_LEVEL = 75;
 
 -- Soft cap configuration: minimum results to show after a header before allowing column split
 -- This prevents columns with just a header and 1-4 results
@@ -292,7 +291,7 @@ ashita.events.register('command', 'command_cb', function(e)
 
         if (validCommand) then
             settings.save();
-            if (isVisible) then
+            if (SkillchainRenderer.isVisible()) then
                 parseSkillchains(cache.stepMode);
             end
             return;
@@ -320,7 +319,8 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             print(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
             print(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
-            print(' GDI Pool Size: ' .. gdiObjects.poolSize .. ' (last used: ' .. gdiObjects.lastUsedCount .. ')');
+            local poolInfo = SkillchainRenderer.getPoolInfo();
+            print(' GDI Pool Size: ' .. poolInfo.poolSize .. ' (last used: ' .. poolInfo.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
             print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both] [lvl:#]');
@@ -338,7 +338,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate skillchains in both directions.');
-            print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(MAX_LEVEL));
+            print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(SkillchainCore.MAX_LEVEL));
             print('  e.g. lvl:50 or level:50');
             print('Usage: /scc setx #             -- set x anchor');
             print('Usage: /scc sety #             -- set y anchor');
@@ -382,10 +382,10 @@ ashita.events.register('command', 'command_cb', function(e)
             -- Extract level value after the colon
             local colonPos = lower:find(':');
             local lvlVal = tonumber(lower:sub(colonPos + 1));
-            if lvlVal and lvlVal >= 1 and lvlVal <= MAX_LEVEL then
+            if lvlVal and lvlVal >= 1 and lvlVal <= SkillchainCore.MAX_LEVEL then
                 charLevel = lvlVal;
             else
-                print(('[SkillchainCalc] Invalid level value. Must be between 1 and %d.'):format(MAX_LEVEL));
+                print(('[SkillchainCalc] Invalid level value. Must be between 1 and %d.'):format(SkillchainCore.MAX_LEVEL));
                 return;
             end
         else
