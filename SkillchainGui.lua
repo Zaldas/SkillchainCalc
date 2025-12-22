@@ -90,7 +90,7 @@ local function buildToken(jobId, weaponSel, subJobId)
 end
 
 -----------------------------------------------------------------------
--- State
+-- State and Cache
 -----------------------------------------------------------------------
 local state = {
     initialized   = false,
@@ -124,10 +124,13 @@ local state = {
     activeTab     = 'Calculator',
 };
 
+-- Module-level cache reference (set externally via SetCache)
+local cache = nil;
+
 -----------------------------------------------------------------------
 -- Helpers
 -----------------------------------------------------------------------
-local function calculateTabHeight(tabName, tabState, maxWeapons)
+local function calculateTabHeight(tabName, maxWeapons)
     local lineHeight = imgui.GetFrameHeightWithSpacing();
     local paddingAdjust = 0;
     -- All values are manually tweaked to make GUI look good
@@ -137,9 +140,9 @@ local function calculateTabHeight(tabName, tabState, maxWeapons)
         local rowsBase    = 6;
         local rowsWeapons = maxWeapons or 0;
         -- Add extra rows for subjob dropdowns if enabled
-        local rowsSubjob = tabState.includeSubjob and 1 or 0;
+        local rowsSubjob = state.includeSubjob and 1 or 0;
         -- Add extra row for custom level dropdown if enabled
-        local rowsLevel = tabState.useCustomLevel and 2.5 or 0;
+        local rowsLevel = state.useCustomLevel and 2.5 or 0;
         return (rowsBase + rowsWeapons + rowsSubjob + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
         paddingAdjust = 5;
@@ -400,7 +403,10 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
 end
 
 -- Helper function to build calculation request from current state
-local function buildCalculationRequest(job1Id, job2Id)
+local function buildCalculationRequest()
+    local job1Id = jobItems[state.job1Index] or jobItems[1];
+    local job2Id = jobItems[state.job2Index] or jobItems[2];
+
     local job1SubId = nil;
     local job2SubId = nil;
 
@@ -427,7 +433,7 @@ local function buildCalculationRequest(job1Id, job2Id)
     };
 end
 
-local function drawCalculatorTab(cache)
+local function drawCalculatorTab()
     -- Current job IDs based on indices
     local job1Id = jobItems[state.job1Index] or jobItems[1];
     local job2Id = jobItems[state.job2Index] or jobItems[2];
@@ -458,7 +464,7 @@ local function drawCalculatorTab(cache)
 
         -- Build character level dropdown (MAX_LEVEL to 1, descending)
         local levelItems = {};
-        for i = SkillchainCore.MAX_LEVEL, 1, -1 do
+        for i = 1, SkillchainCore.MAX_LEVEL do
             table.insert(levelItems, tostring(i));
         end
 
@@ -597,7 +603,7 @@ local function drawCalculatorTab(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
 
     if imgui.Button('Calculate', { buttonWidth, 0 }) then
-        request = buildCalculationRequest(job1Id, job2Id);
+        request = buildCalculationRequest();
     end
 
     imgui.PopStyleColor(3);
@@ -638,7 +644,7 @@ local function drawCalculatorTab(cache)
     return request;
 end
 
-local function drawFiltersTab(cache)
+local function drawFiltersTab()
     local request = nil;
 
     local baseX  = imgui.GetCursorPosX();
@@ -795,15 +801,13 @@ local function drawFiltersTab(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
 
     if imgui.Button('Calculate', { calcButtonWidth, 0 }) then
-        -- Get current jobs from Calculator tab state
+        -- Ensure weapon selections exist for current jobs
         local job1Id = jobItems[state.job1Index] or jobItems[1];
         local job2Id = jobItems[state.job2Index] or jobItems[2];
-
-        -- Ensure weapon selections exist
         ensureJobWeaponSelection(1, job1Id);
         ensureJobWeaponSelection(2, job2Id);
 
-        request = buildCalculationRequest(job1Id, job2Id);
+        request = buildCalculationRequest();
     end
 
     imgui.PopStyleColor(3);
@@ -812,7 +816,7 @@ local function drawFiltersTab(cache)
     return request;
 end
 
-local function drawSettingsTab(cache)
+local function drawSettingsTab()
     local request = nil;
 
     if not cache or not cache.settings or not cache.settings.anchor then
@@ -911,7 +915,7 @@ end
 -----------------------------------------------------------------------
 -- Public API
 -----------------------------------------------------------------------
-function SkillchainGUI.OpenFromCli(cache)
+function SkillchainGUI.OpenFromCli()
     if not cache or cache.stepMode then
         return;
     end
@@ -996,7 +1000,11 @@ function SkillchainGUI.IsVisible()
     return showWindow[1];
 end
 
-function SkillchainGUI.DrawWindow(cache)
+function SkillchainGUI.SetCache(cacheRef)
+    cache = cacheRef;
+end
+
+function SkillchainGUI.DrawWindow()
     if not showWindow[1] then
         return nil;
     end
@@ -1052,7 +1060,7 @@ function SkillchainGUI.DrawWindow(cache)
     local maxWeapons = math.max(count1, count2);
 
     -- Calculate window height based on active tab
-    local winHeight = calculateTabHeight(state.activeTab, state, maxWeapons);
+    local winHeight = calculateTabHeight(state.activeTab, maxWeapons);
 
     imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
 
@@ -1075,7 +1083,7 @@ function SkillchainGUI.DrawWindow(cache)
             if state.activeTab ~= 'Calculator' then
                 state.activeTab = 'Calculator';
             end
-            local r = drawCalculatorTab(cache);
+            local r = drawCalculatorTab();
             if r then
                 request = r;
             end
@@ -1087,7 +1095,7 @@ function SkillchainGUI.DrawWindow(cache)
             if state.activeTab ~= 'Filters' then
                 state.activeTab = 'Filters';
             end
-            local r = drawFiltersTab(cache);
+            local r = drawFiltersTab();
             if r then
                 request = request or {};
                 for k, v in pairs(r) do
@@ -1102,7 +1110,7 @@ function SkillchainGUI.DrawWindow(cache)
             if state.activeTab ~= 'Settings' then
                 state.activeTab = 'Settings';
             end
-            local r = drawSettingsTab(cache);
+            local r = drawSettingsTab();
             if r then
                 request = request or {};
                 for k, v in pairs(r) do

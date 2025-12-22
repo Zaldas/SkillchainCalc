@@ -99,6 +99,7 @@ end
 ashita.events.register('load', 'load_cb', function()
     cache.settings = settings.load(sccSettings);
     applyDefaultsToCache();
+    SkillchainGUI.SetCache(cache);
     SkillchainRenderer.initialize(gdi, cache.settings);
 
     settings.register('settings', 'settings_update', function(s)
@@ -175,7 +176,7 @@ end
 -- Draw IMGUI Input Window
 ashita.events.register('d3d_present', 'scc_present_cb', function()
     if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
-        local req = SkillchainGUI.DrawWindow(cache);
+        local req = SkillchainGUI.DrawWindow();
         if req ~= nil then
             if req.anchorChanged then
                 SkillchainRenderer.updateAnchor(cache.settings);
@@ -433,7 +434,7 @@ ashita.events.register('command', 'command_cb', function(e)
     parseSkillchains(isStep);
 
     if (not isStep) and SkillchainGUI ~= nil then
-        SkillchainGUI.OpenFromCli(cache);
+        SkillchainGUI.OpenFromCli();
     end
 end);
 
