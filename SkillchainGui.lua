@@ -97,7 +97,7 @@ local state = {
     openedFromCli = false,
 
     -- top section
-    level         = 1,
+    scLevel       = 1,
     elementIndex  = 1,
     both          = false,
 
@@ -106,7 +106,7 @@ local state = {
 
     -- custom level filter
     useCustomLevel = false,
-    customLevel    = 75,
+    charLevel      = 75,
 
     -- middle section
     job1Index     = 1,
@@ -428,26 +428,15 @@ local function drawCalculatorTab(cache)
         imgui.SameLine();
         imgui.SetCursorPosY(imgui.GetCursorPosY() - LABEL_PADDING);
 
-        -- Build level items list from SkillRanks
-        local skillranks = require('SkillRanks');
-        local maxLevel = 75; -- Default to 75 if not available from parent
-        if cache and cache.settings then
-            -- Try to get MAX_LEVEL from parent scope
-            for i = 99, 1, -1 do
-                if skillranks.Cap['lvl'] and skillranks.Cap['lvl'][i] then
-                    maxLevel = i;
-                    break;
-                end
-            end
-        end
-
+        -- Build character level dropdown (75 to 1, descending)
+        local maxLevel = 75;
         local levelItems = {};
-        for i = 1, maxLevel do
+        for i = maxLevel, 1, -1 do
             table.insert(levelItems, tostring(i));
         end
 
         imgui.PushItemWidth(100);
-        state.customLevel = drawCombo('##customlevel', levelItems, state.customLevel);
+        state.charLevel = drawCombo('##charlevel', levelItems, state.charLevel);
         imgui.PopItemWidth();
 
         imgui.Spacing();
@@ -591,7 +580,7 @@ local function drawCalculatorTab(cache)
         local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
         local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
 
-        local lvlVal    = state.level or 1;
+        local lvlVal    = state.scLevel or 1;
         local elemTok   = elementTokens[state.elementIndex] or '';
         local scElement = (elemTok ~= '' and elemTok) or nil;
 
@@ -599,10 +588,10 @@ local function drawCalculatorTab(cache)
             mode      = 'pair',
             token1    = token1,
             token2    = token2,
-            level     = lvlVal,
+            scLevel   = lvlVal,
             both      = state.both,
             scElement = scElement,
-            customLevel = state.useCustomLevel and state.customLevel or nil,
+            charLevel = state.useCustomLevel and state.charLevel or nil,
         };
     end
 
@@ -674,9 +663,9 @@ local function drawFiltersTab(cache)
     imgui.Text('Minimum skillchain tier:');
     imgui.SetCursorPosX(baseX + indent);
     imgui.PushItemWidth(filterWidth - indent);
-    local lvl = { state.level };
+    local lvl = { state.scLevel };
     if imgui.SliderInt('##sclevel', lvl, 1, 3) then
-        state.level = lvl[1];
+        state.scLevel = lvl[1];
     end
     imgui.PopItemWidth();
 
@@ -746,7 +735,7 @@ local function drawFiltersTab(cache)
 
     if imgui.Button('Set as Defaults', { buttonWidth, 0 }) then
         local def = (cache and cache.settings and cache.settings.default) or {};
-        def.scLevel = state.level;
+        def.scLevel = state.scLevel;
         def.both  = state.both;
         def.includeSubjob = state.includeSubjob;
         def.useCharLevel = state.useCustomLevel;
@@ -770,7 +759,7 @@ local function drawFiltersTab(cache)
     if imgui.Button('Reset Filters', { buttonWidth, 0 }) then
         -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
-        state.level = def.scLevel or 1;
+        state.scLevel = def.scLevel or 1;
         state.both  = def.both  or false;
         state.includeSubjob = def.includeSubjob or false;
         state.useCustomLevel = def.useCharLevel or false;
@@ -820,17 +809,17 @@ local function drawFiltersTab(cache)
         local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
         local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
 
-        local lvlVal    = state.level or 1;
+        local lvlVal    = state.scLevel or 1;
         local elemTok   = elementTokens[state.elementIndex] or '';
         local scElement = (elemTok ~= '' and elemTok) or nil;
 
         request = request or {};
         request.token1    = token1;
         request.token2    = token2;
-        request.level     = lvlVal;
+        request.scLevel   = lvlVal;
         request.both      = state.both;
         request.scElement = scElement;
-        request.customLevel = state.useCustomLevel and state.customLevel or nil;
+        request.charLevel = state.useCustomLevel and state.charLevel or nil;
     end
 
     imgui.PopStyleColor(3);
@@ -946,7 +935,7 @@ function SkillchainGUI.OpenFromCli(cache)
     local def = (cache.settings and cache.settings.default) or {};
 
     -- Filters from CLI (with fallback to defaults)
-    state.level = cache.level or def.scLevel or 1;
+    state.scLevel = cache.scLevel or def.scLevel or 1;
 
     if cache.both ~= nil then
         state.both = cache.both;
@@ -987,9 +976,9 @@ function SkillchainGUI.OpenFromCli(cache)
     end
 
     -- Custom level from CLI
-    if cache.customLevel then
+    if cache.charLevel then
         state.useCustomLevel = true;
-        state.customLevel = cache.customLevel;
+        state.charLevel = cache.charLevel;
     else
         state.useCustomLevel = def.useCharLevel or false;
     end
@@ -1034,7 +1023,7 @@ function SkillchainGUI.DrawWindow(cache)
 
         -- Only apply defaults when NOT opened from CLI
         if not state.openedFromCli then
-            state.level = def.scLevel or 1;
+            state.scLevel = def.scLevel or 1;
 
             if def.both ~= nil then
                 state.both = def.both;

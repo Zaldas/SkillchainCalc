@@ -66,17 +66,17 @@ local sccSettings = T{
 local cache = {
     token1 = nil,
     token2 = nil,
-    level = 1,
+    scLevel = 1,
     both = false,
     scElement = nil,
     stepMode = false,
-    customLevel = nil,
+    charLevel = nil,
     settings = sccSettings;
 };
 
 local function applyDefaultsToCache()
     local def = (cache.settings and cache.settings.default) or (sccSettings and sccSettings.default) or {};
-    cache.level = def.scLevel or 1;
+    cache.scLevel = def.scLevel or 1;
     cache.both  = def.both  or false;
     cache.includeSubjob = def.includeSubjob or false;
 end
@@ -118,7 +118,7 @@ local function displaySkillchainResults(combinations, label)
         return;
     end
 
-    local filteredCombinations = SkillchainCore.FilterSkillchainsByLevel(combinations, cache.level);
+    local filteredCombinations = SkillchainCore.FilterSkillchainsByLevel(combinations, cache.scLevel);
 
     if cache.scElement then
         filteredCombinations = SkillchainCore.FilterSkillchainsByElement(filteredCombinations, cache.scElement);
@@ -129,7 +129,7 @@ local function displaySkillchainResults(combinations, label)
         renderResults(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
-        print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.level));
+        print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.scLevel));
         SkillchainRenderer.clear();
     end
 end
@@ -140,7 +140,7 @@ local function parseSkillchains(isStep)
             return;
         end
 
-        local wsList = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.customLevel);
+        local wsList = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.charLevel);
         if (not wsList) then
             print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
             SkillchainRenderer.clear();
@@ -158,8 +158,8 @@ local function parseSkillchains(isStep)
         return;
     end
 
-    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.customLevel);
-    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.token2, nil, cache.customLevel);
+    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.charLevel);
+    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.token2, nil, cache.charLevel);
 
     if (not skills1 or not skills2) then
         print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
@@ -205,15 +205,15 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 cache.token2 = req.token2;
 
                 applyDefaultsToCache();
-                if req.level ~= nil then
-                    cache.level = req.level;
+                if req.scLevel ~= nil then
+                    cache.scLevel = req.scLevel;
                 end
                 if req.both ~= nil then
                     cache.both = req.both;
                 end
 
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
-                cache.customLevel = req.customLevel;
+                cache.charLevel = req.charLevel;
 
                 parseSkillchains(cache.stepMode);
             end
@@ -363,17 +363,17 @@ ashita.events.register('command', 'command_cb', function(e)
     end
 
     -- Parse optional arguments
-    local level     = nil;
+    local scLevel   = nil;
     local both      = nil;
     local scElement = nil;
-    local customLevel = nil;
+    local charLevel = nil;
 
     for i = 4, #args do
         local param = args[i];
         local lower = param:lower();
 
         if param:any('1', '2', '3') then
-            level = tonumber(param);
+            scLevel = tonumber(param);
         elseif lower == 'both' then
             both = true;
         elseif lower:sub(1, 3) == 'sc:' then
@@ -383,7 +383,7 @@ ashita.events.register('command', 'command_cb', function(e)
             local colonPos = lower:find(':');
             local lvlVal = tonumber(lower:sub(colonPos + 1));
             if lvlVal and lvlVal >= 1 and lvlVal <= MAX_LEVEL then
-                customLevel = lvlVal;
+                charLevel = lvlVal;
             else
                 print(('[SkillchainCalc] Invalid level value. Must be between 1 and %d.'):format(MAX_LEVEL));
                 return;
@@ -419,8 +419,8 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.token2 = stripDuplicateSubjob(isStep and nil or args[3]);
 
     applyDefaultsToCache();
-    if level ~= nil then
-        cache.level = level;
+    if scLevel ~= nil then
+        cache.scLevel = scLevel;
     end
     if both ~= nil then
         cache.both = both;
@@ -428,7 +428,7 @@ ashita.events.register('command', 'command_cb', function(e)
 
     cache.scElement = scElement and scElement:lower() or nil;
     cache.stepMode = isStep;
-    cache.customLevel = customLevel;
+    cache.charLevel = charLevel;
 
     parseSkillchains(isStep);
 
