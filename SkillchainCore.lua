@@ -7,7 +7,10 @@ local jobs   = require('Jobs');
 local SkillRanks = require('SkillRanks');
 
 local SkillchainCore = {};
-local MAX_LEVEL = 75;
+
+-- Shared constant: Maximum character level
+SkillchainCore.MAX_LEVEL = 75;
+local MAX_LEVEL = SkillchainCore.MAX_LEVEL; -- Local alias for internal use
 
 -- Helper function to get skill cap from rank and level
 local function getSkillCapFromRank(skillRank, level)

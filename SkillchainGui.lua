@@ -11,8 +11,8 @@ local SkillchainCore = require('SkillchainCore');
 local SkillchainGUI = {};
 local showWindow    = { false };
 
--- Shared width for each job column.
-local JOB_COLUMN_WIDTH = 160;
+-- Constants
+local JOB_COLUMN_WIDTH = 160; -- Shared width for each job column
 
 -----------------------------------------------------------------------
 -- Dynamic job list from jobs.lua (no hardcoded tokens)
@@ -106,7 +106,7 @@ local state = {
 
     -- custom level filter
     useCustomLevel = false,
-    charLevel      = 75,
+    charLevel      = SkillchainCore.MAX_LEVEL,
 
     -- middle section
     job1Index     = 1,
@@ -399,6 +399,34 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
     end
 end
 
+-- Helper function to build calculation request from current state
+local function buildCalculationRequest(job1Id, job2Id)
+    local job1SubId = nil;
+    local job2SubId = nil;
+
+    if state.includeSubjob then
+        job1SubId = jobItems[state.job1SubIndex];
+        job2SubId = jobItems[state.job2SubIndex];
+    end
+
+    local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
+    local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
+
+    local lvlVal    = state.scLevel or 1;
+    local elemTok   = elementTokens[state.elementIndex] or '';
+    local scElement = (elemTok ~= '' and elemTok) or nil;
+
+    return {
+        mode      = 'pair',
+        token1    = token1,
+        token2    = token2,
+        scLevel   = lvlVal,
+        both      = state.both,
+        scElement = scElement,
+        charLevel = state.useCustomLevel and state.charLevel or nil,
+    };
+end
+
 local function drawCalculatorTab(cache)
     -- Current job IDs based on indices
     local job1Id = jobItems[state.job1Index] or jobItems[1];
@@ -428,10 +456,9 @@ local function drawCalculatorTab(cache)
         imgui.SameLine();
         imgui.SetCursorPosY(imgui.GetCursorPosY() - LABEL_PADDING);
 
-        -- Build character level dropdown (1 to 75, ascending)
-        local maxLevel = 75;
+        -- Build character level dropdown (MAX_LEVEL to 1, descending)
         local levelItems = {};
-        for i = 1, maxLevel do
+        for i = SkillchainCore.MAX_LEVEL, 1, -1 do
             table.insert(levelItems, tostring(i));
         end
 
@@ -507,20 +534,21 @@ local function drawCalculatorTab(cache)
         imgui.PopItemWidth();
 
         -- Prevent main and subjob from being the same - swap them if they match
-        -- If subjob changed and now matches main, swap main to previous subjob
-        if state.job1SubIndex == state.job1Index and prevJob1SubIndex ~= state.job1SubIndex then
-            state.job1Index = prevJob1SubIndex;
+        local function ensureJobsAreDifferent(mainIdx, subIdx, prevMainIdx, prevSubIdx)
+            if mainIdx == subIdx then
+                -- If subjob was just changed to match main, swap main to previous subjob
+                if prevSubIdx ~= subIdx then
+                    return prevSubIdx, subIdx;
+                -- If main was just changed to match subjob, swap subjob to previous main
+                elseif prevMainIdx ~= mainIdx then
+                    return mainIdx, prevMainIdx;
+                end
+            end
+            return mainIdx, subIdx;
         end
-        if state.job2SubIndex == state.job2Index and prevJob2SubIndex ~= state.job2SubIndex then
-            state.job2Index = prevJob2SubIndex;
-        end
-        -- If main job changed and now matches subjob, swap subjob to previous main
-        if state.job1Index == state.job1SubIndex and prevJob1Index ~= state.job1Index then
-            state.job1SubIndex = prevJob1Index;
-        end
-        if state.job2Index == state.job2SubIndex and prevJob2Index ~= state.job2Index then
-            state.job2SubIndex = prevJob2Index;
-        end
+
+        state.job1Index, state.job1SubIndex = ensureJobsAreDifferent(state.job1Index, state.job1SubIndex, prevJob1Index, prevJob1SubIndex);
+        state.job2Index, state.job2SubIndex = ensureJobsAreDifferent(state.job2Index, state.job2SubIndex, prevJob2Index, prevJob2SubIndex);
     end
 
     -- Re-resolve job IDs after selection
@@ -569,30 +597,7 @@ local function drawCalculatorTab(cache)
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
 
     if imgui.Button('Calculate', { buttonWidth, 0 }) then
-        local job1SubId = nil;
-        local job2SubId = nil;
-
-        if state.includeSubjob then
-            job1SubId = jobItems[state.job1SubIndex];
-            job2SubId = jobItems[state.job2SubIndex];
-        end
-
-        local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
-        local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
-
-        local lvlVal    = state.scLevel or 1;
-        local elemTok   = elementTokens[state.elementIndex] or '';
-        local scElement = (elemTok ~= '' and elemTok) or nil;
-
-        request = {
-            mode      = 'pair',
-            token1    = token1,
-            token2    = token2,
-            scLevel   = lvlVal,
-            both      = state.both,
-            scElement = scElement,
-            charLevel = state.useCustomLevel and state.charLevel or nil,
-        };
+        request = buildCalculationRequest(job1Id, job2Id);
     end
 
     imgui.PopStyleColor(3);
@@ -794,32 +799,11 @@ local function drawFiltersTab(cache)
         local job1Id = jobItems[state.job1Index] or jobItems[1];
         local job2Id = jobItems[state.job2Index] or jobItems[2];
 
-        local job1SubId = nil;
-        local job2SubId = nil;
-
-        if state.includeSubjob then
-            job1SubId = jobItems[state.job1SubIndex];
-            job2SubId = jobItems[state.job2SubIndex];
-        end
-
         -- Ensure weapon selections exist
         ensureJobWeaponSelection(1, job1Id);
         ensureJobWeaponSelection(2, job2Id);
 
-        local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
-        local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
-
-        local lvlVal    = state.scLevel or 1;
-        local elemTok   = elementTokens[state.elementIndex] or '';
-        local scElement = (elemTok ~= '' and elemTok) or nil;
-
-        request = request or {};
-        request.token1    = token1;
-        request.token2    = token2;
-        request.scLevel   = lvlVal;
-        request.both      = state.both;
-        request.scElement = scElement;
-        request.charLevel = state.useCustomLevel and state.charLevel or nil;
+        request = buildCalculationRequest(job1Id, job2Id);
     end
 
     imgui.PopStyleColor(3);
