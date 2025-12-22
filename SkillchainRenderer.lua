@@ -21,6 +21,49 @@ local isVisible = false;
 local gdi = nil;  -- Will be injected during initialization
 
 -- ============================================================================
+-- Pool Management Helpers
+-- ============================================================================
+
+-- Create a single pool object with visibility set to false
+local function createPoolObject(settings)
+    local text = gdi:create_object(settings.font);
+    text:set_visible(false);
+    return text;
+end
+
+-- Add multiple objects to the pool
+local function addObjectsToPool(count, settings)
+    for i = 1, count do
+        table.insert(gdiObjects.textPool, createPoolObject(settings));
+        gdiObjects.poolSize = gdiObjects.poolSize + 1;
+    end
+end
+
+-- Remove multiple objects from the pool
+local function removeObjectsFromPool(count)
+    local removed = 0;
+    while removed < count and gdiObjects.poolSize > 0 do
+        local text = table.remove(gdiObjects.textPool);
+        if text then
+            gdi:destroy_object(text);
+            gdiObjects.poolSize = gdiObjects.poolSize - 1;
+            removed = removed + 1;
+        else
+            break;
+        end
+    end
+end
+
+-- Hide a range of pool objects
+local function hidePoolObjects(startIdx, endIdx)
+    for i = startIdx, endIdx do
+        if gdiObjects.textPool[i] then
+            gdiObjects.textPool[i]:set_visible(false);
+        end
+    end
+end
+
+-- ============================================================================
 -- Initialization and Cleanup
 -- ============================================================================
 
@@ -37,12 +80,7 @@ function SkillchainRenderer.initialize(gdiLib, settings)
     gdiObjects.background:set_position_y(settings.anchor.y);
 
     -- Start with minimum pool size
-    for i = 1, gdiObjects.minPoolSize do
-        local text = gdi:create_object(settings.font);
-        text:set_visible(false);
-        table.insert(gdiObjects.textPool, text);
-    end
-    gdiObjects.poolSize = gdiObjects.minPoolSize;
+    addObjectsToPool(gdiObjects.minPoolSize, settings);
 
     -- Initially hidden
     SkillchainRenderer.clear();
@@ -59,11 +97,8 @@ function SkillchainRenderer.destroy()
         gdiObjects.background = nil;
     end
 
-    for _, text in ipairs(gdiObjects.textPool) do
-        gdi:destroy_object(text);
-    end
+    removeObjectsFromPool(gdiObjects.poolSize);
     gdiObjects.textPool = {};
-    gdiObjects.poolSize = 0;
     gdiObjects.lastUsedCount = 0;
 end
 
@@ -77,9 +112,7 @@ function SkillchainRenderer.clear()
     end
 
     -- Only hide objects that were previously used
-    for i = 1, gdiObjects.lastUsedCount do
-        gdiObjects.textPool[i]:set_visible(false);
-    end
+    hidePoolObjects(1, gdiObjects.lastUsedCount);
     gdiObjects.lastUsedCount = 0;
 end
 
@@ -120,26 +153,18 @@ local function ensurePoolSize(requiredSize, settings)
     end
 
     -- Grow pool if needed
-    while gdiObjects.poolSize < requiredSize do
-        local text = gdi:create_object(settings.font);
-        text:set_visible(false);
-        table.insert(gdiObjects.textPool, text);
-        gdiObjects.poolSize = gdiObjects.poolSize + 1;
+    local needed = requiredSize - gdiObjects.poolSize;
+    if needed > 0 then
+        addObjectsToPool(needed, settings);
     end
 end
 
 local function shrinkPool()
     -- Shrink pool if it's much larger than needed (keep buffer)
     local targetSize = math.max(gdiObjects.minPoolSize, gdiObjects.lastUsedCount + 20);
-
-    while gdiObjects.poolSize > targetSize do
-        local text = table.remove(gdiObjects.textPool);
-        if text then
-            gdi:destroy_object(text);
-            gdiObjects.poolSize = gdiObjects.poolSize - 1;
-        else
-            break;
-        end
+    local toRemove = gdiObjects.poolSize - targetSize;
+    if toRemove > 0 then
+        removeObjectsFromPool(toRemove);
     end
 end
 
