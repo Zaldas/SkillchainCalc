@@ -509,18 +509,22 @@ function SkillchainCore.CalculateStepSkillchains(wsList)
     return buildCombinations(properties, wsList, { both = false });
 end
 
-function SkillchainCore.FilterSkillchainsByLevel(combinations, minLevel)
+-- Generic filter helper for filtering combinations based on a predicate function
+local function filterCombinations(combinations, predicate)
     local filteredResults = {};
-    minLevel = minLevel or 1;
-
     for _, combo in ipairs(combinations) do
-        local chainLevel = findChainLevel(combo.chain);
-        if chainLevel >= minLevel then
+        if predicate(combo) then
             table.insert(filteredResults, combo);
         end
     end
-
     return filteredResults;
+end
+
+function SkillchainCore.FilterSkillchainsByLevel(combinations, minLevel)
+    minLevel = minLevel or 1;
+    return filterCombinations(combinations, function(combo)
+        return findChainLevel(combo.chain) >= minLevel;
+    end);
 end
 
 function SkillchainCore.FilterSkillchainsByElement(combinations, elementToken)
@@ -529,22 +533,18 @@ function SkillchainCore.FilterSkillchainsByElement(combinations, elementToken)
     end
 
     local target = elementToken:lower();
-    local filteredResults = {};
-
-    for _, combo in ipairs(combinations) do
+    return filterCombinations(combinations, function(combo)
         local info = skills.ChainInfo[combo.chain];
         local burst = info and info.burst;
         if burst then
             for _, elem in ipairs(burst) do
                 if elem:lower() == target then
-                    table.insert(filteredResults, combo);
-                    break;
+                    return true;
                 end
             end
         end
-    end
-
-    return filteredResults;
+        return false;
+    end);
 end
 
 function SkillchainCore.BuildSkillchainTable(skillchains)

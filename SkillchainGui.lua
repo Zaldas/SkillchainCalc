@@ -228,6 +228,33 @@ local function countJobWeapons(jobId)
     return #list;
 end
 
+-- Build default weapon selection for a job
+-- If includeFallback is true, selects all weapons when no primaryWeapons exist
+-- If includeFallback is false, returns empty selection when no primaryWeapons exist
+local function buildDefaultWeaponSelection(jobId, includeFallback)
+    local job = jobsData[jobId];
+    local sel = {};
+
+    if not job or not job.weapons then
+        return sel;
+    end
+
+    local prim = job.primaryWeapons or {};
+    if type(prim) == 'table' and #prim > 0 then
+        for _, w in ipairs(prim) do
+            if job.weapons[w] then
+                sel[w] = true;
+            end
+        end
+    elseif includeFallback then
+        for w, _ in pairs(job.weapons) do
+            sel[w] = true;
+        end
+    end
+
+    return sel;
+end
+
 local function ensureJobWeaponSelection(side, jobId)
     if not jobId then
         return {};
@@ -245,23 +272,7 @@ local function ensureJobWeaponSelection(side, jobId)
 
     -- If job changed, rebuild defaults from jobs.lua.
     if jobId ~= lastId then
-        selTable = {};
-
-        local job = jobsData[jobId];
-        if job and job.weapons then
-            local prim = job.primaryWeapons or {};
-            if type(prim) == 'table' and #prim > 0 then
-                for _, w in ipairs(prim) do
-                    if job.weapons[w] then
-                        selTable[w] = true;
-                    end
-                end
-            else
-                for w, _ in pairs(job.weapons) do
-                    selTable[w] = true;
-                end
-            end
-        end
+        selTable = buildDefaultWeaponSelection(jobId, true);
 
         if side == 1 then
             state.job1LastId = jobId;
@@ -334,18 +345,7 @@ local function applyTokenToSide(side, token)
 
     -- Fallback: primaryWeapons, else all weapons for that job
     if not next(sel) then
-        local prim = job.primaryWeapons or {};
-        if type(prim) == 'table' and #prim > 0 then
-            for _, w in ipairs(prim) do
-                if job.weapons[w] then
-                    sel[w] = true;
-                end
-            end
-        else
-            for w, _ in pairs(job.weapons) do
-                sel[w] = true;
-            end
-        end
+        sel = buildDefaultWeaponSelection(jobId, true);
     end
 
     if side == 1 then
@@ -618,22 +618,11 @@ local function drawCalculatorTab()
     imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
 
     if imgui.Button('Clear', { buttonWidth, 0 }) then
-        local function resetWeapons(jobId)
-            local job   = jobsData[jobId];
-            local newSel = {};
-            if job and job.primaryWeapons then
-                for _, w in ipairs(job.primaryWeapons) do
-                    newSel[w] = true;
-                end
-            end
-            return newSel;
-        end
-
         local curJob1Id = jobItems[state.job1Index];
         local curJob2Id = jobItems[state.job2Index];
 
-        state.job1Weapons = resetWeapons(curJob1Id);
-        state.job2Weapons = resetWeapons(curJob2Id);
+        state.job1Weapons = buildDefaultWeaponSelection(curJob1Id, false);
+        state.job2Weapons = buildDefaultWeaponSelection(curJob2Id, false);
 
         request = { clear = true };
     end
