@@ -102,10 +102,10 @@ skills.gs = { -- Great Sword
     [48] = {en='Hard Slash',      skillchain={'Scission'},                       skill=5},
     [49] = {en='Power Slash',     skillchain={'Transfixion'},                    skill=30},
     [50] = {en='Frostbite',       skillchain={'Induration'},                     skill=70},
-    [51] = {en='Freezebite',      skillchain={'Detonation','Induration'},        skill=100},
+    [51] = {en='Freezebite',      skillchain={'Detonation','Induration'},        skill=100}, -- HorizonXI
     [52] = {en='Shockwave',       skillchain={'Reverberation'},                  skill=150},
-    [53] = {en='Crescent Moon',   skillchain={'Scission','Compression'},         skill=175},
-    [54] = {en='Sickle Moon',     skillchain={'Scission','Reverberation'},       skill=200,
+    [53] = {en='Crescent Moon',   skillchain={'Scission','Compression'},         skill=175}, -- HorizonXI
+    [54] = {en='Sickle Moon',     skillchain={'Scission','Reverberation'},       skill=200,  -- HorizonXI
                 JobRestrictions={'PLD','DRK'}},
     [55] = {en='Spinning Slash',  skillchain={'Fragmentation'},                  skill=225,
                 JobRestrictions={'PLD','DRK'}},
@@ -163,7 +163,7 @@ skills.scythe = { -- Scythe
                 allowSubjob=true},
     [99] = {en='Nightmare Scythe',  skillchain={'Compression','Scission'},      skill=100},
     [100]= {en='Spinning Scythe',   skillchain={'Reverberation','Scission'},    skill=125},
-    [101]= {en='Vorpal Scythe',     skillchain={'Scission','Transfixion'},      skill=150},
+    [101]= {en='Vorpal Scythe',     skillchain={'Scission','Transfixion'},      skill=150}, -- HorizonXI
     [102]= {en='Guillotine',        skillchain={'Induration'},                  skill=200,
                 JobRestrictions={'DRK'}},
     [103]= {en='Cross Reaper',      skillchain={'Distortion'},                  skill=225,
@@ -171,7 +171,7 @@ skills.scythe = { -- Scythe
     [104]= {en='Spiral Hell¹',      skillchain={'Gravitation','Compression'},   skill=240, -- HorizonXI
                 JobRestrictions={'WAR','DRK','BST'}},
     -- Relic WS treat as high end
-    [105]= {en='Catastrophe²',      skillchain={'Darkness','Gravitation'},      skill=240,
+    [105]= {en='Catastrophe²',      skillchain={'Darkness','Gravitation'},      skill=240,  -- HorizonXI
                 JobRestrictions={'DRK'}},
 };
 
@@ -184,7 +184,7 @@ skills.polearm = { -- Polearm
     [115] = {en='Leg Sweep',       skillchain={'Impaction'},                    skill=100},
     [116] = {en='Penta Thrust',    skillchain={'Compression'},                  skill=150},
     [117] = {en='Vorpal Thrust',   skillchain={'Reverberation','Transfixion'},  skill=175},
-    [118] = {en='Skewer',          skillchain={'Transfixion','Induration'},     skill=200,
+    [118] = {en='Skewer',          skillchain={'Transfixion','Induration'},     skill=200,  -- HorizonXI
                 JobRestrictions={'DRG'}},
     [119] = {en='Wheeling Thrust¹',skillchain={'Fusion'},                       skill=225,
                 JobRestrictions={'DRG'}},
@@ -200,7 +200,7 @@ skills.katana = { -- Katana; only NIN has skill
     [129] = {en='Blade: Retsu',  skillchain={'Scission'},                       skill=30},
     [130] = {en='Blade: Teki',   skillchain={'Reverberation'},                  skill=70},
     [131] = {en='Blade: To',     skillchain={'Induration','Detonation'},        skill=100},
-    [132] = {en='Blade: Chi',    skillchain={'Impaction','Transfixion'},        skill=150},
+    [132] = {en='Blade: Chi',    skillchain={'Impaction','Transfixion'},        skill=150}, -- HorizonXI
     [133] = {en='Blade: Ei',     skillchain={'Compression'},                    skill=175},
     [134] = {en='Blade: Jin',    skillchain={'Detonation','Impaction'},         skill=200},
     [135] = {en='Blade: Ten',   skillchain={'Gravitation'},                     skill=225},
@@ -216,7 +216,7 @@ skills.gkt = { -- Great Katana
     [147] = {en='Tachi: Kagero',  skillchain={'Liquefaction'},                  skill=100},
     [148] = {en='Tachi: Jinpu',   skillchain={'Scission','Detonation'},         skill=150},
     [149] = {en='Tachi: Koki',    skillchain={'Reverberation','Impaction'},     skill=175},
-    [150] = {en='Tachi: Yukikaze',skillchain={'Detonation','Induration'},       skill=200,
+    [150] = {en='Tachi: Yukikaze',skillchain={'Detonation','Induration'},       skill=200,  -- HorizonXI
                 JobRestrictions={'SAM'}},
     [151] = {en='Tachi: Gekko',   skillchain={'Distortion','Reverberation'},    skill=225,
                 JobRestrictions={'SAM'}},
@@ -269,13 +269,13 @@ skills.archery = { -- Archery
     [193] = {en='Piercing Arrow',  skillchain={'Reverberation','Transfixion'},  skill=40,  -- HorizonXI
                 JobRestrictions={'RNG'},
                 allowSubjob=true},
-    [194] = {en='Dulling Arrow',   skillchain={'Transfixion', 'Liquefaction'},  skill=80,
+    [194] = {en='Dulling Arrow',   skillchain={'Transfixion', 'Liquefaction'},  skill=80,   -- HorizonXI
                 JobRestrictions={'RNG'},
                 allowSubjob=true},
-    [196] = {en='Sidewinder',      skillchain={'Reverberation','Transfixion','Detonation'},    skill=175,
+    [196] = {en='Sidewinder',      skillchain={'Reverberation','Transfixion','Detonation'},    skill=175,  -- HorizonXI
                 JobRestrictions={'RNG'},
                 allowSubjob=true},
-    [197] = {en='Blast Arrow',     skillchain={'Transfixion','Induration'},     skill=200,
+    [197] = {en='Blast Arrow',     skillchain={'Transfixion','Induration'},     skill=200,  -- HorizonXI
                 JobRestrictions={'RNG'}},
     [198] = {en='Arching Arrow',   skillchain={'Fusion'},                       skill=225,
                 JobRestrictions={'RNG'}},
@@ -293,13 +293,13 @@ skills.mm = { -- Marksmanship
     [209] = {en='Split Shot',      skillchain={'Reverberation','Transfixion'},  skill=40,
                 JobRestrictions={'RNG','COR'},
                 allowSubjob=true},
-    [210] = {en='Sniper Shot',     skillchain={'Transfixion','Liquefaction'},   skill=80,
+    [210] = {en='Sniper Shot',     skillchain={'Transfixion','Liquefaction'},   skill=80,   -- HorizonXI
                 JobRestrictions={'RNG','COR'},
                 allowSubjob=true},
-    [212] = {en='Slug Shot',       skillchain={'Reverberation','Transfixion','Detonation'},    skill=175,
+    [212] = {en='Slug Shot',       skillchain={'Reverberation','Transfixion','Detonation'},    skill=175,  -- HorizonXI
                 JobRestrictions={'RNG','COR'},
                 allowSubjob=true},
-    [213] = {en='Blast Shot',      skillchain={'Transfixion','Induration'},     skill=200,
+    [213] = {en='Blast Shot',      skillchain={'Transfixion','Induration'},     skill=200,  -- HorizonXI
                 JobRestrictions={'RNG'}},
     [214] = {en='Heavy Shot',      skillchain={'Fusion'},                       skill=225,
                 JobRestrictions={'RNG'}},
