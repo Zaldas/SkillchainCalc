@@ -91,7 +91,7 @@ Now with ImGui interface to input parameters!!!
 &ensp;SkillRanks.lua -- skill rank progression tables (A+, A-, B+, etc.)  
 &ensp;SkillchainCore.lua -- filtering and routing logic  
 &ensp;SkillchainGui.lua -- ImGui interface  
-&ensp;SkillchainRenderer.lua -- Results window renderer
+&ensp;SkillchainRenderer.lua -- Results window renderer  
 &ensp;imgui_compat.lua -- ImGui compatability layer <[credit XIUI team](https://github.com/tirem/XIUI)>  
   
 #### Notes:  
