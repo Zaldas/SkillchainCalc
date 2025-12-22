@@ -352,12 +352,17 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
 
     -- Show truncation notice if we hit the limit
     if hitLimit and gdiObjects.poolSize > 0 then
+        local errorString = ' !!! Results trimmed. Add filters such as job:weapon or limit number of weapons in job or level=2.';
+
         local notice = gdiObjects.textPool[gdiObjects.poolSize];
-        notice:set_text('⚠ Results trimmed. Add filters such as job:weapon or limit number of weapons in job or level=2.');
+        notice:set_text(errorString);
         notice:set_font_color(0xFFFF5555);
         notice:set_position_x(settings.anchor.x + 5);
         notice:set_position_y(settings.anchor.y - 20);
         notice:set_visible(true);
+
+        -- Also print to console
+        print('[SkillchainCalc]' .. errorString);
     end
 
     -- Update max column height
