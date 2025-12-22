@@ -51,7 +51,8 @@ local sccSettings = T{
     },
     layout = {
         columnWidth = 315,
-        entriesPerColumn = 30,
+        entriesPerColumn = 30,      -- Soft cap: try to split at this point
+        softOverflow = 8,           -- Allow up to 8 extra entries before hard cap
         entriesHeight = 20,
     },
     default = {

@@ -290,15 +290,23 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
                 local resultsRemaining = totalResultsCount - resultsShownInSection;
 
                 -- Check if we need to move to next column before displaying this entry
-                -- Conditions:
-                -- 1. We've exceeded the soft cap (30 entries)
-                -- 2. We've shown at least minResultsAfterHeader (8) results after the last header
-                -- 3. Remaining results would make a new column worthwhile
-                --    New column needs: header (1) + at least minResultsAfterHeader (8) results = 9+ entries
-                --    So we need resultsRemaining >= minResultsAfterHeader + 1
-                local shouldSplit = entriesInColumn + 1 > layout.entriesPerColumn and
-                                   resultsShownInSection >= minResultsAfterHeader and
-                                   resultsRemaining >= minResultsAfterHeader + 1;
+                -- Soft cap: entriesPerColumn - try to split here if conditions are met
+                -- Hard cap: entriesPerColumn + softOverflow - MUST split here
+                local softCap = layout.entriesPerColumn;
+                local hardCap = softCap + (layout.softOverflow or 0);
+
+                -- Soft split conditions:
+                -- 1. We've exceeded the soft cap
+                -- 2. We've shown at least minResultsAfterHeader results after the last header
+                -- 3. Remaining results would make a new column worthwhile (at least 2 entries: header + 1 result)
+                local softSplit = entriesInColumn + 1 > softCap and
+                                 resultsShownInSection >= minResultsAfterHeader and
+                                 resultsRemaining >= 2;
+
+                -- Hard split: we've hit the hard cap, split regardless
+                local hardSplit = entriesInColumn >= hardCap;
+
+                local shouldSplit = softSplit or hardSplit;
 
                 if shouldSplit then
                     maxColumnHeight = math.max(maxColumnHeight, y_offset);
