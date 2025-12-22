@@ -268,8 +268,8 @@ end
 
 -- allow optional weapon filter set
 -- subJobId is optional; if provided, it will be used to filter weaponskills that have subjob restrictions
--- customLevel is optional; if provided, it will be used to calculate skill caps instead of MAX_LEVEL
-function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, customLevel)
+-- charLevel is optional; if provided, it will be used to calculate skill caps instead of MAX_LEVEL
+function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, charLevel)
     local job = jobs[jobId];
     if not job or not job.weapons then
         return nil;
@@ -285,7 +285,7 @@ function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, cu
     end
 
     local result = {};
-    local levelToUse = customLevel or MAX_LEVEL;
+    local levelToUse = charLevel or MAX_LEVEL;
 
     for weaponKey, cfg in pairs(job.weapons) do
         if (not weaponFilter) or weaponFilter[weaponKey] then
@@ -311,7 +311,7 @@ end
 --   - Job tokens: "nin", "nin/war", "thf:dagger", "nin/war:katana,dagger"
 --   - Weapon tokens: "katana", "ga" (returns all skills for that weapon type)
 -- The subJobId parameter is used as a fallback if the token doesn't specify a subjob
-function SkillchainCore.ResolveTokenToSkills(token, subJobId, customLevel)
+function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
     if not token or type(token) ~= 'string' then
         return nil;
     end
@@ -323,7 +323,7 @@ function SkillchainCore.ResolveTokenToSkills(token, subJobId, customLevel)
     if jobId then
         -- Use tokenSubJobId if present, otherwise fall back to parameter subJobId
         local effectiveSubJob = tokenSubJobId or subJobId;
-        return SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, customLevel);
+        return SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, charLevel);
     end
 
     -- Strategy 2: Try as weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
