@@ -186,38 +186,22 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     local entriesInColumn = 0;
     local maxColumnHeight = 0;
 
-    -- Count required objects first
-    -- Account for headers that may be repeated when splitting across columns
-    local requiredObjects = 0;
-    for _, result in ipairs(orderedResults) do
-        local openers = sortedResults[result];
-        local resultCount = 0;
-        for _, openerData in ipairs(openers) do
-            resultCount = resultCount + #openerData.closers;
-        end
+    -- Start with a reasonable pool size, will grow as needed up to maxPoolSize
+    ensurePoolSize(gdiObjects.minPoolSize, settings);
 
-        -- Estimate how many times this skillchain's header might appear
-        -- If results span multiple columns, we need multiple headers
-        -- Worst case: header every (minResultsAfterHeader + 1) entries after the first header
-        local headerCount = 1; -- At least one header
-        if resultCount > layout.entriesPerColumn then
-            -- Rough estimate: one header per column segment
-            headerCount = math.ceil(resultCount / (layout.entriesPerColumn - 1));
-        end
-
-        requiredObjects = requiredObjects + headerCount + resultCount;
-    end
-
-    -- Ensure pool has enough objects
-    ensurePoolSize(requiredObjects, settings);
-
-    -- Track if we hit the limit
+    -- Track if we hit the limit during rendering
     local hitLimit = false;
 
     -- Helper function to display a skillchain header
     local function displayHeader(result, color, elementsText)
+        -- Try to grow pool if needed (up to maxPoolSize)
         if textIndex > gdiObjects.poolSize then
-            return false;
+            if gdiObjects.poolSize < gdiObjects.maxPoolSize then
+                ensurePoolSize(textIndex, settings);
+            else
+                -- Hit the hard limit
+                return false;
+            end
         end
 
         local header = gdiObjects.textPool[textIndex];
@@ -236,9 +220,15 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
 
     -- Render results
     for _, result in ipairs(orderedResults) do
+        -- Try to grow pool if needed (up to maxPoolSize)
         if textIndex > gdiObjects.poolSize then
-            hitLimit = true;
-            break;
+            if gdiObjects.poolSize < gdiObjects.maxPoolSize then
+                ensurePoolSize(textIndex, settings);
+            else
+                -- Hit the hard limit
+                hitLimit = true;
+                break;
+            end
         end
 
         local openers = sortedResults[result];
@@ -281,11 +271,6 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
         -- Display each opener and closer
         for _, openerData in ipairs(openers) do
             for _, closerData in ipairs(openerData.closers) do
-                if textIndex > gdiObjects.poolSize then
-                    hitLimit = true;
-                    break;
-                end
-
                 -- Calculate how many results remain (including this one)
                 local resultsRemaining = totalResultsCount - resultsShownInSection;
 
@@ -323,7 +308,23 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
                     end
                 end
 
+                -- Try to grow pool if needed (up to maxPoolSize)
+                if textIndex > gdiObjects.poolSize then
+                    if gdiObjects.poolSize < gdiObjects.maxPoolSize then
+                        ensurePoolSize(textIndex, settings);
+                    else
+                        -- Hit the hard limit
+                        hitLimit = true;
+                        break;
+                    end
+                end
+
                 local comboText = gdiObjects.textPool[textIndex];
+                if not comboText then
+                    -- Should not happen, but safety check
+                    hitLimit = true;
+                    break;
+                end
 
                 -- Check for level 3 skillchains (Light or Darkness)
                 local isReversible = (result == 'Light' or result == 'Darkness');
@@ -352,7 +353,7 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
 
     -- Show truncation notice if we hit the limit
     if hitLimit and gdiObjects.poolSize > 0 then
-        local errorString = ' !!! Results trimmed. Add filters such as job:weapon or limit number of weapons in job or level=2.';
+        local errorString = ' !!! Results trimmed. Try: higher skillchain level or set element, fewer weapons, or favorite weaponskill';
 
         local notice = gdiObjects.textPool[gdiObjects.poolSize];
         notice:set_text(errorString);
