@@ -70,8 +70,11 @@ local cache = {
     both = false,
     scElement = nil,
     stepMode = false,
+    stepFilter = nil,  -- For step mode: tier number (1-4) or property name
+    stepFilterType = nil,  -- "tier" or "property"
     charLevel = nil,
     settings = sccSettings;
+    keepResultsOpen = false;  -- When true, results stay open even if GUI closes
 };
 
 local function applyDefaultsToCache()
@@ -86,6 +89,9 @@ local function resetCacheFull()
     cache.token2    = nil;
     cache.scElement = nil;
     cache.stepMode  = false;
+    cache.stepFilter = nil;
+    cache.stepFilterType = nil;
+    cache.keepResultsOpen = false;
     applyDefaultsToCache();
 end
 
@@ -148,7 +154,18 @@ local function parseSkillchains(isStep)
             return;
         end
 
-        local combinations = SkillchainCore.CalculateStepSkillchains(wsList);
+        local combinations = SkillchainCore.CalculateStepSkillchains(wsList, cache.stepFilter, cache.stepFilterType);
+
+        -- Check if filtering resulted in no combinations (possibly invalid property name)
+        if cache.stepFilterType == 'property' and #combinations == 0 then
+            print('[SkillchainCalc] Error: Invalid property name "' .. tostring(cache.stepFilter) .. '".');
+            print('[SkillchainCalc] Valid properties: Compression, Detonation, Distortion, Fragmentation,');
+            print('[SkillchainCalc]   Fusion, Gravitation, Impaction, Induration, Liquefaction,');
+            print('[SkillchainCalc]   Reverberation, Scission, Transfixion, Light, Darkness');
+            SkillchainRenderer.clear();
+            return;
+        end
+
         cache.both = false;
 
         displaySkillchainResults(combinations, 'step');
@@ -216,11 +233,18 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
                 cache.charLevel = req.charLevel;
 
-                parseSkillchains(cache.stepMode);
+                -- GUI-initiated requests are always normal mode (tied to GUI)
+                cache.stepMode = false;
+                cache.keepResultsOpen = false;
+
+                parseSkillchains(false);
             end
         end
     else
-        SkillchainRenderer.clear();
+        -- Only clear renderer if results are not set to stay open
+        if not cache.keepResultsOpen then
+            SkillchainRenderer.clear();
+        end
     end
 end);
 
@@ -326,6 +350,7 @@ ashita.events.register('command', 'command_cb', function(e)
             return;
         elseif (args[2] == 'help') then
             print('Usage: /scc <token1> <token2> [level] [sc:<element>] [both] [lvl:#]');
+            print('Usage: /scc step <token> [level] [sc:<element>] [lvl:#]');
             print(' Tokens can be weapon types, jobs, job:weapon, or job/subjob filters:');
             print('  Weapon Types: h2h, dagger, sword, gs, axe, ga, scythe, polearm,');
             print('                katana, gkt, club, staff, archery, mm, smn');
@@ -342,6 +367,11 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [both] optional keyword to calculate skillchains in both directions.');
             print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(SkillchainCore.MAX_LEVEL));
             print('  e.g. lvl:50 or level:50');
+            -- print(' Step Mode: Calculate what properties can close with a job/weapon\'s WS.');
+            -- print('  e.g. /scc step nin      -- show Property > NIN WS combinations');
+            -- print('  e.g. /scc step katana   -- show Property > Katana WS combinations');
+            -- print('  e.g. /scc step nin/war:dagger lvl:50 -- NIN/WAR dagger at level 50');
+            -- print('  e.g. /scc step lvl:50 sc:ice nin/whm:club -- keywords in any order');
             print('Usage: /scc setx #             -- set x anchor');
             print('Usage: /scc sety #             -- set y anchor');
             print('Usage: /scc setsclevel #       -- set default skillchain level filter');
@@ -354,7 +384,38 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    if (#args < 3) then
+    -- Detect step mode early and parse step filter
+    local isStep = false;
+    local stepFilter = nil;  -- Can be a tier number (1-4) or property name (e.g., "distortion")
+    local stepFilterType = nil;  -- "tier" or "property"
+
+    if (#args >= 2 and args[2]:lower():sub(1, 4) == 'step') then
+        isStep = true;
+        local stepArg = args[2]:lower();
+
+        -- Check if step has a filter: "step:2" or "step:distortion"
+        if stepArg:find(':') then
+            local colonPos = stepArg:find(':');
+            local filterValue = stepArg:sub(colonPos + 1);
+
+            -- Try to parse as a tier number (1-4)
+            local tierNum = tonumber(filterValue);
+            if tierNum and tierNum >= 1 and tierNum <= 4 then
+                stepFilter = tierNum;
+                stepFilterType = 'tier';
+            else
+                -- Treat as property name (e.g., "distortion", "fusion")
+                -- Validate it's a valid property name (case-insensitive)
+                stepFilter = filterValue;
+                stepFilterType = 'property';
+            end
+        end
+    end
+
+    -- Step mode requires at least one token after "step" keyword
+    -- Normal mode requires two tokens
+    local minArgs = isStep and 3 or 3;
+    if (#args < minArgs) then
         if (#args == 1) then
             if SkillchainGUI ~= nil then
                 SkillchainGUI.SetVisible(true);
@@ -364,13 +425,31 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
-    -- Parse optional arguments
+    -- Helper function to strip duplicate subjobs from tokens like "nin/nin:mm" -> "nin:mm"
+    local function stripDuplicateSubjob(token)
+        if not token or type(token) ~= 'string' then
+            return token;
+        end
+        -- Match pattern: job/job or job/job:weapons
+        local mainJob, subJob, weapons = token:match('^([^/:]+)/([^/:]+):?(.*)$');
+        if mainJob and subJob and mainJob:lower() == subJob:lower() then
+            -- Same job, strip the subjob part
+            return weapons and weapons ~= '' and (mainJob .. ':' .. weapons) or mainJob;
+        end
+        return token;
+    end
+
+    -- Parse all arguments and separate tokens from keywords
     local scLevel   = nil;
     local both      = nil;
     local scElement = nil;
     local charLevel = nil;
+    local foundTokens = {};
 
-    for i = 4, #args do
+    -- Determine where to start parsing based on mode
+    local startIdx = isStep and 3 or 2;
+
+    for i = startIdx, #args do
         local param = args[i];
         local lower = param:lower();
 
@@ -391,34 +470,53 @@ ashita.events.register('command', 'command_cb', function(e)
                 return;
             end
         else
-            print('[SkillchainCalc] Invalid argument: ' .. param);
+            -- Not a keyword, treat as a token
+            table.insert(foundTokens, stripDuplicateSubjob(param));
+        end
+    end
+
+    -- Validate token count based on mode
+    local token1, token2;
+    if isStep then
+        if #foundTokens == 0 then
+            print('[SkillchainCalc] Error: Step mode requires a job/weapon token.');
+            print('[SkillchainCalc] Usage: /scc step <job/weapon> [options]');
+            return;
+        elseif #foundTokens > 1 then
+            print('[SkillchainCalc] Error: Step mode only accepts one job/weapon token.');
+            print('[SkillchainCalc] You cannot mix step calculation with job>job calculation.');
+            return;
+        end
+        token1 = foundTokens[1];
+        token2 = nil;
+    else
+        if #foundTokens < 2 then
+            print('[SkillchainCalc] Error: Normal mode requires two tokens.');
+            print('/scc help -- for usage help');
+            return;
+        elseif #foundTokens > 2 then
+            print('[SkillchainCalc] Error: Too many tokens provided.');
             print('/scc help -- for usage help');
             return;
         end
-    end
 
-    if args[2] == args[3] then
-        both = nil;
-    end
-
-    local isStep = false;
-
-    -- Helper function to strip duplicate subjobs from tokens like "nin/nin:mm" -> "nin:mm"
-    local function stripDuplicateSubjob(token)
-        if not token or type(token) ~= 'string' then
-            return token;
+        -- Validate: if user tried to use "step" as a token
+        if foundTokens[1]:lower() == 'step' or foundTokens[2]:lower() == 'step' then
+            print('[SkillchainCalc] Error: The "step" keyword must be the first token.');
+            print('[SkillchainCalc] Usage: /scc step <job/weapon> [options]');
+            return;
         end
-        -- Match pattern: job/job or job/job:weapons
-        local mainJob, subJob, weapons = token:match('^([^/:]+)/([^/:]+):?(.*)$');
-        if mainJob and subJob and mainJob:lower() == subJob:lower() then
-            -- Same job, strip the subjob part
-            return weapons and weapons ~= '' and (mainJob .. ':' .. weapons) or mainJob;
+
+        token1 = foundTokens[1];
+        token2 = foundTokens[2];
+
+        if token1 == token2 then
+            both = nil;
         end
-        return token;
     end
 
-    cache.token1 = stripDuplicateSubjob(isStep and args[3] or args[2]);
-    cache.token2 = stripDuplicateSubjob(isStep and nil or args[3]);
+    cache.token1 = token1;
+    cache.token2 = token2;
 
     applyDefaultsToCache();
     if scLevel ~= nil then
@@ -430,7 +528,13 @@ ashita.events.register('command', 'command_cb', function(e)
 
     cache.scElement = scElement and scElement:lower() or nil;
     cache.stepMode = isStep;
+    cache.stepFilter = stepFilter;
+    cache.stepFilterType = stepFilterType;
     cache.charLevel = charLevel;
+
+    -- In step mode, keep results open without GUI
+    -- In normal mode, results are tied to GUI (unless we add a future option)
+    cache.keepResultsOpen = isStep;
 
     parseSkillchains(isStep);
 
