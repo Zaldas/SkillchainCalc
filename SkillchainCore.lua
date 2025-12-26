@@ -367,15 +367,15 @@ local function findSkillLevel(name)
         return 0;
     end
 
-    -- 2) Weaponskill – use WS skill level
+    -- 2) Weaponskill – use array index (higher index = higher tier)
     for weaponType, weaponSkills in pairs(skills) do
         if type(weaponSkills) == 'table'
             and weaponType ~= 'aliases'
             and weaponType ~= 'ChainInfo'
         then
-            for _, skill in pairs(weaponSkills) do
+            for index, skill in pairs(weaponSkills) do
                 if type(skill) == 'table' and skill.en == name then
-                    return skill.skill or 0;
+                    return index;
                 end
             end
         end
