@@ -447,7 +447,7 @@ local function buildFavWsItems(jobState)
             if weaponSkills then
                 local wsForWeapon = {};
 
-                for _, ws in pairs(weaponSkills) do
+                for index, ws in pairs(weaponSkills) do
                     if type(ws) == 'table' and ws.en then
                         -- Check skill level requirement
                         local wsSkill = ws.skill or 0;
@@ -464,19 +464,16 @@ local function buildFavWsItems(jobState)
                         if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId) then
                             table.insert(wsForWeapon, {
                                 name = ws.en,
-                                skill = wsSkill
+                                index = index
                             });
                         end
                     end
                 end
 
                 if #wsForWeapon > 0 then
-                    -- Sort in reverse order (highest skill first)
+                    -- Sort in reverse order (highest index first)
                     table.sort(wsForWeapon, function(a, b)
-                        if a.skill ~= b.skill then
-                            return a.skill > b.skill;
-                        end
-                        return a.name < b.name;
+                        return a.index > b.index;
                     end);
 
                     weaponGroups[weaponKey] = wsForWeapon;
