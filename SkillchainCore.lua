@@ -532,67 +532,62 @@ function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterT
     return buildCombinations(properties, wsList, { both = false });
 end
 
--- Generic filter helper for filtering combinations based on a predicate function
-local function filterCombinations(combinations, predicate)
-    local filteredResults = {};
-    for _, combo in ipairs(combinations) do
-        if predicate(combo) then
-            table.insert(filteredResults, combo);
-        end
-    end
-    return filteredResults;
-end
-
-function SkillchainCore.FilterSkillchainsByLevel(combinations, minLevel)
-    minLevel = minLevel or 1;
-    return filterCombinations(combinations, function(combo)
-        return findChainLevel(combo.chain) >= minLevel;
-    end);
-end
-
-function SkillchainCore.FilterSkillchainsByElement(combinations, elementToken)
-    if not elementToken or elementToken == '' then
+-- Consolidated single-pass filter: applies all filters in one iteration
+-- filters: {scLevel, scElement, favWs1, favWs2}
+function SkillchainCore.FilterSkillchains(combinations, filters)
+    if not filters then
         return combinations;
     end
 
-    local target = elementToken:lower();
-    return filterCombinations(combinations, function(combo)
-        local info = skills.ChainInfo[combo.chain];
-        local burst = info and info.burst;
-        if burst then
-            for _, elem in ipairs(burst) do
-                if elem:lower() == target then
-                    return true;
+    local results = {};
+    local minLevel = filters.scLevel or 1;
+    local elementToken = filters.scElement;
+    local favWs1 = filters.favWs1;
+    local favWs2 = filters.favWs2;
+
+    -- Normalize element for comparison
+    local targetElement = elementToken and elementToken:lower() or nil;
+
+    for _, combo in ipairs(combinations) do
+        local pass = true;
+
+        -- Filter 1: Skillchain level
+        if pass and minLevel > 1 then
+            local chainLevel = findChainLevel(combo.chain);
+            pass = chainLevel >= minLevel;
+        end
+
+        -- Filter 2: Burst element
+        if pass and targetElement then
+            local info = skills.ChainInfo[combo.chain];
+            local burst = info and info.burst;
+            local elementMatch = false;
+
+            if burst then
+                for _, elem in ipairs(burst) do
+                    if elem:lower() == targetElement then
+                        elementMatch = true;
+                        break;
+                    end
                 end
             end
-        end
-        return false;
-    end);
-end
 
-function SkillchainCore.FilterSkillchainsByWeaponskill(combinations, wsName1, wsName2)
-    -- If both are nil or empty, no filtering
-    if (not wsName1 or wsName1 == '') and (not wsName2 or wsName2 == '') then
-        return combinations;
+            pass = elementMatch;
+        end
+
+        -- Filter 3: Weaponskill names
+        if pass and (favWs1 or favWs2) then
+            local ws1Match = not favWs1 or favWs1 == '' or combo.skill1 == favWs1;
+            local ws2Match = not favWs2 or favWs2 == '' or combo.skill2 == favWs2;
+            pass = ws1Match and ws2Match;
+        end
+
+        if pass then
+            table.insert(results, combo);
+        end
     end
 
-    return filterCombinations(combinations, function(combo)
-        local skill1Match = true;
-        local skill2Match = true;
-
-        -- Check skill1 filter
-        if wsName1 and wsName1 ~= '' then
-            skill1Match = (combo.skill1 == wsName1);
-        end
-
-        -- Check skill2 filter
-        if wsName2 and wsName2 ~= '' then
-            skill2Match = (combo.skill2 == wsName2);
-        end
-
-        -- Both must match (if specified)
-        return skill1Match and skill2Match;
-    end);
+    return results;
 end
 
 function SkillchainCore.BuildSkillchainTable(skillchains)
