@@ -494,15 +494,40 @@ function SkillchainCore.CalculateSkillchains(wsList1, wsList2, both)
 end
 
 -- Step mode: Property→WS combinations.
-function SkillchainCore.CalculateStepSkillchains(wsList)
+-- stepFilter: optional filter value (tier number 1-4 or property name like "distortion")
+-- stepFilterType: "tier" or "property" or nil
+function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterType)
     if not wsList then
         return {};
     end
 
     -- Build list of base properties (Compression, Distortion, etc.).
     local properties = {};
-    for propName, _ in pairs(skills.ChainInfo) do
-        table.insert(properties, propName);
+
+    if stepFilterType == 'tier' then
+        -- Filter by tier level: include properties at or above the specified tier
+        for propName, propInfo in pairs(skills.ChainInfo) do
+            if propInfo.level and propInfo.level >= stepFilter then
+                table.insert(properties, propName);
+            end
+        end
+    elseif stepFilterType == 'property' then
+        -- Filter by specific property name
+        -- Normalize the property name (capitalize first letter)
+        local normalizedProp = stepFilter:sub(1, 1):upper() .. stepFilter:sub(2):lower();
+
+        -- Validate the property exists
+        if skills.ChainInfo[normalizedProp] then
+            table.insert(properties, normalizedProp);
+        else
+            -- Property name not found, return empty (caller should handle error)
+            return {};
+        end
+    else
+        -- No filter: include all properties
+        for propName, _ in pairs(skills.ChainInfo) do
+            table.insert(properties, propName);
+        end
     end
 
     -- No reverse/both meaning in step mode.
