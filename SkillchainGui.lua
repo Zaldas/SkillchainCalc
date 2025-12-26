@@ -97,37 +97,41 @@ local state = {
     initialized   = false,
     openedFromCli = false,
 
-    -- top section
-    scLevel       = 1,
-    elementIndex  = 1,
-    both          = false,
+    -- Grouped job state for both sides (1 and 2)
+    jobs = {
+        [1] = {
+            index      = 1,
+            subIndex   = 2,  -- Different from index
+            lastId     = nil,
+            weapons    = nil,
+            favWsIndex = 1,
+        },
+        [2] = {
+            index      = 2,
+            subIndex   = 1,  -- Different from index
+            lastId     = nil,
+            weapons    = nil,
+            favWsIndex = 1,
+        },
+    },
 
-    -- subjob filter
-    includeSubjob = false,
+    -- Filter settings
+    filters = {
+        scLevel      = 1,
+        elementIndex = 1,
+        both         = false,
+        includeSubjob = false,
+        enableFavWs  = false,
+    },
 
-    -- favorite WS filter
-    enableFavWs  = false,
-    job1FavWsIndex = 1,  -- Index in job1 favorite WS dropdown
-    job2FavWsIndex = 1,  -- Index in job2 favorite WS dropdown
+    -- Custom level filter
+    customLevel = {
+        enabled = false,
+        value   = SkillchainCore.MAX_LEVEL,
+    },
 
-    -- custom level filter
-    useCustomLevel = false,
-    charLevel      = SkillchainCore.MAX_LEVEL,
-
-    -- middle section
-    job1Index     = 1,
-    job2Index     = 2,
-
-    job1SubIndex  = 2,  -- Different from job1Index
-    job2SubIndex  = 1,  -- Different from job2Index
-
-    job1LastId    = nil,
-    job2LastId    = nil,
-    job1Weapons   = nil,
-    job2Weapons   = nil,
-
-    -- track active tab for dynamic height only
-    activeTab     = 'Calculator',
+    -- Track active tab for dynamic height only
+    activeTab = 'Calculator',
 };
 
 -- Module-level cache reference (set externally via SetCache)
@@ -146,11 +150,11 @@ local function calculateTabHeight(tabName, maxWeapons)
         local rowsBase    = 6;
         local rowsWeapons = maxWeapons or 0;
         -- Add extra rows for subjob dropdowns if enabled
-        local rowsSubjob = state.includeSubjob and 1 or 0;
+        local rowsSubjob = state.filters.includeSubjob and 1 or 0;
         -- Add extra row for favorite WS dropdown if enabled
-        local rowsFavWs = state.enableFavWs and 1 or 0;
+        local rowsFavWs = state.filters.enableFavWs and 1 or 0;
         -- Add extra row for custom level dropdown if enabled
-        local rowsLevel = state.useCustomLevel and 2.5 or 0;
+        local rowsLevel = state.customLevel.enabled and 2.5 or 0;
         return (rowsBase + rowsWeapons + rowsSubjob + rowsFavWs + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
         paddingAdjust = 5;
@@ -287,42 +291,23 @@ local function buildDefaultWeaponSelection(jobId, includeFallback)
     return sel;
 end
 
-local function ensureJobWeaponSelection(side, jobId)
+-- Ensure weapon selection is valid for a job state object
+-- jobState: reference to state.jobs[1] or state.jobs[2]
+local function ensureJobWeaponSelection(jobState)
+    local jobId = jobItems[jobState.index] or jobItems[1];
+
     if not jobId then
-        return {};
-    end
-
-    local lastId, selTable;
-
-    if side == 1 then
-        lastId   = state.job1LastId;
-        selTable = state.job1Weapons;
-    else
-        lastId   = state.job2LastId;
-        selTable = state.job2Weapons;
+        return;
     end
 
     -- If job changed, rebuild defaults from jobs.lua.
-    if jobId ~= lastId then
-        selTable = buildDefaultWeaponSelection(jobId, true);
-
-        if side == 1 then
-            state.job1LastId = jobId;
-        else
-            state.job2LastId = jobId;
-        end
-    elseif type(selTable) ~= 'table' then
+    if jobId ~= jobState.lastId then
+        jobState.weapons = buildDefaultWeaponSelection(jobId, true);
+        jobState.lastId = jobId;
+    elseif type(jobState.weapons) ~= 'table' then
         -- Same job, but somehow no table yet.
-        selTable = {};
+        jobState.weapons = {};
     end
-
-    if side == 1 then
-        state.job1Weapons = selTable;
-    else
-        state.job2Weapons = selTable;
-    end
-
-    return selTable;
 end
 
 -- Helper to find job index in jobItems for dropdown
@@ -361,7 +346,7 @@ local function applyTokenToSide(side, token)
     local subIdx = 1;
     if subJobId then
         subIdx = findJobIndex(subJobId) or 1;
-        state.includeSubjob = true;  -- Auto-enable subjob filter if token contains subjob
+        state.filters.includeSubjob = true;  -- Auto-enable subjob filter if token contains subjob
     end
 
     local sel = {};
@@ -381,19 +366,23 @@ local function applyTokenToSide(side, token)
     end
 
     if side == 1 then
-        state.job1Index    = idx;
-        state.job1SubIndex = subIdx;
-        state.job1LastId   = jobId;
-        state.job1Weapons  = sel;
+        state.jobs[1].index    = idx;
+        state.jobs[1].subIndex = subIdx;
+        state.jobs[1].lastId   = jobId;
+        state.jobs[1].weapons  = sel;
     else
-        state.job2Index    = idx;
-        state.job2SubIndex = subIdx;
-        state.job2LastId   = jobId;
-        state.job2Weapons  = sel;
+        state.jobs[2].index    = idx;
+        state.jobs[2].subIndex = subIdx;
+        state.jobs[2].lastId   = jobId;
+        state.jobs[2].weapons  = sel;
     end
 end
 
-local function drawWeaponCheckboxes(jobId, weaponSel)
+-- Draw weapon checkboxes for a job state object
+-- jobState: reference to state.jobs[1] or state.jobs[2]
+local function drawWeaponCheckboxes(jobState)
+    local jobId = jobItems[jobState.index] or jobItems[1];
+
     local job = jobId and jobsData[jobId] or nil;
     if not job or not job.weapons then
         imgui.TextDisabled('(no weapons)');
@@ -420,14 +409,14 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
         -- Move text + checkbox inward
         imgui.SetCursorPosX(baseX + indent);
 
-        local checked = { weaponSel[w] and true or false };
+        local checked = { jobState.weapons[w] and true or false };
 
         if primarySet[w] then
             imgui.PushStyleColor(ImGuiCol_Text, { 1.00, 0.90, 0.40, 1.00 }); -- gold tint
         end
 
         if imgui.Checkbox(w, checked) then
-            weaponSel[w] = checked[1];
+            jobState.weapons[w] = checked[1];
             weaponsChanged = true;
         end
 
@@ -439,12 +428,17 @@ local function drawWeaponCheckboxes(jobId, weaponSel)
     return weaponsChanged;
 end
 
--- Build favorite WS dropdown items from selected weapons
+-- Build favorite WS dropdown items from selected weapons for a job state object
 -- Returns: table of WS display names, starting with 'Any', in reverse skill order grouped by weapon type
-local function buildFavWsItems(jobId, weaponSel, subJobId, charLevel)
+-- jobState: reference to state.jobs[1] or state.jobs[2]
+local function buildFavWsItems(jobState)
     local items = { 'Any' };
 
-    if not jobId or not weaponSel then
+    local jobId = jobItems[jobState.index] or jobItems[1];
+    local subJobId = state.filters.includeSubjob and (jobItems[jobState.subIndex] or nil) or nil;
+    local charLevel = state.customLevel.enabled and state.customLevel.value or nil;
+
+    if not jobId or not jobState.weapons then
         return items;
     end
 
@@ -459,7 +453,7 @@ local function buildFavWsItems(jobId, weaponSel, subJobId, charLevel)
     local weaponGroups = {};
 
     for _, weaponKey in ipairs(weaponList) do
-        if weaponSel[weaponKey] then
+        if jobState.weapons[weaponKey] then
             local weaponSkills = skills[weaponKey];
             if weaponSkills then
                 local wsForWeapon = {};
@@ -518,38 +512,37 @@ end
 
 -- Helper function to build calculation request from current state
 local function buildCalculationRequest()
-    local job1Id = jobItems[state.job1Index] or jobItems[1];
-    local job2Id = jobItems[state.job2Index] or jobItems[2];
+    local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
+    local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
     local job1SubId = nil;
     local job2SubId = nil;
 
-    if state.includeSubjob then
-        job1SubId = jobItems[state.job1SubIndex];
-        job2SubId = jobItems[state.job2SubIndex];
+    if state.filters.includeSubjob then
+        job1SubId = jobItems[state.jobs[1].subIndex];
+        job2SubId = jobItems[state.jobs[2].subIndex];
     end
 
-    local token1 = buildToken(job1Id, state.job1Weapons, job1SubId);
-    local token2 = buildToken(job2Id, state.job2Weapons, job2SubId);
+    local token1 = buildToken(job1Id, state.jobs[1].weapons, job1SubId);
+    local token2 = buildToken(job2Id, state.jobs[2].weapons, job2SubId);
 
-    local lvlVal    = state.scLevel or 1;
-    local elemTok   = elementTokens[state.elementIndex] or '';
+    local lvlVal    = state.filters.scLevel or 1;
+    local elemTok   = elementTokens[state.filters.elementIndex] or '';
     local scElement = (elemTok ~= '' and elemTok) or nil;
 
     -- Get favorite WS names if enabled
     local favWs1 = nil;
     local favWs2 = nil;
-    if state.enableFavWs then
-        local charLvl = state.useCustomLevel and state.charLevel or nil;
-        local job1FavWsItems = buildFavWsItems(job1Id, state.job1Weapons, job1SubId, charLvl);
-        local job2FavWsItems = buildFavWsItems(job2Id, state.job2Weapons, job2SubId, charLvl);
+    if state.filters.enableFavWs then
+        local job1FavWsItems = buildFavWsItems(state.jobs[1]);
+        local job2FavWsItems = buildFavWsItems(state.jobs[2]);
 
         -- Get selected WS name (index 1 is 'Any')
-        if state.job1FavWsIndex > 1 and state.job1FavWsIndex <= #job1FavWsItems then
-            favWs1 = job1FavWsItems[state.job1FavWsIndex];
+        if state.jobs[1].favWsIndex > 1 and state.jobs[1].favWsIndex <= #job1FavWsItems then
+            favWs1 = job1FavWsItems[state.jobs[1].favWsIndex];
         end
-        if state.job2FavWsIndex > 1 and state.job2FavWsIndex <= #job2FavWsItems then
-            favWs2 = job2FavWsItems[state.job2FavWsIndex];
+        if state.jobs[2].favWsIndex > 1 and state.jobs[2].favWsIndex <= #job2FavWsItems then
+            favWs2 = job2FavWsItems[state.jobs[2].favWsIndex];
         end
     end
 
@@ -558,9 +551,9 @@ local function buildCalculationRequest()
         token1    = token1,
         token2    = token2,
         scLevel   = lvlVal,
-        both      = state.both,
+        both      = state.filters.both,
         scElement = scElement,
-        charLevel = state.useCustomLevel and state.charLevel or nil,
+        charLevel = state.customLevel.enabled and state.customLevel.value or nil,
         favWs1    = favWs1,
         favWs2    = favWs2,
     };
@@ -568,8 +561,8 @@ end
 
 local function drawCalculatorTab()
     -- Current job IDs based on indices
-    local job1Id = jobItems[state.job1Index] or jobItems[1];
-    local job2Id = jobItems[state.job2Index] or jobItems[2];
+    local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
+    local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
     -- Count weapons for current jobs (used for layout decisions if needed)
     local count1     = countJobWeapons(job1Id);
@@ -581,7 +574,7 @@ local function drawCalculatorTab()
     -----------------------------------------------------------------------
     -- Custom Level section (if enabled)
     -----------------------------------------------------------------------
-    if state.useCustomLevel then
+    if state.customLevel.enabled then
         drawGradientHeader('Character Level', imgui.GetContentRegionAvail());
 
         local baseX  = imgui.GetCursorPosX();
@@ -602,7 +595,7 @@ local function drawCalculatorTab()
         end
 
         imgui.PushItemWidth(100);
-        state.charLevel = drawCombo('##charlevel', levelItems, state.charLevel);
+        state.customLevel.value = drawCombo('##charlevel', levelItems, state.customLevel.value);
         imgui.PopItemWidth();
 
         imgui.Spacing();
@@ -615,8 +608,8 @@ local function drawCalculatorTab()
     -----------------------------------------------------------------------
     drawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
 
-    ensureJobWeaponSelection(1, job1Id);
-    ensureJobWeaponSelection(2, job2Id);
+    ensureJobWeaponSelection(state.jobs[1]);
+    ensureJobWeaponSelection(state.jobs[2]);
 
     imgui.Columns(3, 'scc_jobs_cols', false);
     imgui.SetColumnWidth(0, JOB_COLUMN_WIDTH);
@@ -625,13 +618,13 @@ local function drawCalculatorTab()
 
     -- Row 1: job combos + arrow
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-    local prevJob1Index = state.job1Index;
-    state.job1Index = drawCombo('##fromjob', jobItems, state.job1Index);
+    local prevJob1Index = state.jobs[1].index;
+    state.jobs[1].index = drawCombo('##fromjob', jobItems, state.jobs[1].index);
     imgui.PopItemWidth();
 
     imgui.NextColumn();
     do
-        local arrow      = state.both and '<->' or '->';
+        local arrow      = state.filters.both and '<->' or '->';
         local curX, curY = imgui.GetCursorPos();
         local comboH     = imgui.GetFrameHeight();
         local textH      = imgui.GetTextLineHeight();
@@ -643,20 +636,20 @@ local function drawCalculatorTab()
 
     imgui.NextColumn();
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-    local prevJob2Index = state.job2Index;
-    state.job2Index = drawCombo('##tojob', jobItems, state.job2Index);
+    local prevJob2Index = state.jobs[2].index;
+    state.jobs[2].index = drawCombo('##tojob', jobItems, state.jobs[2].index);
     imgui.PopItemWidth();
 
     -- Row 1.5: subjob combos (if enabled)
-    if state.includeSubjob then
+    if state.filters.includeSubjob then
         imgui.NextColumn();
         local curX = imgui.GetCursorPosX();
         imgui.SetCursorPosX(curX + 5);
         imgui.Text('/');
         imgui.SameLine();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 30);
-        local prevJob1SubIndex = state.job1SubIndex;
-        state.job1SubIndex = drawCombo('##fromsubjob', jobItems, state.job1SubIndex);
+        local prevJob1SubIndex = state.jobs[1].subIndex;
+        state.jobs[1].subIndex = drawCombo('##fromsubjob', jobItems, state.jobs[1].subIndex);
         imgui.PopItemWidth();
 
         imgui.NextColumn();
@@ -668,8 +661,8 @@ local function drawCalculatorTab()
         imgui.Text('/');
         imgui.SameLine();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 30);
-        local prevJob2SubIndex = state.job2SubIndex;
-        state.job2SubIndex = drawCombo('##tosubjob', jobItems, state.job2SubIndex);
+        local prevJob2SubIndex = state.jobs[2].subIndex;
+        state.jobs[2].subIndex = drawCombo('##tosubjob', jobItems, state.jobs[2].subIndex);
         imgui.PopItemWidth();
 
         -- Prevent main and subjob from being the same - swap them if they match
@@ -686,29 +679,25 @@ local function drawCalculatorTab()
             return mainIdx, subIdx;
         end
 
-        state.job1Index, state.job1SubIndex = ensureJobsAreDifferent(state.job1Index, state.job1SubIndex, prevJob1Index, prevJob1SubIndex);
-        state.job2Index, state.job2SubIndex = ensureJobsAreDifferent(state.job2Index, state.job2SubIndex, prevJob2Index, prevJob2SubIndex);
+        state.jobs[1].index, state.jobs[1].subIndex = ensureJobsAreDifferent(state.jobs[1].index, state.jobs[1].subIndex, prevJob1Index, prevJob1SubIndex);
+        state.jobs[2].index, state.jobs[2].subIndex = ensureJobsAreDifferent(state.jobs[2].index, state.jobs[2].subIndex, prevJob2Index, prevJob2SubIndex);
     end
 
     -- Re-resolve job IDs after selection
-    job1Id = jobItems[state.job1Index] or jobItems[1];
-    job2Id = jobItems[state.job2Index] or jobItems[2];
+    job1Id = jobItems[state.jobs[1].index] or jobItems[1];
+    job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
-    local job1Sel = ensureJobWeaponSelection(1, job1Id);
-    local job2Sel = ensureJobWeaponSelection(2, job2Id);
+    ensureJobWeaponSelection(state.jobs[1]);
+    ensureJobWeaponSelection(state.jobs[2]);
 
     -- Row 1.75: favorite WS combos (if enabled)
-    if state.enableFavWs then
-        local job1SubId = state.includeSubjob and (jobItems[state.job1SubIndex] or nil) or nil;
-        local job2SubId = state.includeSubjob and (jobItems[state.job2SubIndex] or nil) or nil;
-        local charLvl = state.useCustomLevel and state.charLevel or nil;
-
-        local job1FavWsItems = buildFavWsItems(job1Id, job1Sel, job1SubId, charLvl);
-        local job2FavWsItems = buildFavWsItems(job2Id, job2Sel, job2SubId, charLvl);
+    if state.filters.enableFavWs then
+        local job1FavWsItems = buildFavWsItems(state.jobs[1]);
+        local job2FavWsItems = buildFavWsItems(state.jobs[2]);
 
         imgui.NextColumn();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-        state.job1FavWsIndex = drawCombo('##fromfavws', job1FavWsItems, state.job1FavWsIndex);
+        state.jobs[1].favWsIndex = drawCombo('##fromfavws', job1FavWsItems, state.jobs[1].favWsIndex);
         imgui.PopItemWidth();
 
         imgui.NextColumn();
@@ -716,14 +705,14 @@ local function drawCalculatorTab()
 
         imgui.NextColumn();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-        state.job2FavWsIndex = drawCombo('##tofavws', job2FavWsItems, state.job2FavWsIndex);
+        state.jobs[2].favWsIndex = drawCombo('##tofavws', job2FavWsItems, state.jobs[2].favWsIndex);
         imgui.PopItemWidth();
     end
 
     -- Row 2: weapons under each job
     imgui.NextColumn();
     imgui.PushID('job1_weapons');
-    local job1WeaponsChanged = drawWeaponCheckboxes(job1Id, job1Sel);
+    local job1WeaponsChanged = drawWeaponCheckboxes(state.jobs[1]);
     imgui.PopID();
 
     imgui.NextColumn();
@@ -731,17 +720,17 @@ local function drawCalculatorTab()
 
     imgui.NextColumn();
     imgui.PushID('job2_weapons');
-    local job2WeaponsChanged = drawWeaponCheckboxes(job2Id, job2Sel);
+    local job2WeaponsChanged = drawWeaponCheckboxes(state.jobs[2]);
     imgui.PopID();
 
     imgui.Columns(1);
 
     -- Reset favorite WS indices to "Any" when weapon selection changes
     if job1WeaponsChanged then
-        state.job1FavWsIndex = 1;
+        state.jobs[1].favWsIndex = 1;
     end
     if job2WeaponsChanged then
-        state.job2FavWsIndex = 1;
+        state.jobs[2].favWsIndex = 1;
     end
 
     imgui.Separator();
@@ -769,11 +758,11 @@ local function drawCalculatorTab()
 
     -- Secondary action: Clear (ghost button style)
     if styledButton('Clear', { buttonWidth, 0 }, false) then
-        local curJob1Id = jobItems[state.job1Index];
-        local curJob2Id = jobItems[state.job2Index];
+        local curJob1Id = jobItems[state.jobs[1].index];
+        local curJob2Id = jobItems[state.jobs[2].index];
 
-        state.job1Weapons = buildDefaultWeaponSelection(curJob1Id, false);
-        state.job2Weapons = buildDefaultWeaponSelection(curJob2Id, false);
+        state.jobs[1].weapons = buildDefaultWeaponSelection(curJob1Id, false);
+        state.jobs[2].weapons = buildDefaultWeaponSelection(curJob2Id, false);
 
         request = { clear = true };
     end
@@ -796,7 +785,7 @@ local function drawFiltersTab()
     imgui.Text('Filter results by burst element:');
     imgui.SetCursorPosX(baseX + indent);
     imgui.PushItemWidth(filterWidth - indent);
-    state.elementIndex = drawCombo('##scelement', elementItems, state.elementIndex);
+    state.filters.elementIndex = drawCombo('##scelement', elementItems, state.filters.elementIndex);
     imgui.PopItemWidth();
 
     imgui.Spacing();
@@ -811,9 +800,9 @@ local function drawFiltersTab()
     imgui.Text('Minimum skillchain tier:');
     imgui.SetCursorPosX(baseX + indent);
     imgui.PushItemWidth(filterWidth - indent);
-    local lvl = { state.scLevel };
+    local lvl = { state.filters.scLevel };
     if imgui.SliderInt('##sclevel', lvl, 1, 3) then
-        state.scLevel = lvl[1];
+        state.filters.scLevel = lvl[1];
     end
     imgui.PopItemWidth();
 
@@ -833,36 +822,36 @@ local function drawFiltersTab()
 
     -- Custom Level Checkbox
     imgui.SetCursorPosX(baseX + indent);
-    local useCustomLevel = { state.useCustomLevel };
+    local useCustomLevel = { state.customLevel.enabled };
     if imgui.Checkbox('Enable custom character level', useCustomLevel) then
-        state.useCustomLevel = useCustomLevel[1];
+        state.customLevel.enabled = useCustomLevel[1];
     end
     imgui.SameLine();
     helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
     -- Both Directions Checkbox
     imgui.SetCursorPosX(baseX + indent);
-    local both = { state.both };
+    local both = { state.filters.both };
     if imgui.Checkbox('Calculate skillchains in both directions', both) then
-        state.both = both[1];
+        state.filters.both = both[1];
     end
     imgui.SameLine();
     helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
 
     -- Include Subjob Checkbox
     imgui.SetCursorPosX(baseX + indent);
-    local includeSubjob = { state.includeSubjob };
+    local includeSubjob = { state.filters.includeSubjob };
     if imgui.Checkbox('Enable SubJob in Calculator', includeSubjob) then
-        state.includeSubjob = includeSubjob[1];
+        state.filters.includeSubjob = includeSubjob[1];
     end
     imgui.SameLine();
     helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
 
     -- Enable Favorite WS Checkbox
     imgui.SetCursorPosX(baseX + indent);
-    local enableFavWs = { state.enableFavWs };
+    local enableFavWs = { state.filters.enableFavWs };
     if imgui.Checkbox('Enable favorite WS in Calculator', enableFavWs) then
-        state.enableFavWs = enableFavWs[1];
+        state.filters.enableFavWs = enableFavWs[1];
     end
     imgui.SameLine();
     helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');
@@ -887,11 +876,11 @@ local function drawFiltersTab()
     -- Set Defaults button
     if styledButton('Set as Defaults', { buttonWidth, 0 }, true) then
         local def = (cache and cache.settings and cache.settings.default) or {};
-        def.scLevel = state.scLevel;
-        def.both  = state.both;
-        def.includeSubjob = state.includeSubjob;
-        def.useCharLevel = state.useCustomLevel;
-        def.enableFavWs = state.enableFavWs;
+        def.scLevel = state.filters.scLevel;
+        def.both  = state.filters.both;
+        def.includeSubjob = state.filters.includeSubjob;
+        def.useCharLevel = state.customLevel.enabled;
+        def.enableFavWs = state.filters.enableFavWs;
         cache.settings.default = def;
 
         request = request or {};
@@ -904,12 +893,12 @@ local function drawFiltersTab()
     if styledButton('Reset Filters', { buttonWidth, 0 }, false) then
         -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
-        state.scLevel = def.scLevel or 1;
-        state.both  = def.both  or false;
-        state.includeSubjob = def.includeSubjob or false;
-        state.useCustomLevel = def.useCharLevel or false;
-        state.enableFavWs = def.enableFavWs or false;
-        state.elementIndex = 1;
+        state.filters.scLevel = def.scLevel or 1;
+        state.filters.both  = def.both  or false;
+        state.filters.includeSubjob = def.includeSubjob or false;
+        state.customLevel.enabled = def.useCharLevel or false;
+        state.filters.enableFavWs = def.enableFavWs or false;
+        state.filters.elementIndex = 1;
     end
 
     imgui.Spacing();
@@ -929,10 +918,8 @@ local function drawFiltersTab()
     -- Calculate button (primary style)
     if styledButton('Calculate', { calcButtonWidth, 0 }, true) then
         -- Ensure weapon selections exist for current jobs
-        local job1Id = jobItems[state.job1Index] or jobItems[1];
-        local job2Id = jobItems[state.job2Index] or jobItems[2];
-        ensureJobWeaponSelection(1, job1Id);
-        ensureJobWeaponSelection(2, job2Id);
+        ensureJobWeaponSelection(state.jobs[1]);
+        ensureJobWeaponSelection(state.jobs[2]);
 
         request = buildCalculationRequest();
     end
@@ -1053,12 +1040,12 @@ function SkillchainGUI.OpenFromCli()
     local def = (cache.settings and cache.settings.default) or {};
 
     -- Filters from CLI (with fallback to defaults)
-    state.scLevel = cache.scLevel or def.scLevel or 1;
+    state.filters.scLevel = cache.scLevel or def.scLevel or 1;
 
     if cache.both ~= nil then
-        state.both = cache.both;
+        state.filters.both = cache.both;
     else
-        state.both = def.both or false;
+        state.filters.both = def.both or false;
     end
 
     -- Don't set includeSubjob yet - let applyTokenToSide detect it from tokens first
@@ -1066,19 +1053,19 @@ function SkillchainGUI.OpenFromCli()
     local initialSubjob = def.includeSubjob or false;
 
     -- Element from cache.scElement
-    state.elementIndex = 1;
+    state.filters.elementIndex = 1;
     if cache.scElement then
         local lower = cache.scElement:lower();
         for i, tok in ipairs(elementTokens) do
             if tok == lower then
-                state.elementIndex = i;
+                state.filters.elementIndex = i;
                 break;
             end
         end
     end
 
     -- Jobs + weapons from token1 / token2
-    -- These may set state.includeSubjob = true if tokens contain subjobs
+    -- These may set state.filters.includeSubjob = true if tokens contain subjobs
     if cache.token1 then
         applyTokenToSide(1, cache.token1);
     end
@@ -1088,21 +1075,21 @@ function SkillchainGUI.OpenFromCli()
 
     -- Only override includeSubjob if explicitly set to true in cache, or use defaults if tokens didn't enable it
     if cache.includeSubjob == true then
-        state.includeSubjob = true;
-    elseif not state.includeSubjob then
-        state.includeSubjob = initialSubjob;
+        state.filters.includeSubjob = true;
+    elseif not state.filters.includeSubjob then
+        state.filters.includeSubjob = initialSubjob;
     end
 
     -- Custom level from CLI
     if cache.charLevel then
-        state.useCustomLevel = true;
-        state.charLevel = cache.charLevel;
+        state.customLevel.enabled = true;
+        state.customLevel.value = cache.charLevel;
     else
-        state.useCustomLevel = def.useCharLevel or false;
+        state.customLevel.enabled = def.useCharLevel or false;
     end
 
     -- Favorite WS filter from defaults (CLI doesn't support setting this directly)
-    state.enableFavWs = def.enableFavWs or false;
+    state.filters.enableFavWs = def.enableFavWs or false;
 
     -- Tell DrawWindow "don't re-init from defaults"
     state.initialized   = true;
@@ -1146,39 +1133,39 @@ function SkillchainGUI.DrawWindow()
 
         -- Only apply defaults when NOT opened from CLI
         if not state.openedFromCli then
-            state.scLevel = def.scLevel or 1;
+            state.filters.scLevel = def.scLevel or 1;
 
             if def.both ~= nil then
-                state.both = def.both;
+                state.filters.both = def.both;
             else
-                state.both = false;
+                state.filters.both = false;
             end
 
             if def.includeSubjob ~= nil then
-                state.includeSubjob = def.includeSubjob;
+                state.filters.includeSubjob = def.includeSubjob;
             else
-                state.includeSubjob = false;
+                state.filters.includeSubjob = false;
             end
 
             if def.enableFavWs ~= nil then
-                state.enableFavWs = def.enableFavWs;
+                state.filters.enableFavWs = def.enableFavWs;
             else
-                state.enableFavWs = false;
+                state.filters.enableFavWs = false;
             end
 
             if def.useCharLevel ~= nil then
-                state.useCustomLevel = def.useCharLevel;
+                state.customLevel.enabled = def.useCharLevel;
             else
-                state.useCustomLevel = false;
+                state.customLevel.enabled = false;
             end
         end
 
-        state.elementIndex = 1;
+        state.filters.elementIndex = 1;
         if cache.scElement then
             local lower = cache.scElement:lower();
             for i, tok in ipairs(elementTokens) do
                 if tok == lower then
-                    state.elementIndex = i;
+                    state.filters.elementIndex = i;
                     break;
                 end
             end
@@ -1189,8 +1176,8 @@ function SkillchainGUI.DrawWindow()
     end
 
     -- derive current jobs to estimate height for Calculator tab
-    local job1Id = jobItems[state.job1Index] or jobItems[1];
-    local job2Id = jobItems[state.job2Index] or jobItems[2];
+    local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
+    local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
     local count1     = countJobWeapons(job1Id);
     local count2     = countJobWeapons(job2Id);
