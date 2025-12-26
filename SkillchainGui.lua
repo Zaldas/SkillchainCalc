@@ -80,17 +80,6 @@ do
 end
 
 -----------------------------------------------------------------------
--- Helper wrappers for Core functions (for backwards compatibility)
------------------------------------------------------------------------
-local function getJobWeaponList(jobId)
-    return SkillchainCore.GetWeaponsForJob(jobId);
-end
-
-local function buildToken(jobId, weaponSel, subJobId)
-    return SkillchainCore.BuildTokenFromSelection(jobId, weaponSel, subJobId);
-end
-
------------------------------------------------------------------------
 -- State and Cache
 -----------------------------------------------------------------------
 local state = {
@@ -260,7 +249,7 @@ local function drawGradientHeader(text, width)
 end
 
 local function countJobWeapons(jobId)
-    local list = getJobWeaponList(jobId);
+    local list = SkillchainCore.GetWeaponsForJob(jobId);
     return #list;
 end
 
@@ -389,7 +378,7 @@ local function drawWeaponCheckboxes(jobState)
         return false;
     end
 
-    local list = getJobWeaponList(jobId);
+    local list = SkillchainCore.GetWeaponsForJob(jobId);
 
     -- Primary weapons for this job.
     local primarySet = {};
@@ -447,7 +436,7 @@ local function buildFavWsItems(jobState)
         return items;
     end
 
-    local weaponList = getJobWeaponList(jobId);
+    local weaponList = SkillchainCore.GetWeaponsForJob(jobId);
 
     -- Collect weapon skills grouped by weapon type
     local weaponGroups = {};
@@ -515,24 +504,16 @@ local function buildCalculationRequest()
     local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
     local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
-    local job1SubId = nil;
-    local job2SubId = nil;
+    local job1SubId = state.filters.includeSubjob and jobItems[state.jobs[1].subIndex] or nil;
+    local job2SubId = state.filters.includeSubjob and jobItems[state.jobs[2].subIndex] or nil;
 
-    if state.filters.includeSubjob then
-        job1SubId = jobItems[state.jobs[1].subIndex];
-        job2SubId = jobItems[state.jobs[2].subIndex];
-    end
+    local token1 = SkillchainCore.BuildTokenFromSelection(job1Id, state.jobs[1].weapons, job1SubId);
+    local token2 = SkillchainCore.BuildTokenFromSelection(job2Id, state.jobs[2].weapons, job2SubId);
 
-    local token1 = buildToken(job1Id, state.jobs[1].weapons, job1SubId);
-    local token2 = buildToken(job2Id, state.jobs[2].weapons, job2SubId);
-
-    local lvlVal    = state.filters.scLevel or 1;
-    local elemTok   = elementTokens[state.filters.elementIndex] or '';
-    local scElement = (elemTok ~= '' and elemTok) or nil;
+    local elemTok = elementTokens[state.filters.elementIndex] or '';
 
     -- Get favorite WS names if enabled
-    local favWs1 = nil;
-    local favWs2 = nil;
+    local favWs1, favWs2;
     if state.filters.enableFavWs then
         local job1FavWsItems = buildFavWsItems(state.jobs[1]);
         local job2FavWsItems = buildFavWsItems(state.jobs[2]);
@@ -550,9 +531,9 @@ local function buildCalculationRequest()
         mode      = 'pair',
         token1    = token1,
         token2    = token2,
-        scLevel   = lvlVal,
+        scLevel   = state.filters.scLevel or 1,
         both      = state.filters.both,
-        scElement = scElement,
+        scElement = (elemTok ~= '' and elemTok) or nil,
         charLevel = state.customLevel.enabled and state.customLevel.value or nil,
         favWs1    = favWs1,
         favWs2    = favWs2,
@@ -560,15 +541,6 @@ local function buildCalculationRequest()
 end
 
 local function drawCalculatorTab()
-    -- Current job IDs based on indices
-    local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
-    local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
-
-    -- Count weapons for current jobs (used for layout decisions if needed)
-    local count1     = countJobWeapons(job1Id);
-    local count2     = countJobWeapons(job2Id);
-    local maxWeapons = math.max(count1, count2);
-
     local request = nil;
 
     -----------------------------------------------------------------------
@@ -577,11 +549,9 @@ local function drawCalculatorTab()
     if state.customLevel.enabled then
         drawGradientHeader('Character Level', imgui.GetContentRegionAvail());
 
-        local baseX  = imgui.GetCursorPosX();
         local indent = 5;
-        local filterWidth = JOB_COLUMN_WIDTH * 2;
 
-        imgui.SetCursorPosX(baseX + indent);
+        imgui.SetCursorPosX(imgui.GetCursorPosX() + indent);
         local LABEL_PADDING = 3
         imgui.SetCursorPosY(imgui.GetCursorPosY() + LABEL_PADDING);
         imgui.Text('Level:');
@@ -682,10 +652,6 @@ local function drawCalculatorTab()
         state.jobs[1].index, state.jobs[1].subIndex = ensureJobsAreDifferent(state.jobs[1].index, state.jobs[1].subIndex, prevJob1Index, prevJob1SubIndex);
         state.jobs[2].index, state.jobs[2].subIndex = ensureJobsAreDifferent(state.jobs[2].index, state.jobs[2].subIndex, prevJob2Index, prevJob2SubIndex);
     end
-
-    -- Re-resolve job IDs after selection
-    job1Id = jobItems[state.jobs[1].index] or jobItems[1];
-    job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
     ensureJobWeaponSelection(state.jobs[1]);
     ensureJobWeaponSelection(state.jobs[2]);
@@ -1033,17 +999,17 @@ end
 -- Public API
 -----------------------------------------------------------------------
 function SkillchainGUI.OpenFromCli()
-    if not cache or cache.stepMode then
+    if not cache or cache.step.enabled then
         return;
     end
 
     local def = (cache.settings and cache.settings.default) or {};
 
     -- Filters from CLI (with fallback to defaults)
-    state.filters.scLevel = cache.scLevel or def.scLevel or 1;
+    state.filters.scLevel = cache.filters.scLevel or def.scLevel or 1;
 
-    if cache.both ~= nil then
-        state.filters.both = cache.both;
+    if cache.filters.both ~= nil then
+        state.filters.both = cache.filters.both;
     else
         state.filters.both = def.both or false;
     end
@@ -1052,10 +1018,10 @@ function SkillchainGUI.OpenFromCli()
     -- We'll set it from defaults after if it wasn't set by tokens
     local initialSubjob = def.includeSubjob or false;
 
-    -- Element from cache.scElement
+    -- Element from cache.filters.scElement
     state.filters.elementIndex = 1;
-    if cache.scElement then
-        local lower = cache.scElement:lower();
+    if cache.filters.scElement then
+        local lower = cache.filters.scElement:lower();
         for i, tok in ipairs(elementTokens) do
             if tok == lower then
                 state.filters.elementIndex = i;
@@ -1066,24 +1032,24 @@ function SkillchainGUI.OpenFromCli()
 
     -- Jobs + weapons from token1 / token2
     -- These may set state.filters.includeSubjob = true if tokens contain subjobs
-    if cache.token1 then
-        applyTokenToSide(1, cache.token1);
+    if cache.jobs.token1 then
+        applyTokenToSide(1, cache.jobs.token1);
     end
-    if cache.token2 then
-        applyTokenToSide(2, cache.token2);
+    if cache.jobs.token2 then
+        applyTokenToSide(2, cache.jobs.token2);
     end
 
     -- Only override includeSubjob if explicitly set to true in cache, or use defaults if tokens didn't enable it
-    if cache.includeSubjob == true then
+    if cache.filters.includeSubjob == true then
         state.filters.includeSubjob = true;
     elseif not state.filters.includeSubjob then
         state.filters.includeSubjob = initialSubjob;
     end
 
     -- Custom level from CLI
-    if cache.charLevel then
+    if cache.filters.charLevel then
         state.customLevel.enabled = true;
-        state.customLevel.value = cache.charLevel;
+        state.customLevel.value = cache.filters.charLevel;
     else
         state.customLevel.enabled = def.useCharLevel or false;
     end
@@ -1161,8 +1127,8 @@ function SkillchainGUI.DrawWindow()
         end
 
         state.filters.elementIndex = 1;
-        if cache.scElement then
-            local lower = cache.scElement:lower();
+        if cache.filters.scElement then
+            local lower = cache.filters.scElement:lower();
             for i, tok in ipairs(elementTokens) do
                 if tok == lower then
                     state.filters.elementIndex = i;

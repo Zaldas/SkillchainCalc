@@ -65,33 +65,51 @@ local sccSettings = T{
 };
 
 local cache = {
-    token1 = nil,
-    token2 = nil,
-    scLevel = 1,
-    both = false,
-    scElement = nil,
-    stepMode = false,
-    stepFilter = nil,  -- For step mode: tier number (1-4) or property name
-    stepFilterType = nil,  -- "tier" or "property"
-    charLevel = nil,
-    settings = sccSettings;
-    keepResultsOpen = false;  -- When true, results stay open even if GUI closes
+    -- Job tokens and weaponskill filters
+    jobs = {
+        token1 = nil,
+        token2 = nil,
+        favWs1 = nil,
+        favWs2 = nil,
+    },
+
+    -- Filter settings
+    filters = {
+        scLevel = 1,
+        both = false,
+        scElement = nil,
+        includeSubjob = false,
+        charLevel = nil,
+    },
+
+    -- Step mode configuration
+    step = {
+        enabled = false,
+        filter = nil,  -- tier number (1-4) or property name
+        filterType = nil,  -- "tier" or "property"
+    },
+
+    -- Application settings and state
+    settings = sccSettings,
+    keepResultsOpen = false,  -- When true, results stay open even if GUI closes
 };
 
 local function applyDefaultsToCache()
     local def = (cache.settings and cache.settings.default) or (sccSettings and sccSettings.default) or {};
-    cache.scLevel = def.scLevel or 1;
-    cache.both  = def.both  or false;
-    cache.includeSubjob = def.includeSubjob or false;
+    cache.filters.scLevel = def.scLevel or 1;
+    cache.filters.both = def.both or false;
+    cache.filters.includeSubjob = def.includeSubjob or false;
 end
 
 local function resetCacheFull()
-    cache.token1    = nil;
-    cache.token2    = nil;
-    cache.scElement = nil;
-    cache.stepMode  = false;
-    cache.stepFilter = nil;
-    cache.stepFilterType = nil;
+    cache.jobs.token1 = nil;
+    cache.jobs.token2 = nil;
+    cache.jobs.favWs1 = nil;
+    cache.jobs.favWs2 = nil;
+    cache.filters.scElement = nil;
+    cache.step.enabled = false;
+    cache.step.filter = nil;
+    cache.step.filterType = nil;
     cache.keepResultsOpen = false;
     applyDefaultsToCache();
 end
@@ -100,7 +118,7 @@ local function renderResults(skillchains)
     local resultsTable = SkillchainCore.BuildSkillchainTable(skillchains);
     local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable, debugMode);
 
-    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.both, minResultsAfterHeader);
+    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.filters.both, minResultsAfterHeader);
 end
 
 -- Event handler for addon loading
@@ -126,14 +144,14 @@ local function displaySkillchainResults(combinations, label)
         return;
     end
 
-    local filteredCombinations = SkillchainCore.FilterSkillchainsByLevel(combinations, cache.scLevel);
+    local filteredCombinations = SkillchainCore.FilterSkillchainsByLevel(combinations, cache.filters.scLevel);
 
-    if cache.scElement then
-        filteredCombinations = SkillchainCore.FilterSkillchainsByElement(filteredCombinations, cache.scElement);
+    if cache.filters.scElement then
+        filteredCombinations = SkillchainCore.FilterSkillchainsByElement(filteredCombinations, cache.filters.scElement);
     end
 
-    if cache.favWs1 or cache.favWs2 then
-        filteredCombinations = SkillchainCore.FilterSkillchainsByWeaponskill(filteredCombinations, cache.favWs1, cache.favWs2);
+    if cache.jobs.favWs1 or cache.jobs.favWs2 then
+        filteredCombinations = SkillchainCore.FilterSkillchainsByWeaponskill(filteredCombinations, cache.jobs.favWs1, cache.jobs.favWs2);
     end
 
     if (#filteredCombinations > 0) then
@@ -141,29 +159,29 @@ local function displaySkillchainResults(combinations, label)
         renderResults(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
-        print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.scLevel));
+        print(('[SkillchainCalc] No%s skillchain combinations found for filter level %d.'):format(suffix, cache.filters.scLevel));
         SkillchainRenderer.clear();
     end
 end
 
 local function parseSkillchains(isStep)
     if isStep then
-        if (not cache.token1) then
+        if (not cache.jobs.token1) then
             return;
         end
 
-        local wsList = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.charLevel);
+        local wsList = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, nil, cache.filters.charLevel);
         if (not wsList) then
-            print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.token1));
+            print('[SkillchainCalc] Invalid weapon/job token for step mode: ' .. tostring(cache.jobs.token1));
             SkillchainRenderer.clear();
             return;
         end
 
-        local combinations = SkillchainCore.CalculateStepSkillchains(wsList, cache.stepFilter, cache.stepFilterType);
+        local combinations = SkillchainCore.CalculateStepSkillchains(wsList, cache.step.filter, cache.step.filterType);
 
         -- Check if filtering resulted in no combinations (possibly invalid property name)
-        if cache.stepFilterType == 'property' and #combinations == 0 then
-            print('[SkillchainCalc] Error: Invalid property name "' .. tostring(cache.stepFilter) .. '".');
+        if cache.step.filterType == 'property' and #combinations == 0 then
+            print('[SkillchainCalc] Error: Invalid property name "' .. tostring(cache.step.filter) .. '".');
             print('[SkillchainCalc] Valid properties: Compression, Detonation, Distortion, Fragmentation,');
             print('[SkillchainCalc]   Fusion, Gravitation, Impaction, Induration, Liquefaction,');
             print('[SkillchainCalc]   Reverberation, Scission, Transfixion, Light, Darkness');
@@ -171,27 +189,27 @@ local function parseSkillchains(isStep)
             return;
         end
 
-        cache.both = false;
+        cache.filters.both = false;
 
         displaySkillchainResults(combinations, 'step');
         return;
     end
 
-    if (not cache.token1 or not cache.token2) then
+    if (not cache.jobs.token1 or not cache.jobs.token2) then
         return;
     end
 
-    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.token1, nil, cache.charLevel);
-    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.token2, nil, cache.charLevel);
+    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, nil, cache.filters.charLevel);
+    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, nil, cache.filters.charLevel);
 
     if (not skills1 or not skills2) then
         print('[SkillchainCalc] Invalid weapon/job token(s): ' ..
-            tostring(cache.token1) .. ', ' .. tostring(cache.token2));
+            tostring(cache.jobs.token1) .. ', ' .. tostring(cache.jobs.token2));
         SkillchainRenderer.clear();
         return;
     end
 
-    local combinations = SkillchainCore.CalculateSkillchains(skills1, skills2, cache.both);
+    local combinations = SkillchainCore.CalculateSkillchains(skills1, skills2, cache.filters.both);
 
     displaySkillchainResults(combinations);
 end
@@ -205,7 +223,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 SkillchainRenderer.updateAnchor(cache.settings);
                 settings.save();
                 if SkillchainRenderer.isVisible() then
-                    parseSkillchains(cache.stepMode);
+                    parseSkillchains(cache.step.enabled);
                 end
             end
 
@@ -213,7 +231,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 applyDefaultsToCache();
                 settings.save();
                 if SkillchainRenderer.isVisible() then
-                    parseSkillchains(cache.stepMode);
+                    parseSkillchains(cache.step.enabled);
                 end
             end
 
@@ -224,24 +242,24 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             end
 
             if req.token1 ~= nil then
-                cache.token1 = req.token1;
-                cache.token2 = req.token2;
+                cache.jobs.token1 = req.token1;
+                cache.jobs.token2 = req.token2;
 
                 applyDefaultsToCache();
                 if req.scLevel ~= nil then
-                    cache.scLevel = req.scLevel;
+                    cache.filters.scLevel = req.scLevel;
                 end
                 if req.both ~= nil then
-                    cache.both = req.both;
+                    cache.filters.both = req.both;
                 end
 
-                cache.scElement = req.scElement and req.scElement:lower() or nil;
-                cache.charLevel = req.charLevel;
-                cache.favWs1 = req.favWs1;
-                cache.favWs2 = req.favWs2;
+                cache.filters.scElement = req.scElement and req.scElement:lower() or nil;
+                cache.filters.charLevel = req.charLevel;
+                cache.jobs.favWs1 = req.favWs1;
+                cache.jobs.favWs2 = req.favWs2;
 
                 -- GUI-initiated requests are always normal mode (tied to GUI)
-                cache.stepMode = false;
+                cache.step.enabled = false;
                 cache.keepResultsOpen = false;
 
                 parseSkillchains(false);
@@ -334,7 +352,7 @@ ashita.events.register('command', 'command_cb', function(e)
         if (validCommand) then
             settings.save();
             if (SkillchainRenderer.isVisible()) then
-                parseSkillchains(cache.stepMode);
+                parseSkillchains(cache.step.enabled);
             end
             return;
         end
@@ -533,23 +551,24 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    cache.token1 = token1;
-    cache.token2 = token2;
+    cache.jobs.token1 = token1;
+    cache.jobs.token2 = token2;
 
     applyDefaultsToCache();
     if scLevel ~= nil then
-        cache.scLevel = scLevel;
+        cache.filters.scLevel = scLevel;
     end
     if both ~= nil then
-        cache.both = both;
+        cache.filters.both = both;
     end
 
-    cache.scElement = scElement and scElement:lower() or nil;
-    cache.stepMode = isStep;
-    cache.stepFilter = stepFilter;
-    cache.stepFilterType = stepFilterType;
-    cache.charLevel = charLevel;
-
+    cache.filters.scElement = scElement and scElement:lower() or nil;
+    cache.filters.charLevel = charLevel;
+    -- step filters
+    cache.step.enabled = isStep;
+    cache.step.filter = stepFilter;
+    cache.step.filterType = stepFilterType;
+    
     -- In step mode, keep results open without GUI
     -- In normal mode, results are tied to GUI (unless we add a future option)
     cache.keepResultsOpen = isStep;
