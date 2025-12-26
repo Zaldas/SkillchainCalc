@@ -120,7 +120,7 @@ local state = {
     job1Weapons   = nil,
     job2Weapons   = nil,
 
-    -- track active tab for dynamic height
+    -- track active tab for dynamic height only
     activeTab     = 'Calculator',
 };
 
@@ -956,7 +956,6 @@ function SkillchainGUI.Toggle()
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
-        state.activeTab = 'Calculator';
     end
 end
 
@@ -965,7 +964,6 @@ function SkillchainGUI.SetVisible(v)
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
-        state.activeTab = 'Calculator';
     end
 end
 
