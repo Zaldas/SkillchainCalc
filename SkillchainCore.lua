@@ -91,12 +91,10 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
         return nil;
     end
 
-    local jobTok = jobId:lower();
-
-    -- Add subjob if provided
+    -- Build job portion (with optional subjob)
+    local jobPart = jobId:lower();
     if subJobId then
-        local subJobTok = subJobId:lower();
-        jobTok = string.format('%s/%s', jobTok, subJobTok);
+        jobPart = jobPart .. '/' .. subJobId:lower();
     end
 
     -- Build weapon list in proper order
@@ -109,12 +107,12 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
         end
     end
 
-    -- Append weapons if any selected
+    -- Combine job and weapons (if any)
     if #selectedWeapons > 0 then
-        return string.format('%s:%s', jobTok, table.concat(selectedWeapons, ','));
-    else
-        return jobTok;
+        return jobPart .. ':' .. table.concat(selectedWeapons, ',');
     end
+
+    return jobPart;
 end
 
 -- Helper: Resolve job abbreviation or name to job ID
