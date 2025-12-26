@@ -234,11 +234,19 @@ function SkillchainCore.IsJobAllowedForWs(ws, mainJobId, subJobId)
         return true;
     end
 
-    -- Check if main job is in the restrictions list
+    -- Check both jobs in a single pass
     local mainInList = false;
+    local subInList = false;
+
     for _, j in ipairs(restrictions) do
         if j == mainJobId then
             mainInList = true;
+        end
+        if allowSubjob and subJobId and j == subJobId then
+            subInList = true;
+        end
+        -- Early exit if we found what we need
+        if mainInList or (allowSubjob and subInList) then
             break;
         end
     end
@@ -247,20 +255,7 @@ function SkillchainCore.IsJobAllowedForWs(ws, mainJobId, subJobId)
     -- 1. Main job in list (with any subjob), OR
     -- 2. Subjob in list (with any main job that has the weapon skill)
     if allowSubjob then
-        if mainInList then
-            return true;  -- Main job matches, any subjob is fine
-        end
-
-        -- Check if subjob matches
-        if subJobId then
-            for _, j in ipairs(restrictions) do
-                if j == subJobId then
-                    return true;  -- Subjob matches, main job must have weapon access
-                end
-            end
-        end
-
-        return false;  -- Neither main nor sub matched
+        return mainInList or subInList;
     else
         -- Normal behavior: only main job matters
         return mainInList;

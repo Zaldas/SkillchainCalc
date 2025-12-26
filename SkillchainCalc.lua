@@ -95,7 +95,7 @@ local cache = {
 };
 
 local function applyDefaultsToCache()
-    local def = (cache.settings and cache.settings.default) or (sccSettings and sccSettings.default) or {};
+    local def = cache.settings.default or sccSettings.default or {};
     cache.filters.scLevel = def.scLevel or 1;
     cache.filters.both = def.both or false;
     cache.filters.includeSubjob = def.includeSubjob or false;
