@@ -144,15 +144,13 @@ local function displaySkillchainResults(combinations, label)
         return;
     end
 
-    local filteredCombinations = SkillchainCore.FilterSkillchainsByLevel(combinations, cache.filters.scLevel);
-
-    if cache.filters.scElement then
-        filteredCombinations = SkillchainCore.FilterSkillchainsByElement(filteredCombinations, cache.filters.scElement);
-    end
-
-    if cache.jobs.favWs1 or cache.jobs.favWs2 then
-        filteredCombinations = SkillchainCore.FilterSkillchainsByWeaponskill(filteredCombinations, cache.jobs.favWs1, cache.jobs.favWs2);
-    end
+    -- Apply all filters in a single pass
+    local filteredCombinations = SkillchainCore.FilterSkillchains(combinations, {
+        scLevel = cache.filters.scLevel,
+        scElement = cache.filters.scElement,
+        favWs1 = cache.jobs.favWs1,
+        favWs2 = cache.jobs.favWs2
+    });
 
     if (#filteredCombinations > 0) then
         SkillchainRenderer.clear();
