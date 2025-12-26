@@ -572,6 +572,31 @@ function SkillchainCore.FilterSkillchainsByElement(combinations, elementToken)
     end);
 end
 
+function SkillchainCore.FilterSkillchainsByWeaponskill(combinations, wsName1, wsName2)
+    -- If both are nil or empty, no filtering
+    if (not wsName1 or wsName1 == '') and (not wsName2 or wsName2 == '') then
+        return combinations;
+    end
+
+    return filterCombinations(combinations, function(combo)
+        local skill1Match = true;
+        local skill2Match = true;
+
+        -- Check skill1 filter
+        if wsName1 and wsName1 ~= '' then
+            skill1Match = (combo.skill1 == wsName1);
+        end
+
+        -- Check skill2 filter
+        if wsName2 and wsName2 ~= '' then
+            skill2Match = (combo.skill2 == wsName2);
+        end
+
+        -- Both must match (if specified)
+        return skill1Match and skill2Match;
+    end);
+end
+
 function SkillchainCore.BuildSkillchainTable(skillchains)
     local resultsTable = {};
 

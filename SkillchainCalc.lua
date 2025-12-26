@@ -59,7 +59,8 @@ local sccSettings = T{
         scLevel = 1,
         both = false,
         includeSubjob = false,
-        useCharLevel = false
+        useCharLevel = false,
+        enableFavWs = false
     },
 };
 
@@ -129,6 +130,10 @@ local function displaySkillchainResults(combinations, label)
 
     if cache.scElement then
         filteredCombinations = SkillchainCore.FilterSkillchainsByElement(filteredCombinations, cache.scElement);
+    end
+
+    if cache.favWs1 or cache.favWs2 then
+        filteredCombinations = SkillchainCore.FilterSkillchainsByWeaponskill(filteredCombinations, cache.favWs1, cache.favWs2);
     end
 
     if (#filteredCombinations > 0) then
@@ -232,6 +237,8 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
 
                 cache.scElement = req.scElement and req.scElement:lower() or nil;
                 cache.charLevel = req.charLevel;
+                cache.favWs1 = req.favWs1;
+                cache.favWs2 = req.favWs2;
 
                 -- GUI-initiated requests are always normal mode (tied to GUI)
                 cache.stepMode = false;
@@ -313,6 +320,15 @@ ashita.events.register('command', 'command_cb', function(e)
             else
                 print('[SkillchainCalc] Invalid value for setsubjob. Must be true or false.');
             end
+        elseif (args[2] == 'setfavws') then
+            if (args[3]:any('true', 'false')) then
+                local p = args[3] == 'true';
+                cache.settings.default.enableFavWs = p;
+                print('[SkillchainCalc] Set favorite WS filter default = ' .. args[3]);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for setfavws. Must be true or false.');
+            end
         end
 
         if (validCommand) then
@@ -345,6 +361,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
             print(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
             print(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
+            print(' Enable Favorite WS: ' .. tostring(cache.settings.default.enableFavWs or false));
             local poolInfo = SkillchainRenderer.getPoolInfo();
             print(' GDI Pool Size: ' .. poolInfo.poolSize .. ' (last used: ' .. poolInfo.lastUsedCount .. ')');
             return;
@@ -378,6 +395,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print('Usage: /scc setcharlevel true  -- enable/disable custom character level');
             print('Usage: /scc setboth true       -- set default both flag');
             print('Usage: /scc setsubjob true     -- set default subjob filter');
+            print('Usage: /scc setfavws true      -- set default favorite WS filter');
             print('Usage: /scc status             -- show current defaults');
             print('Usage: /scc                -- open gui interface');
             return;
