@@ -32,6 +32,7 @@ jobs.aliases = {
 }
 
 jobs.WAR = {
+    defaultSubjob = 'NIN',
     primaryWeapons = { 'ga', 'axe' },
     weapons = {
         ga       = { skillRank = 'A+' },
@@ -48,9 +49,10 @@ jobs.WAR = {
         mm       = { skillRank = 'E' },
     },
 }
--- Primary Weapons per Job
 
+-- Primary Weapons per Job
 jobs.MNK = {
+    defaultSubjob = 'WAR',
     primaryWeapons = { 'h2h' },
     weapons = {
         h2h   = { skillRank = 'A+' },
@@ -60,6 +62,7 @@ jobs.MNK = {
 }
 
 jobs.WHM = {
+    defaultSubjob = 'BLM',
     primaryWeapons = { 'club' },
     weapons = {
         club  = { skillRank = 'B+' },
@@ -68,6 +71,7 @@ jobs.WHM = {
 }
 
 jobs.BLM = {
+    defaultSubjob = 'RDM',
     primaryWeapons = { 'staff' },
     weapons = {
         staff  = { skillRank = 'B-' },
@@ -78,6 +82,7 @@ jobs.BLM = {
 }
 
 jobs.RDM = {
+    defaultSubjob = 'WHM',
     primaryWeapons = { 'sword', 'dagger' },
     weapons = {
         dagger  = { skillRank = 'B' },
@@ -89,6 +94,7 @@ jobs.RDM = {
 }
 
 jobs.THF = {
+    defaultSubjob = 'NIN',
     primaryWeapons = { 'dagger' },
     weapons = {
         dagger  = { skillRank = 'A+' },
@@ -101,6 +107,7 @@ jobs.THF = {
 }
 
 jobs.PLD = {
+    defaultSubjob = 'NIN',
     primaryWeapons = { 'sword', 'gs' },
     weapons = {
         sword   = { skillRank = 'A+' },
@@ -113,6 +120,7 @@ jobs.PLD = {
 }
 
 jobs.DRK = {
+    defaultSubjob = 'SAM',
     primaryWeapons = { 'scythe', 'gs' },
     weapons = {
         scythe = { skillRank = 'A+' },
@@ -126,6 +134,7 @@ jobs.DRK = {
 }
 
 jobs.BST = {
+    defaultSubjob = 'NIN',
     primaryWeapons = { 'axe' },
     weapons = {
         axe    = { skillRank = 'A+' },
@@ -137,6 +146,7 @@ jobs.BST = {
 }
 
 jobs.BRD = {
+    defaultSubjob = 'WHM',
     primaryWeapons = { 'dagger' },
     weapons = {
         dagger = { skillRank = 'B-' },
@@ -147,6 +157,7 @@ jobs.BRD = {
 }
 
 jobs.RNG = {
+    defaultSubjob = 'NIN',
     primaryWeapons = { 'archery', 'mm' },
     weapons = {
         axe     = { skillRank = 'B-' },
@@ -159,6 +170,7 @@ jobs.RNG = {
 }
 
 jobs.SAM = {
+    defaultSubjob = 'WAR',
     primaryWeapons = { 'gkt' },
     weapons = {
         gkt     = { skillRank = 'A+' },
@@ -171,6 +183,7 @@ jobs.SAM = {
 }
 
 jobs.NIN = {
+    defaultSubjob = 'WAR',
     primaryWeapons = { 'katana' },
     weapons = {
         katana  = { skillRank = 'A+' },
@@ -185,6 +198,7 @@ jobs.NIN = {
 }
 
 jobs.DRG = {
+    defaultSubjob = 'SAM',
     primaryWeapons = { 'polearm' },
     weapons = {
         polearm = { skillRank = 'A+' },
@@ -196,6 +210,7 @@ jobs.DRG = {
 }
 
 jobs.SMN = {
+    defaultSubjob = 'WHM',
     primaryWeapons = { 'avatar' },
     weapons = {
         avatar = { skillRank = 'Level' },     -- avatar skills are based on level
@@ -240,5 +255,17 @@ jobs.SCH = {
     },
 }
 ]]
+
+-----------------------------------------------------------------------
+-- Helper function to get default subjob for a job
+-----------------------------------------------------------------------
+function jobs.GetDefaultSubjob(jobId)
+    if not jobId then return nil end
+    local jobData = jobs[jobId]
+    if jobData and jobData.defaultSubjob then
+        return jobData.defaultSubjob
+    end
+    return nil
+end
 
 return jobs
