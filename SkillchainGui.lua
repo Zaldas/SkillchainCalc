@@ -280,6 +280,17 @@ local function buildDefaultWeaponSelection(jobId, includeFallback)
     return sel;
 end
 
+-- Helper to find job index in jobItems for dropdown
+local function findJobIndex(jobId)
+    if not jobId then return nil; end
+    for i, id in ipairs(jobItems) do
+        if id == jobId then
+            return i;
+        end
+    end
+    return nil;
+end
+
 -- Ensure weapon selection is valid for a job state object
 -- jobState: reference to state.jobs[1] or state.jobs[2]
 local function ensureJobWeaponSelection(jobState)
@@ -293,21 +304,21 @@ local function ensureJobWeaponSelection(jobState)
     if jobId ~= jobState.lastId then
         jobState.weapons = buildDefaultWeaponSelection(jobId, true);
         jobState.lastId = jobId;
+
+        -- If subjobs are enabled, set the default subjob for this job
+        if state.filters.includeSubjob then
+            local defaultSubjob = jobsData.GetDefaultSubjob(jobId);
+            if defaultSubjob then
+                local subIdx = findJobIndex(defaultSubjob);
+                if subIdx then
+                    jobState.subIndex = subIdx;
+                end
+            end
+        end
     elseif type(jobState.weapons) ~= 'table' then
         -- Same job, but somehow no table yet.
         jobState.weapons = {};
     end
-end
-
--- Helper to find job index in jobItems for dropdown
-local function findJobIndex(jobId)
-    if not jobId then return nil; end
-    for i, id in ipairs(jobItems) do
-        if id == jobId then
-            return i;
-        end
-    end
-    return nil;
 end
 
 local function applyTokenToSide(side, token)
@@ -336,6 +347,12 @@ local function applyTokenToSide(side, token)
     if subJobId then
         subIdx = findJobIndex(subJobId) or 1;
         state.filters.includeSubjob = true;  -- Auto-enable subjob filter if token contains subjob
+    elseif state.filters.includeSubjob then
+        -- No subjob in token, but subjobs are enabled - use default subjob
+        local defaultSubjob = jobsData.GetDefaultSubjob(jobId);
+        if defaultSubjob then
+            subIdx = findJobIndex(defaultSubjob) or 1;
+        end
     end
 
     local sel = {};
@@ -805,7 +822,24 @@ local function drawFiltersTab()
     imgui.SetCursorPosX(baseX + indent);
     local includeSubjob = { state.filters.includeSubjob };
     if imgui.Checkbox('Enable SubJob in Calculator', includeSubjob) then
+        local wasEnabled = state.filters.includeSubjob;
         state.filters.includeSubjob = includeSubjob[1];
+
+        -- When first enabling subjobs, populate default subjobs for both sides
+        if not wasEnabled and state.filters.includeSubjob then
+            for i = 1, 2 do
+                local jobId = jobItems[state.jobs[i].index];
+                if jobId then
+                    local defaultSubjob = jobsData.GetDefaultSubjob(jobId);
+                    if defaultSubjob then
+                        local subIdx = findJobIndex(defaultSubjob);
+                        if subIdx then
+                            state.jobs[i].subIndex = subIdx;
+                        end
+                    end
+                end
+            end
+        end
     end
     imgui.SameLine();
     helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
