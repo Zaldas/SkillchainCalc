@@ -64,28 +64,31 @@ local sccSettings = T{
     },
 };
 
+-- CACHE: Stores the last skillchain calculation that was performed.
+-- This represents "what results are currently displayed on screen".
+-- Used for CLI mode and keeping results open when GUI closes.
 local cache = {
-    -- Job tokens and weaponskill filters
+    -- Job tokens and weaponskill filters for the displayed results
     jobs = {
-        token1 = nil,
-        token2 = nil,
-        favWs1 = nil,
-        favWs2 = nil,
+        token1 = nil,  -- e.g., "nin/war:katana,dagger"
+        token2 = nil,  -- e.g., "sam:gkt"
+        favWs1 = nil,  -- Favorite WS name for filtering (or nil)
+        favWs2 = nil,  -- Favorite WS name for filtering (or nil)
     },
 
-    -- Filter settings
+    -- Filter settings that were applied to displayed results
     filters = {
-        scLevel = 1,
-        both = false,
-        scElement = nil,
-        includeSubjob = false,
-        charLevel = nil,
+        scLevel = 1,           -- Skillchain level filter (1-3)
+        both = false,          -- Calculate both directions
+        scElement = nil,       -- Element filter (e.g., "ice")
+        includeSubjob = false, -- Whether subjob filtering was enabled
+        charLevel = nil,       -- Character level for skill caps (or nil for max)
     },
 
-    -- Step mode configuration
+    -- Step mode configuration (property → WS calculations)
     step = {
         enabled = false,
-        filter = nil,  -- tier number (1-4) or property name
+        filter = nil,      -- tier number (1-4) or property name
         filterType = nil,  -- "tier" or "property"
     },
 
@@ -459,17 +462,20 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
-    -- Helper function to strip duplicate subjobs from tokens like "nin/nin:mm" -> "nin:mm"
-    local function stripDuplicateSubjob(token)
+    -- Helper to normalize tokens: strip duplicate subjobs and validate format
+    -- The core parser already handles this, but we normalize for cleaner cache storage
+    local function normalizeToken(token)
         if not token or type(token) ~= 'string' then
             return token;
         end
-        -- Match pattern: job/job or job/job:weapons
-        local mainJob, subJob, weapons = token:match('^([^/:]+)/([^/:]+):?(.*)$');
-        if mainJob and subJob and mainJob:lower() == subJob:lower() then
-            -- Same job, strip the subjob part
-            return weapons and weapons ~= '' and (mainJob .. ':' .. weapons) or mainJob;
+
+        -- Parse and rebuild using core logic for consistency
+        local jobId, allowedWeapons, subJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
+        if jobId then
+            return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, subJobId);
         end
+
+        -- Not a job token, might be a weapon type - return as-is
         return token;
     end
 
@@ -505,7 +511,7 @@ ashita.events.register('command', 'command_cb', function(e)
             end
         else
             -- Not a keyword, treat as a token
-            table.insert(foundTokens, stripDuplicateSubjob(param));
+            table.insert(foundTokens, normalizeToken(param));
         end
     end
 
