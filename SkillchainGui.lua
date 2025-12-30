@@ -93,14 +93,14 @@ local state = {
             subIndex   = 2,  -- Different from index
             lastId     = nil,
             weapons    = nil,
-            favWsIndex = 1,
+            favWsName  = nil,  -- WS name or nil for "Any"
         },
         [2] = {
             index      = 2,
             subIndex   = 1,  -- Different from index
             lastId     = nil,
             weapons    = nil,
-            favWsIndex = 1,
+            favWsName  = nil,  -- WS name or nil for "Any"
         },
     },
 
@@ -291,6 +291,22 @@ local function findJobIndex(jobId)
     return nil;
 end
 
+-- Helper to find WS index in favorite WS dropdown items
+-- Returns index (1 = "Any") or 1 if not found
+local function findFavWsIndex(items, wsName)
+    if not wsName then
+        return 1;  -- nil = "Any"
+    end
+
+    for i, name in ipairs(items) do
+        if name == wsName then
+            return i;
+        end
+    end
+
+    return 1;  -- Not found, default to "Any"
+end
+
 -- Ensure weapon selection is valid for a job state object
 -- jobState: reference to state.jobs[1] or state.jobs[2]
 local function ensureJobWeaponSelection(jobState)
@@ -304,6 +320,7 @@ local function ensureJobWeaponSelection(jobState)
     if jobId ~= jobState.lastId then
         jobState.weapons = buildDefaultWeaponSelection(jobId, true);
         jobState.lastId = jobId;
+        jobState.favWsName = nil;  -- Reset favorite WS when job changes
 
         -- If subjobs are enabled, set the default subjob for this job
         if state.filters.includeSubjob then
@@ -526,20 +543,9 @@ local function buildCalculationRequest()
 
     local elemTok = elementTokens[state.filters.elementIndex] or '';
 
-    -- Get favorite WS names if enabled
-    local favWs1, favWs2;
-    if state.filters.enableFavWs then
-        local job1FavWsItems = buildFavWsItems(state.jobs[1]);
-        local job2FavWsItems = buildFavWsItems(state.jobs[2]);
-
-        -- Get selected WS name (index 1 is 'Any')
-        if state.jobs[1].favWsIndex > 1 and state.jobs[1].favWsIndex <= #job1FavWsItems then
-            favWs1 = job1FavWsItems[state.jobs[1].favWsIndex];
-        end
-        if state.jobs[2].favWsIndex > 1 and state.jobs[2].favWsIndex <= #job2FavWsItems then
-            favWs2 = job2FavWsItems[state.jobs[2].favWsIndex];
-        end
-    end
+    -- Get favorite WS names directly from state (much simpler now!)
+    local favWs1 = state.filters.enableFavWs and state.jobs[1].favWsName or nil;
+    local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
 
     return {
         mode      = 'pair',
@@ -581,6 +587,8 @@ local function drawCalculatorTab()
         imgui.PushItemWidth(100);
         state.customLevel.value = drawCombo('##charlevel', levelItems, state.customLevel.value);
         imgui.PopItemWidth();
+
+        -- No reset needed - if WS becomes unavailable, dropdown will auto-reset to "Any"
 
         imgui.Spacing();
         imgui.Separator();
@@ -665,6 +673,8 @@ local function drawCalculatorTab()
 
         state.jobs[1].index, state.jobs[1].subIndex = ensureJobsAreDifferent(state.jobs[1].index, state.jobs[1].subIndex, prevJob1Index, prevJob1SubIndex);
         state.jobs[2].index, state.jobs[2].subIndex = ensureJobsAreDifferent(state.jobs[2].index, state.jobs[2].subIndex, prevJob2Index, prevJob2SubIndex);
+
+        -- No reset needed - if WS becomes unavailable due to subjob change, dropdown will auto-reset to "Any"
     end
 
     ensureJobWeaponSelection(state.jobs[1]);
@@ -677,7 +687,19 @@ local function drawCalculatorTab()
 
         imgui.NextColumn();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-        state.jobs[1].favWsIndex = drawCombo('##fromfavws', job1FavWsItems, state.jobs[1].favWsIndex);
+        -- Convert name to index for dropdown, then convert back to name
+        local job1Index = findFavWsIndex(job1FavWsItems, state.jobs[1].favWsName);
+
+        -- If we have a stored WS but it's not in the list (index = 1/"Any"), clear it permanently
+        if state.jobs[1].favWsName and job1Index == 1 then
+            state.jobs[1].favWsName = nil;
+        end
+
+        local newJob1Index = drawCombo('##fromfavws', job1FavWsItems, job1Index);
+        if newJob1Index ~= job1Index then
+            -- Selection changed, update the stored name
+            state.jobs[1].favWsName = (newJob1Index == 1) and nil or job1FavWsItems[newJob1Index];
+        end
         imgui.PopItemWidth();
 
         imgui.NextColumn();
@@ -685,7 +707,19 @@ local function drawCalculatorTab()
 
         imgui.NextColumn();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-        state.jobs[2].favWsIndex = drawCombo('##tofavws', job2FavWsItems, state.jobs[2].favWsIndex);
+        -- Convert name to index for dropdown, then convert back to name
+        local job2Index = findFavWsIndex(job2FavWsItems, state.jobs[2].favWsName);
+
+        -- If we have a stored WS but it's not in the list (index = 1/"Any"), clear it permanently
+        if state.jobs[2].favWsName and job2Index == 1 then
+            state.jobs[2].favWsName = nil;
+        end
+
+        local newJob2Index = drawCombo('##tofavws', job2FavWsItems, job2Index);
+        if newJob2Index ~= job2Index then
+            -- Selection changed, update the stored name
+            state.jobs[2].favWsName = (newJob2Index == 1) and nil or job2FavWsItems[newJob2Index];
+        end
         imgui.PopItemWidth();
     end
 
@@ -705,12 +739,33 @@ local function drawCalculatorTab()
 
     imgui.Columns(1);
 
-    -- Reset favorite WS indices to "Any" when weapon selection changes
-    if job1WeaponsChanged then
-        state.jobs[1].favWsIndex = 1;
+    -- Smart reset: only reset favorite WS if it's no longer available after weapon change
+    if job1WeaponsChanged and state.jobs[1].favWsName then
+        local items = buildFavWsItems(state.jobs[1]);
+        local found = false;
+        for _, name in ipairs(items) do
+            if name == state.jobs[1].favWsName then
+                found = true;
+                break;
+            end
+        end
+        if not found then
+            state.jobs[1].favWsName = nil;  -- WS no longer available, reset to "Any"
+        end
     end
-    if job2WeaponsChanged then
-        state.jobs[2].favWsIndex = 1;
+
+    if job2WeaponsChanged and state.jobs[2].favWsName then
+        local items = buildFavWsItems(state.jobs[2]);
+        local found = false;
+        for _, name in ipairs(items) do
+            if name == state.jobs[2].favWsName then
+                found = true;
+                break;
+            end
+        end
+        if not found then
+            state.jobs[2].favWsName = nil;  -- WS no longer available, reset to "Any"
+        end
     end
 
     imgui.Separator();
@@ -805,6 +860,7 @@ local function drawFiltersTab()
     local useCustomLevel = { state.customLevel.enabled };
     if imgui.Checkbox('Enable custom character level', useCustomLevel) then
         state.customLevel.enabled = useCustomLevel[1];
+        -- No reset needed - dropdown will auto-reset to "Any" if WS becomes unavailable
     end
     imgui.SameLine();
     helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
@@ -840,6 +896,8 @@ local function drawFiltersTab()
                 end
             end
         end
+
+        -- No reset needed - dropdown will auto-reset to "Any" if WS becomes unavailable
     end
     imgui.SameLine();
     helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
@@ -848,7 +906,14 @@ local function drawFiltersTab()
     imgui.SetCursorPosX(baseX + indent);
     local enableFavWs = { state.filters.enableFavWs };
     if imgui.Checkbox('Enable favorite WS in Calculator', enableFavWs) then
+        local wasEnabled = state.filters.enableFavWs;
         state.filters.enableFavWs = enableFavWs[1];
+
+        -- Reset favorite WS when disabling the filter (clean slate for next time)
+        if wasEnabled and not state.filters.enableFavWs then
+            state.jobs[1].favWsName = nil;
+            state.jobs[2].favWsName = nil;
+        end
     end
     imgui.SameLine();
     helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');

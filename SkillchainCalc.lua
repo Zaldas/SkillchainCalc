@@ -220,14 +220,14 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             if req.anchorChanged then
                 SkillchainRenderer.updateAnchor(cache.settings);
                 settings.save();
-                if SkillchainRenderer.isVisible() then
-                    parseSkillchains(cache.step.enabled);
-                end
+                -- No need to re-parse skillchains - anchor is visual only
             end
 
             if req.updateDefaults then
                 applyDefaultsToCache();
                 settings.save();
+                -- Only re-parse if results are currently visible and defaults affect calculation
+                -- (scLevel, both, includeSubjob, charLevel, enableFavWs)
                 if SkillchainRenderer.isVisible() then
                     parseSkillchains(cache.step.enabled);
                 end
