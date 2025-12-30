@@ -82,45 +82,49 @@ end
 -----------------------------------------------------------------------
 -- State and Cache
 -----------------------------------------------------------------------
+-- STATE: Stores what the user is currently configuring in the GUI.
+-- This represents "current dropdown selections, checkbox states, and UI widget values".
+-- When "Calculate" button is clicked, state is used to build a calculation request
+-- which then gets executed and stored in cache (the displayed results).
 local state = {
-    initialized   = false,
-    openedFromCli = false,
+    initialized   = false,        -- Whether GUI has been initialized
+    openedFromCli = false,        -- Whether GUI was opened via CLI command
 
-    -- Grouped job state for both sides (1 and 2)
+    -- Current job/subjob/weapon selections for both players (1 and 2)
     jobs = {
         [1] = {
-            index      = 1,
-            subIndex   = 2,  -- Different from index
-            lastId     = nil,
-            weapons    = nil,
-            favWsName  = nil,  -- WS name or nil for "Any"
+            index      = 1,       -- Job dropdown index
+            subIndex   = 2,       -- Subjob dropdown index (different from main job)
+            lastId     = nil,     -- Last selected job ID (for change detection)
+            weapons    = nil,     -- Weapon type checkboxes (table of weaponType = bool)
+            favWsName  = nil,     -- Favorite WS name or nil for "Any"
         },
         [2] = {
-            index      = 2,
-            subIndex   = 1,  -- Different from index
-            lastId     = nil,
-            weapons    = nil,
-            favWsName  = nil,  -- WS name or nil for "Any"
+            index      = 2,       -- Job dropdown index
+            subIndex   = 1,       -- Subjob dropdown index (different from main job)
+            lastId     = nil,     -- Last selected job ID (for change detection)
+            weapons    = nil,     -- Weapon type checkboxes (table of weaponType = bool)
+            favWsName  = nil,     -- Favorite WS name or nil for "Any"
         },
     },
 
-    -- Filter settings
+    -- Current filter checkbox and dropdown selections
     filters = {
-        scLevel      = 1,
-        elementIndex = 1,
-        both         = false,
-        includeSubjob = false,
-        enableFavWs  = false,
+        scLevel      = 1,         -- Skillchain level dropdown (1-3)
+        elementIndex = 1,         -- Element dropdown index (1 = "Any")
+        both         = false,     -- "Both Directions" checkbox
+        includeSubjob = false,    -- "Include Subjob" checkbox
+        enableFavWs  = false,     -- "Favorite WS" checkbox
     },
 
-    -- Custom level filter
+    -- Custom level filter settings
     customLevel = {
-        enabled = false,
-        value   = SkillchainCore.MAX_LEVEL,
+        enabled = false,          -- Custom level checkbox
+        value   = SkillchainCore.MAX_LEVEL,  -- Level slider value
     },
 
-    -- Track active tab for dynamic height only
-    activeTab = 'Calculator',
+    -- UI state tracking
+    activeTab = 'Calculator',     -- Current active tab (for dynamic height)
 };
 
 -- Module-level cache reference (set externally via SetCache)
