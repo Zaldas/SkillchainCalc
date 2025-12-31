@@ -49,7 +49,6 @@ local sccSettings = T{
         x = 200,
         y = 100,
     },
-    enableDrag = false,
     layout = {
         columnWidth = 315,
         entriesPerColumn = 30,      -- Soft cap: try to split at this point
@@ -357,7 +356,7 @@ ashita.events.register('command', 'command_cb', function(e)
         elseif (args[2] == 'enabledrag') then
             if (args[3]:any('true', 'false')) then
                 local d = args[3] == 'true';
-                cache.settings.enableDrag = d;
+                SkillchainRenderer.setEnableDrag(d);
                 print('[SkillchainCalc] Set enable drag = ' .. args[3]);
                 validCommand = true;
             else
@@ -603,6 +602,6 @@ end);
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
     -- Disable drag on shutdown
-    cache.settings.enableDrag = false;
+    SkillchainRenderer.setEnableDrag(false);
     SkillchainRenderer.destroy();
 end);
