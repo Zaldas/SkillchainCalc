@@ -49,6 +49,7 @@ local sccSettings = T{
         x = 200,
         y = 100,
     },
+    enableDrag = false,
     layout = {
         columnWidth = 315,
         entriesPerColumn = 30,      -- Soft cap: try to split at this point
@@ -215,6 +216,11 @@ local function parseSkillchains(isStep)
     displaySkillchainResults(combinations);
 end
 
+-- Mouse event handler for drag functionality
+ashita.events.register('mouse', 'mouse_cb', function(e)
+    SkillchainRenderer.handleMouse(e, cache.settings);
+end);
+
 -- Draw IMGUI Input Window
 ashita.events.register('d3d_present', 'scc_present_cb', function()
     if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
@@ -348,6 +354,15 @@ ashita.events.register('command', 'command_cb', function(e)
             else
                 print('[SkillchainCalc] Invalid value for setfavws. Must be true or false.');
             end
+        elseif (args[2] == 'enabledrag') then
+            if (args[3]:any('true', 'false')) then
+                local d = args[3] == 'true';
+                cache.settings.enableDrag = d;
+                print('[SkillchainCalc] Set enable drag = ' .. args[3]);
+                validCommand = true;
+            else
+                print('[SkillchainCalc] Invalid value for enabledrag. Must be true or false.');
+            end
         end
 
         if (validCommand) then
@@ -410,6 +425,7 @@ ashita.events.register('command', 'command_cb', function(e)
             -- print('  e.g. /scc step lvl:50 sc:ice nin/whm:club -- keywords in any order');
             print('Usage: /scc setx #             -- set x anchor');
             print('Usage: /scc sety #             -- set y anchor');
+            print('Usage: /scc enabledrag true    -- enable/disable dragging results window');
             print('Usage: /scc setsclevel #       -- set default skillchain level filter');
             print('Usage: /scc setcharlevel true  -- enable/disable custom character level');
             print('Usage: /scc setboth true       -- set default both flag');
@@ -586,5 +602,7 @@ end);
 
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
+    -- Disable drag on shutdown
+    cache.settings.enableDrag = false;
     SkillchainRenderer.destroy();
 end);

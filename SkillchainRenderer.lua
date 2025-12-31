@@ -15,10 +15,23 @@ local gdiObjects = {
     maxPoolSize = 150,      -- Hard cap
     minPoolSize = 20,       -- Minimum to keep alive
     lastUsedCount = 0,      -- Track last frame usage
+    layoutData = nil,       -- Store layout data for anchor updates
 };
 
 local isVisible = false;
 local gdi = nil;  -- Will be injected during initialization
+
+-- Cache scaling module to avoid repeated requires
+local scaling = require('scaling');
+
+-- Drag state management
+local dragState = {
+    dragActive = false,
+    dragPosition = { 0, 0 },
+    mouseBlocked = false,
+    limits = nil,           -- Cached limits during active drag
+    objectsHidden = false,  -- Track if we've hidden objects
+};
 
 -- ============================================================================
 -- Pool Management Helpers
@@ -114,6 +127,7 @@ function SkillchainRenderer.clear()
     -- Only hide objects that were previously used
     hidePoolObjects(1, gdiObjects.lastUsedCount);
     gdiObjects.lastUsedCount = 0;
+    gdiObjects.layoutData = nil;
 end
 
 function SkillchainRenderer.isVisible()
@@ -140,6 +154,145 @@ function SkillchainRenderer.updateAnchor(settings)
     if gdiObjects.background then
         gdiObjects.background:set_position_x(settings.anchor.x);
         gdiObjects.background:set_position_y(settings.anchor.y);
+    end
+
+    -- Update all visible text objects to match new anchor position
+    -- We need to recalculate their positions based on stored layout data
+    if gdiObjects.layoutData then
+        local textIndex = 1;
+        for colIdx, column in ipairs(gdiObjects.layoutData.columns) do
+            local columnOffset = (colIdx - 1) * settings.layout.columnWidth;
+            local y_offset = 40;
+
+            for _, item in ipairs(column.items) do
+                if textIndex > gdiObjects.lastUsedCount then
+                    break;
+                end
+
+                local textObj = gdiObjects.textPool[textIndex];
+                if textObj then
+                    textObj:set_position_x(settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset);
+                    textObj:set_position_y(settings.anchor.y + y_offset);
+                    textObj:set_visible(true);
+                end
+
+                textIndex = textIndex + 1;
+                y_offset = y_offset + settings.layout.entriesHeight;
+            end
+        end
+    end
+end
+
+-- ============================================================================
+-- Drag Functionality
+-- ============================================================================
+
+-- Calculate anchor position limits based on screen size and layout
+local function calculateAnchorLimits(settings)
+    local pad = 20;
+    local layoutSettings = settings.layout;
+    local colW = (layoutSettings and layoutSettings.columnWidth) or pad;
+    local colH = (layoutSettings and layoutSettings.entriesPerColumn * layoutSettings.entriesHeight) or pad;
+
+    local maxX = scaling.window.w - colW - pad;
+    if maxX < pad then maxX = pad; end
+    local maxY = scaling.window.h - colH - pad;
+    if maxY < pad then maxY = pad; end
+
+    return { minX = pad, maxX = maxX, minY = pad, maxY = maxY };
+end
+
+-- Export for use by GUI
+SkillchainRenderer.calculateAnchorLimits = calculateAnchorLimits;
+
+-- Check if mouse is over the draggable area (entire background)
+local function dragHitTest(mouseX, mouseY, settings)
+    -- Fast path: check enableDrag first (single boolean check)
+    if not settings.enableDrag then
+        return false;
+    end
+
+    if not isVisible or not gdiObjects.background then
+        return false;
+    end
+
+    -- Use background's own dimensions directly
+    local bg = gdiObjects.background.settings;
+    local x = bg.position_x;
+    local y = bg.position_y;
+    local width = bg.width;
+    local height = bg.height;
+
+    return mouseX >= x and mouseX <= (x + width) and
+           mouseY >= y and mouseY <= (y + height);
+end
+
+function SkillchainRenderer.handleMouse(e, settings)
+    -- Early exit if drag is disabled and not currently dragging
+    if not settings.enableDrag and not dragState.dragActive then
+        return;
+    end
+
+    -- Handle active dragging
+    if dragState.dragActive then
+        local pos = settings.anchor;
+        pos.x = pos.x + (e.x - dragState.dragPosition[1]);
+        pos.y = pos.y + (e.y - dragState.dragPosition[2]);
+
+        -- Use cached limits (calculated once on drag start)
+        local limits = dragState.limits;
+        if limits then
+            if pos.x < limits.minX then pos.x = limits.minX; end
+            if pos.x > limits.maxX then pos.x = limits.maxX; end
+            if pos.y < limits.minY then pos.y = limits.minY; end
+            if pos.y > limits.maxY then pos.y = limits.maxY; end
+        end
+
+        dragState.dragPosition[1] = e.x;
+        dragState.dragPosition[2] = e.y;
+
+        -- Only update title and background during drag (lightweight)
+        if gdiObjects.title then
+            gdiObjects.title:set_position_x(settings.anchor.x + 5);
+            gdiObjects.title:set_position_y(settings.anchor.y);
+        end
+        if gdiObjects.background then
+            gdiObjects.background:set_position_x(settings.anchor.x);
+            gdiObjects.background:set_position_y(settings.anchor.y);
+        end
+
+        -- Hide text pool objects once at start of drag
+        if not dragState.objectsHidden and gdiObjects.layoutData then
+            hidePoolObjects(1, gdiObjects.lastUsedCount);
+            dragState.objectsHidden = true;
+        end
+
+        -- Left mouse button released (message 514)
+        if (e.message == 514) then
+            dragState.dragActive = false;
+            dragState.objectsHidden = false;
+            dragState.limits = nil;
+            -- Update ALL positions and show text when drag completes
+            SkillchainRenderer.updateAnchor(settings);
+        end
+    -- Start dragging on left mouse button down (message 513)
+    elseif (e.message == 513) then
+        -- Pass coordinates directly to avoid table allocation
+        if dragHitTest(e.x, e.y, settings) then
+            dragState.dragActive = true;
+            dragState.dragPosition[1] = e.x;
+            dragState.dragPosition[2] = e.y;
+            dragState.mouseBlocked = true;
+            dragState.limits = calculateAnchorLimits(settings);  -- Cache limits once
+            e.blocked = true;
+            return;
+        end
+    end
+
+    -- Block mouse up event if we blocked the down event
+    if (e.message == 514) and (dragState.mouseBlocked) then
+        e.blocked = true;
+        dragState.mouseBlocked = false;
     end
 end
 
@@ -274,6 +427,9 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     -- Calculate layout structure
     local columns = calculateLayout(sortedResults, orderedResults, settings.layout, both, minResultsAfterHeader);
 
+    -- Store layout data for anchor updates
+    gdiObjects.layoutData = { columns = columns };
+
     -- Count total items needed for pool sizing
     local totalItems = 0;
     for _, col in ipairs(columns) do
@@ -335,7 +491,8 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
 
     -- Adjust background dimensions
     local totalWidth = #columns * settings.layout.columnWidth;
-    gdiObjects.background:set_height(maxColumnHeight + 5);
+    local totalHeight = maxColumnHeight + 5;
+    gdiObjects.background:set_height(totalHeight);
     gdiObjects.background:set_width(totalWidth);
 
     -- Shrink pool if oversized (do this after a delay to avoid thrashing)

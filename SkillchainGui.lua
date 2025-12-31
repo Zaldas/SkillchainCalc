@@ -6,7 +6,6 @@ local imgui    = require('imgui');
 local jobsData = require('Jobs');
 local skills   = require('Skills');
 local SkillRanks = require('SkillRanks');
-local scaling  = require('scaling');
 local SkillchainCore = require('SkillchainCore');
 
 local SkillchainGUI = {};
@@ -154,7 +153,7 @@ local function calculateTabHeight(tabName, maxWeapons)
         return 19 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
-        return 17 * lineHeight + paddingAdjust;
+        return 19 * lineHeight + paddingAdjust;
     end
 
     return 400; -- fallback
@@ -550,6 +549,9 @@ local function buildCalculationRequest()
     -- Get favorite WS names directly from state (much simpler now!)
     local favWs1 = state.filters.enableFavWs and state.jobs[1].favWsName or nil;
     local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
+
+    -- Disable drag when Calculate is pressed
+    cache.settings.enableDrag = false;
 
     return {
         mode      = 'pair',
@@ -1006,17 +1008,12 @@ local function drawSettingsTab()
     -----------------------------------------------------------------------
     local anchor = cache.settings.anchor;
 
-    local pad    = 20;
-    local layoutSettings = cache.settings.layout;
-    local colW   = (layoutSettings and layoutSettings.columnWidth) or pad;
-    local colH   = (layoutSettings and layoutSettings.entriesPerColumn * layoutSettings.entriesHeight) or pad;
-    -- X max = screen width - one column width - padding
-    local maxX   = scaling.window.w - colW - pad;
-    if maxX < pad then maxX = pad; end
-
-    -- Y can still use full height padding
-    local maxY   = scaling.window.h - colH - pad;
-    if maxY < pad then maxY = pad; end
+    -- Use shared limit calculation from SkillchainRenderer
+    local SkillchainRenderer = require('SkillchainRenderer');
+    local limits = SkillchainRenderer.calculateAnchorLimits(cache.settings);
+    local pad = limits.minX;
+    local maxX = limits.maxX;
+    local maxY = limits.maxY;
 
     drawGradientHeader('Results Window Anchor (top-left)', imgui.GetContentRegionAvail());
     imgui.Spacing();
@@ -1024,6 +1021,14 @@ local function drawSettingsTab()
     -- 5px indent
     local baseX  = imgui.GetCursorPosX();
     local indent = 5;
+
+    imgui.SetCursorPosX(baseX + indent);
+    local enableDrag = { cache.settings.enableDrag or false };
+    if imgui.Checkbox('Enable Drag', enableDrag) then
+        cache.settings.enableDrag = enableDrag[1];
+        request = request or {};
+        request.anchorChanged = true;
+    end
 
     imgui.SetCursorPosX(baseX + indent);
     local x = { anchor.x or 0 };
@@ -1190,6 +1195,10 @@ end
 
 function SkillchainGUI.DrawWindow()
     if not showWindow[1] then
+        -- Disable drag when GUI is closed
+        if cache and cache.settings then
+            cache.settings.enableDrag = false;
+        end
         return nil;
     end
 
