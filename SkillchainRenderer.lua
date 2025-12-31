@@ -3,6 +3,9 @@
 
 require('common');
 local skills = require('Skills');
+-- Cache scaling module to avoid repeated requires
+local scaling = require('scaling');
+local gdi = nil;  -- Will be injected during initialization
 
 local SkillchainRenderer = {};
 
@@ -19,12 +22,9 @@ local gdiObjects = {
 };
 
 local isVisible = false;
-local gdi = nil;  -- Will be injected during initialization
 
--- Cache scaling module to avoid repeated requires
-local scaling = require('scaling');
-
--- Drag state management
+-- Drag state management (not persisted to settings)
+local enableDrag = false;
 local dragState = {
     dragActive = false,
     dragPosition = { 0, 0 },
@@ -206,9 +206,9 @@ end
 SkillchainRenderer.calculateAnchorLimits = calculateAnchorLimits;
 
 -- Check if mouse is over the draggable area (entire background)
-local function dragHitTest(mouseX, mouseY, settings)
+local function dragHitTest(mouseX, mouseY)
     -- Fast path: check enableDrag first (single boolean check)
-    if not settings.enableDrag then
+    if not enableDrag then
         return false;
     end
 
@@ -229,7 +229,7 @@ end
 
 function SkillchainRenderer.handleMouse(e, settings)
     -- Early exit if drag is disabled and not currently dragging
-    if not settings.enableDrag and not dragState.dragActive then
+    if not enableDrag and not dragState.dragActive then
         return;
     end
 
@@ -278,7 +278,7 @@ function SkillchainRenderer.handleMouse(e, settings)
     -- Start dragging on left mouse button down (message 513)
     elseif (e.message == 513) then
         -- Pass coordinates directly to avoid table allocation
-        if dragHitTest(e.x, e.y, settings) then
+        if dragHitTest(e.x, e.y) then
             dragState.dragActive = true;
             dragState.dragPosition[1] = e.x;
             dragState.dragPosition[2] = e.y;
@@ -499,6 +499,14 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then
         shrinkPool();
     end
+end
+
+-- ============================================================================
+-- Drag State Accessor (not persisted)
+-- ============================================================================
+
+function SkillchainRenderer.setEnableDrag(value)
+    enableDrag = value;
 end
 
 return SkillchainRenderer;

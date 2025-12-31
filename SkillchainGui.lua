@@ -7,6 +7,7 @@ local jobsData = require('Jobs');
 local skills   = require('Skills');
 local SkillRanks = require('SkillRanks');
 local SkillchainCore = require('SkillchainCore');
+local SkillchainRenderer = require('SkillchainRenderer');
 
 local SkillchainGUI = {};
 local showWindow    = { false };
@@ -122,6 +123,9 @@ local state = {
         value   = SkillchainCore.MAX_LEVEL,  -- Level slider value
     },
 
+    -- Settings UI state
+    enableDrag = false,           -- Enable drag checkbox (not persisted)
+
     -- UI state tracking
     activeTab = 'Calculator',     -- Current active tab (for dynamic height)
 };
@@ -137,7 +141,7 @@ local function calculateTabHeight(tabName, maxWeapons)
     local paddingAdjust = 0;
     -- All values are manually tweaked to make GUI look good
     if tabName == 'Calculator' then
-        paddingAdjust = -6;
+        paddingAdjust = -8;
         -- Base rows: header + job combos + buttons + spacing
         local rowsBase    = 6;
         local rowsWeapons = maxWeapons or 0;
@@ -149,7 +153,7 @@ local function calculateTabHeight(tabName, maxWeapons)
         local rowsLevel = state.customLevel.enabled and 2.5 or 0;
         return (rowsBase + rowsWeapons + rowsSubjob + rowsFavWs + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
-        paddingAdjust = 5;
+        paddingAdjust = 3;
         return 19 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
@@ -551,7 +555,7 @@ local function buildCalculationRequest()
     local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
 
     -- Disable drag when Calculate is pressed
-    cache.settings.enableDrag = false;
+    SkillchainRenderer.setEnableDrag(false);
 
     return {
         mode      = 'pair',
@@ -871,15 +875,6 @@ local function drawFiltersTab()
     imgui.SameLine();
     helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
-    -- Both Directions Checkbox
-    imgui.SetCursorPosX(baseX + indent);
-    local both = { state.filters.both };
-    if imgui.Checkbox('Calculate skillchains in both directions', both) then
-        state.filters.both = both[1];
-    end
-    imgui.SameLine();
-    helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
-
     -- Include Subjob Checkbox
     imgui.SetCursorPosX(baseX + indent);
     local includeSubjob = { state.filters.includeSubjob };
@@ -923,6 +918,15 @@ local function drawFiltersTab()
     end
     imgui.SameLine();
     helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');
+
+    -- Both Directions Checkbox
+    imgui.SetCursorPosX(baseX + indent);
+    local both = { state.filters.both };
+    if imgui.Checkbox('Calculate skillchains in both directions', both) then
+        state.filters.both = both[1];
+    end
+    imgui.SameLine();
+    helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
 
     imgui.Spacing();
     imgui.Separator();
@@ -1023,12 +1027,15 @@ local function drawSettingsTab()
     local indent = 5;
 
     imgui.SetCursorPosX(baseX + indent);
-    local enableDrag = { cache.settings.enableDrag or false };
-    if imgui.Checkbox('Enable Drag', enableDrag) then
-        cache.settings.enableDrag = enableDrag[1];
+    local enableDrag = { state.enableDrag };
+    if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
+        state.enableDrag = enableDrag[1];
+        SkillchainRenderer.setEnableDrag(enableDrag[1]);
         request = request or {};
         request.anchorChanged = true;
     end
+    imgui.SameLine();
+    helpMarker('When enabled, click and drag the results window to move it.');
 
     imgui.SetCursorPosX(baseX + indent);
     local x = { anchor.x or 0 };
@@ -1061,13 +1068,13 @@ local function drawSettingsTab()
     imgui.Text(string.format("Enable Char Lvl:  %s", tostring(def.useCharLevel or false)));
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Enable Both:      %s", tostring(def.both or false)));
-
-    imgui.SetCursorPosX(baseX + indent);
     imgui.Text(string.format("Enable Subjob:    %s", tostring(def.includeSubjob or false)));
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text(string.format("Enable Fav WS:    %s", tostring(def.enableFavWs or false)));
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Enable Both:      %s", tostring(def.both or false)));
 
     -----------------------------------------------------------------------
     -- How to update defaults (CLI instructions)
@@ -1083,13 +1090,13 @@ local function drawSettingsTab()
     imgui.Text('/scc setcharlevel <true|false>');
 
     imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setboth <true|false>');
-
-    imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setsubjob <true|false>');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setfavws <true|false>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setboth <true|false>');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setx <value>');
@@ -1119,9 +1126,8 @@ function SkillchainGUI.OpenFromCli()
         state.filters.both = def.both or false;
     end
 
-    -- Don't set includeSubjob yet - let applyTokenToSide detect it from tokens first
-    -- We'll set it from defaults after if it wasn't set by tokens
-    local initialSubjob = def.includeSubjob or false;
+    -- Set includeSubjob from defaults first, so applyTokenToSide can use it
+    state.filters.includeSubjob = def.includeSubjob or false;
 
     -- Element from cache.filters.scElement
     state.filters.elementIndex = 1;
@@ -1136,7 +1142,7 @@ function SkillchainGUI.OpenFromCli()
     end
 
     -- Jobs + weapons from token1 / token2
-    -- These may set state.filters.includeSubjob = true if tokens contain subjobs
+    -- These may set state.filters.includeSubjob = true if tokens contain explicit subjobs
     if cache.jobs.token1 then
         applyTokenToSide(1, cache.jobs.token1);
     end
@@ -1144,11 +1150,9 @@ function SkillchainGUI.OpenFromCli()
         applyTokenToSide(2, cache.jobs.token2);
     end
 
-    -- Only override includeSubjob if explicitly set to true in cache, or use defaults if tokens didn't enable it
-    if cache.filters.includeSubjob == true then
-        state.filters.includeSubjob = true;
-    elseif not state.filters.includeSubjob then
-        state.filters.includeSubjob = initialSubjob;
+    -- Override includeSubjob if explicitly set in cache.filters
+    if cache.filters.includeSubjob ~= nil then
+        state.filters.includeSubjob = cache.filters.includeSubjob;
     end
 
     -- Custom level from CLI
@@ -1174,6 +1178,10 @@ function SkillchainGUI.Toggle()
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
+    else
+        -- Reset drag state when closing
+        SkillchainRenderer.setEnableDrag(false);
+        state.enableDrag = false;
     end
 end
 
@@ -1182,6 +1190,10 @@ function SkillchainGUI.SetVisible(v)
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
+    else
+        -- Reset drag state when closing
+        SkillchainRenderer.setEnableDrag(false);
+        state.enableDrag = false;
     end
 end
 
@@ -1195,10 +1207,9 @@ end
 
 function SkillchainGUI.DrawWindow()
     if not showWindow[1] then
-        -- Disable drag when GUI is closed
-        if cache and cache.settings then
-            cache.settings.enableDrag = false;
-        end
+        -- Disable drag and reset checkbox state when GUI is closed
+        SkillchainRenderer.setEnableDrag(false);
+        state.enableDrag = false;
         return nil;
     end
 
@@ -1323,6 +1334,13 @@ function SkillchainGUI.DrawWindow()
     end
 
     imgui.End();
+
+    -- Check if window was just closed via 'X' button
+    if not showWindow[1] then
+        SkillchainRenderer.setEnableDrag(false);
+        state.enableDrag = false;
+    end
+
     return request;
 end
 
