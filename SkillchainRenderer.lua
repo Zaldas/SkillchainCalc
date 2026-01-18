@@ -19,6 +19,7 @@ local gdiObjects = {
     minPoolSize = 20,       -- Minimum to keep alive
     lastUsedCount = 0,      -- Track last frame usage
     layoutData = nil,       -- Store layout data for anchor updates
+    comboMap = {},          -- Maps text pool index to combo data {opener, closer, chainName}
 };
 
 local isVisible = false;
@@ -128,6 +129,7 @@ function SkillchainRenderer.clear()
     hidePoolObjects(1, gdiObjects.lastUsedCount);
     gdiObjects.lastUsedCount = 0;
     gdiObjects.layoutData = nil;
+    gdiObjects.comboMap = {};
 end
 
 function SkillchainRenderer.isVisible()
@@ -227,10 +229,47 @@ local function dragHitTest(mouseX, mouseY)
            mouseY >= y and mouseY <= (y + height);
 end
 
+-- Check if mouse clicked on a combo line, returns combo data or nil
+local function comboClickTest(mouseX, mouseY)
+    if not isVisible then
+        return nil;
+    end
+
+    -- Check each combo in the map
+    for textIndex, comboData in pairs(gdiObjects.comboMap) do
+        local textObj = gdiObjects.textPool[textIndex];
+        if textObj and textObj.settings.visible then
+            local s = textObj.settings;
+            local _, rect = textObj:get_texture();
+            if rect then
+                local x = s.position_x;
+                local y = s.position_y;
+                local w = rect.right;
+                local h = rect.bottom;
+
+                if mouseX >= x and mouseX <= x + w and mouseY >= y and mouseY <= y + h then
+                    return comboData;
+                end
+            end
+        end
+    end
+
+    return nil;
+end
+
 function SkillchainRenderer.handleMouse(e, settings)
+    -- Check for combo click on left mouse button up (message 514)
+    -- Do this before drag handling so clicks work even when drag is disabled
+    if e.message == 514 and not dragState.dragActive then
+        local comboData = comboClickTest(e.x, e.y);
+        if comboData then
+            return comboData;  -- Return clicked combo to main file
+        end
+    end
+
     -- Early exit if drag is disabled and not currently dragging
     if not enableDrag and not dragState.dragActive then
-        return;
+        return nil;
     end
 
     -- Handle active dragging
@@ -403,6 +442,9 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
                 table.insert(currentCol.items, {
                     type = 'combo',
                     text = string.format('  %s %s %s', openerData.opener, arrow, closerData.closer),
+                    opener = openerData.opener,
+                    closer = closerData.closer,
+                    chainName = chainName,
                 });
                 currentCol.entriesCount = currentCol.entriesCount + 1;
                 combosInCurrentCol = combosInCurrentCol + 1;
@@ -443,6 +485,7 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     local textIndex = 1;
     local maxColumnHeight = 0;
     local hitLimit = false;
+    gdiObjects.comboMap = {};  -- Reset combo map
 
     for colIdx, column in ipairs(columns) do
         local columnOffset = (colIdx - 1) * settings.layout.columnWidth;
@@ -461,6 +504,15 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
             textObj:set_position_y(settings.anchor.y + y_offset);
             textObj:set_font_color(item.color or settings.font.font_color);
             textObj:set_visible(true);
+
+            -- Store combo data for click detection
+            if item.type == 'combo' then
+                gdiObjects.comboMap[textIndex] = {
+                    opener = item.opener,
+                    closer = item.closer,
+                    chainName = item.chainName,
+                };
+            end
 
             textIndex = textIndex + 1;
             y_offset = y_offset + settings.layout.entriesHeight;

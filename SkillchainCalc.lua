@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '2.4';
+addon.version   = '2.5';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
@@ -215,9 +215,14 @@ local function parseSkillchains(isStep)
     displaySkillchainResults(combinations);
 end
 
--- Mouse event handler for drag functionality
+-- Mouse event handler for drag functionality and combo clicks
 ashita.events.register('mouse', 'mouse_cb', function(e)
-    SkillchainRenderer.handleMouse(e, cache.settings);
+    local result = SkillchainRenderer.handleMouse(e, cache.settings);
+    -- Check if a combo was clicked
+    if result and result.opener and result.closer and result.chainName then
+        local message = string.format('%s > %s > %s', result.opener, result.closer, result.chainName);
+        AshitaCore:GetChatManager():QueueCommand(1, message);
+    end
 end);
 
 -- Draw IMGUI Input Window
