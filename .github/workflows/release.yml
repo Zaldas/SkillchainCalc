@@ -28,15 +28,18 @@ jobs:
           mkdir -p release/skillchaincalc
           # Copy all lua files
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
+          # Copy font file to release folder as separate attachment
+          cp "Jupiter Pro Regular.otf" release/
           cd release
           zip -r SkillchainCalc.zip skillchaincalc
-          ls -la
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: SkillchainCalc.${{ steps.version.outputs.VERSION }}
-          files: release/SkillchainCalc.zip
+          files: |
+            release/SkillchainCalc.zip
+            release/Jupiter Pro Regular.otf
           generate_release_notes: true
           draft: true
           fail_on_unmatched_files: true
