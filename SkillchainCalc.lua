@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zalyx';
-addon.version   = '2.5';
+addon.version   = '2.6';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
@@ -13,6 +13,7 @@ require('imgui_compat');
 local SkillchainCore     = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainGUI      = require('SkillchainGui');
+local Autotranslate      = require('Autotranslate');
 local gdi                = require('gdifonts.include');
 local settings           = require('settings');
 
@@ -220,7 +221,7 @@ ashita.events.register('mouse', 'mouse_cb', function(e)
     local result = SkillchainRenderer.handleMouse(e, cache.settings);
     -- Check if a combo was clicked
     if result and result.opener and result.closer and result.chainName then
-        local message = string.format('%s > %s > %s', result.opener, result.closer, result.chainName);
+        local message = Autotranslate.FormatCombo(result.opener, result.closer, result.chainName);
         AshitaCore:GetChatManager():QueueCommand(1, message);
     end
 end);
@@ -592,7 +593,7 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.step.enabled = isStep;
     cache.step.filter = stepFilter;
     cache.step.filterType = stepFilterType;
-    
+
     -- In step mode, keep results open without GUI
     -- In normal mode, results are tied to GUI (unless we add a future option)
     cache.keepResultsOpen = isStep;
