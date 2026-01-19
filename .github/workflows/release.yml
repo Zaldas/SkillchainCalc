@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'  # Triggers on tags like v2.6, v2.7, etc.
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,13 +30,13 @@ jobs:
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
           cd release
           zip -r SkillchainCalc.zip skillchaincalc
+          ls -la
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: SkillchainCalc.${{ steps.version.outputs.VERSION }}
           files: release/SkillchainCalc.zip
           generate_release_notes: true
           draft: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_unmatched_files: true
