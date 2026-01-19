@@ -1,0 +1,43 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v2.6, v2.7, etc.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: |
+          # Strip 'v' prefix from tag (v2.6 -> 2.6)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create release zip
+        run: |
+          mkdir -p release/skillchaincalc
+          # Copy all lua files (no fonts in the zip)
+          find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
+          cd release
+          zip -r SkillchainCalc.zip skillchaincalc
+          # Copy font files to release folder as separate attachments
+          find .. -maxdepth 1 -name "*.otf" -exec cp {} . \;
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: SkillchainCalc.${{ steps.version.outputs.VERSION }}
+          files: |
+            release/SkillchainCalc.zip
+            release/*.otf
+          generate_release_notes: true
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
