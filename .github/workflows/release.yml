@@ -23,10 +23,8 @@ jobs:
       - name: Create release zip
         run: |
           mkdir -p release/skillchaincalc
-          # Copy all lua files (no fonts in the zip)
+          # Copy all lua files
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
-          # Copy font files to release folder as separate attachments
-          find . -maxdepth 1 -name "*.otf" -exec cp {} release/ \;
           cd release
           zip -r SkillchainCalc.zip skillchaincalc
 
@@ -34,9 +32,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: SkillchainCalc.${{ steps.version.outputs.VERSION }}
-          files: |
-            release/SkillchainCalc.zip
-            release/*.otf
+          files: release/SkillchainCalc.zip
           generate_release_notes: true
           draft: true
         env:
