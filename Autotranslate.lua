@@ -13,10 +13,6 @@
 
 local Autotranslate = {};
 
--- Auto-translate bracket characters
-Autotranslate.OPEN_BRACKET = '\xEF\x27';
-Autotranslate.CLOSE_BRACKET = '\xEF\x28';
-
 -- Skillchain property auto-translate codes
 Autotranslate.Skillchains = {
     -- Level 1 properties
