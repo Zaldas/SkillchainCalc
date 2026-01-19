@@ -25,10 +25,10 @@ jobs:
           mkdir -p release/skillchaincalc
           # Copy all lua files (no fonts in the zip)
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
+          # Copy font files to release folder as separate attachments
+          find . -maxdepth 1 -name "*.otf" -exec cp {} release/ \;
           cd release
           zip -r SkillchainCalc.zip skillchaincalc
-          # Copy font files to release folder as separate attachments
-          find .. -maxdepth 1 -name "*.otf" -exec cp {} . \;
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
