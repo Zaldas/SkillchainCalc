@@ -289,6 +289,49 @@ Autotranslate.Weaponskills = {
     ['Nether Blast']       = '\xFD\x02\x02\x24\x43\xFD',
     ['Flaming Crush']      = '\xFD\x02\x02\x24\x14\xFD',
     ['Mountain Buster']    = '\xFD\x02\x02\x24\x1C\xFD',
+
+    -----------------------------------------------------------------------
+    -- TOAU – Blue Magic physical spells (uncomment when TOAU releases)
+    -----------------------------------------------------------------------
+    --[[
+    ['Foot Kick']          = '\xFD\x02\x02\x26\x35\xFD',
+    ['Sprout Smack']       = '\xFD\x02\x02\x26\x43\xFD',
+    ['Wild Oats']          = '\xFD\x02\x02\x26\x46\xFD',
+    ['Power Attack']       = '\xFD\x02\x02\x26\x22\xFD',
+    ['Queasyshroom']       = '\xFD\x02\x02\x26\x45\xFD',
+    ['Battle Dance']       = '\xFD\x02\x02\x26\x57\xFD',
+    ['Feather Storm']      = '\xFD\x02\x02\x26\x65\xFD',
+    ['Head Butt']          = '\xFD\x02\x02\x26\x5A\xFD',
+    ['Helldive']           = '\xFD\x02\x02\x26\x2D\xFD',
+    ['Bludgeon']           = '\xFD\x02\x02\x26\x0B\xFD',
+    ['Claw Cyclone']       = '\xFD\x02\x02\x26\x3B\xFD',
+    ['Screwdriver']        = '\xFD\x02\x02\x26\x04\xFD',
+    ['Grand Slam']         = '\xFD\x02\x02\x26\x59\xFD',
+    ['Smite of Rage']      = '\xFD\x02\x02\x26\x0A\xFD',
+    ['Pinecone Bomb']      = '\xFD\x02\x02\x26\x42\xFD',
+    ['Jet Stream']         = '\xFD\x02\x02\x26\x2E\xFD',
+    ['Uppercut']           = '\xFD\x02\x02\x26\x40\xFD',
+    ['Terror Touch']       = '\xFD\x02\x02\x26\x16\xFD',
+    ['Mandibular Bite']    = '\xFD\x02\x02\x26\x1A\xFD',
+    ['Sickle Slash']       = '\xFD\x02\x02\x26\x1D\xFD',
+    ['Dimensional Death']  = '\xFD\x02\x02\x26\x3D\xFD',
+    ['Spiral Spin']        = '\xFD\x02\x02\x26\x74\xFD',
+    ['Death Scissors']     = '\xFD\x02\x02\x26\x23\xFD',
+    ['Seedspray']          = '\xFD\x02\x02\x26\x72\xFD',
+    ['Body Slam']          = '\xFD\x02\x02\x26\x2A\xFD',
+    ['Hydro Shot']         = '\xFD\x02\x02\x26\x5F\xFD',
+    ['Frypan']             = '\xFD\x02\x02\x26\x5C\xFD',
+    ['Frenetic Rip']       = '\xFD\x02\x02\x26\x26\xFD',
+    ['Spinal Cleave']      = '\xFD\x02\x02\x26\x17\xFD',
+    ['Tail Slap']          = '\xFD\x02\x02\x26\x66\xFD',
+    ['Hysteric Barrage']   = '\xFD\x02\x02\x26\x67\xFD',
+    ['Asuran Claws']       = '\xFD\x02\x02\x26\x75\xFD',
+    ['Cannonball']         = '\xFD\x02\x02\x26\x6A\xFD',
+    ['Disseverment']       = '\xFD\x02\x02\x26\x4C\xFD',
+    ['Sub-zero Smash']     = '\xFD\x02\x02\x26\x76\xFD',
+    ['Ram Charge']         = '\xFD\x02\x02\x26\x3A\xFD',
+    ['Vertical Cleave']    = '\xFD\x02\x02\x26\x54\xFD',
+    ]]
 };
 
 --[[
