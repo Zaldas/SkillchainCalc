@@ -221,37 +221,61 @@ jobs.SMN = {
 }
 
 -----------------------------------------------------------------------
--- TOAU/WotG jobs – basic melee caps for future use
--- (not critical for current SCC flow; safe to leave weapons empty if unused)
+-- TOAU jobs – uncomment when TOAU releases on HorizonXI
 -----------------------------------------------------------------------
 --[[
 jobs.BLU = {
+    defaultSubjob = 'NIN',
+    primaryWeapons = { 'sword', 'blu' },
     weapons = {
-        -- add weapons
+        blu   = { skillRank = 'Level' },    -- blue magic spells are based on level
+        sword = { skillRank = 'A+' },
+        club  = { skillRank = 'B-' },
     },
 }
 
 jobs.COR = {
+    defaultSubjob = 'NIN',
+    primaryWeapons = { 'mm' },
     weapons = {
-        -- add sword / dagger / gun (mm) once needed
+        mm     = { skillRank = 'B' },
+        dagger = { skillRank = 'B+' },
+        sword  = { skillRank = 'B-' },
     },
 }
 
 jobs.PUP = {
+    defaultSubjob = 'WAR',
+    primaryWeapons = { 'h2h' },
     weapons = {
-        -- h2h, etc.
+        h2h    = { skillRank = 'A+' },
+        dagger = { skillRank = 'C-' },
+        club   = { skillRank = 'D' },
     },
 }
+]]
 
+-----------------------------------------------------------------------
+-- WotG jobs – uncomment when WotG releases on HorizonXI
+-----------------------------------------------------------------------
+--[[
 jobs.DNC = {
+    defaultSubjob = 'NIN',
+    primaryWeapons = { 'dagger' },
     weapons = {
-        -- dagger, sword etc.
+        dagger = { skillRank = 'A+' },
+        sword  = { skillRank = 'D' },
+        h2h    = { skillRank = 'D' },
     },
 }
 
 jobs.SCH = {
+    defaultSubjob = 'RDM',
+    primaryWeapons = { 'staff', 'club' },
     weapons = {
-        -- staff, club, dagger once you care about SCH WS here
+        staff  = { skillRank = 'C+' },
+        club   = { skillRank = 'C+' },
+        dagger = { skillRank = 'D' },
     },
 }
 ]]
