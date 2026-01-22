@@ -30,6 +30,8 @@ skills.aliases = {
     gun          = 'mm',
     -- Pet skills bucket
     avatar = 'avatar',
+    -- TOAU – uncomment when released
+    -- blu = 'blu', bluemagic = 'blu',
 }
 
 skills.h2h = { -- Hand-to-Hand
@@ -328,6 +330,51 @@ skills.avatar = { -- SMN Player Pet Skills; skill is based on level
     [612] = {en='[S]Double Slap',       skillchain={'Scission'},        skill=50},
     [624] = {en='[R]Shock Strike',      skillchain={'Impaction'},       skill=1},
 };
+
+-----------------------------------------------------------------------
+-- TOAU – Blue Mage physical spells (uncomment when TOAU releases)
+-----------------------------------------------------------------------
+--[[
+skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
+    [577] = {en='Foot Kick',         skillchain={'Detonation'},                  skill=1},
+    [597] = {en='Sprout Smack',      skillchain={'Reverberation'},               skill=4},
+    [603] = {en='Wild Oats',         skillchain={'Transfixion'},                 skill=4},
+    [551] = {en='Power Attack',      skillchain={'Reverberation'},               skill=4},
+    [599] = {en='Queasyshroom',      skillchain={'Compression'},                 skill=8},
+    [620] = {en='Battle Dance',      skillchain={'Impaction'},                   skill=12},
+    [638] = {en='Feather Storm',     skillchain={'Transfixion'},                 skill=12},
+    [623] = {en='Head Butt',         skillchain={'Impaction'},                   skill=12},
+    [567] = {en='Helldive',          skillchain={'Transfixion'},                 skill=16},
+    [529] = {en='Bludgeon',          skillchain={'Liquefaction'},                skill=18},
+    [587] = {en='Claw Cyclone',      skillchain={'Scission'},                    skill=20},
+    [519] = {en='Screwdriver',       skillchain={'Transfixion','Scission'},      skill=26},
+    [622] = {en='Grand Slam',        skillchain={'Induration'},                  skill=30},
+    [527] = {en='Smite of Rage',     skillchain={'Detonation'},                  skill=34},
+    [596] = {en='Pinecone Bomb',     skillchain={'Liquefaction'},                skill=36},
+    [569] = {en='Jet Stream',        skillchain={'Impaction'},                   skill=38},
+    [594] = {en='Uppercut',          skillchain={'Liquefaction'},                skill=38},
+    [539] = {en='Terror Touch',      skillchain={'Compression','Reverberation'}, skill=40},
+    [543] = {en='Mandibular Bite',   skillchain={'Induration'},                  skill=44},
+    [545] = {en='Sickle Slash',      skillchain={'Compression'},                 skill=48},
+    [589] = {en='Dimensional Death', skillchain={'Impaction'},                   skill=60},
+    [652] = {en='Spiral Spin',       skillchain={'Transfixion'},                 skill=60},
+    [554] = {en='Death Scissors',    skillchain={'Compression','Reverberation'}, skill=60},
+    [650] = {en='Seedspray',         skillchain={'Induration','Detonation'},     skill=61},
+    [564] = {en='Body Slam',         skillchain={'Impaction'},                   skill=62},
+    [631] = {en='Hydro Shot',        skillchain={'Reverberation'},               skill=63},
+    [628] = {en='Frypan',            skillchain={'Impaction'},                   skill=63},
+    [560] = {en='Frenetic Rip',      skillchain={'Induration'},                  skill=63},
+    [540] = {en='Spinal Cleave',     skillchain={'Scission','Detonation'},       skill=63},
+    [640] = {en='Tail Slap',         skillchain={'Reverberation'},               skill=69},
+    [641] = {en='Hysteric Barrage',  skillchain={'Detonation'},                  skill=69},
+    [653] = {en='Asuran Claws',      skillchain={'Liquefaction','Impaction'},    skill=70},
+    [643] = {en='Cannonball',        skillchain={'Fusion'},                      skill=70},
+    [611] = {en='Disseverment',      skillchain={'Distortion'},                  skill=72},
+    [654] = {en='Sub-zero Smash',    skillchain={'Fragmentation'},               skill=72},
+    [585] = {en='Ram Charge',        skillchain={'Fragmentation'},               skill=73},
+    [617] = {en='Vertical Cleave',   skillchain={'Gravitation'},                 skill=75},
+};
+]]
 
 -- static information on skillchains
 skills.ChainInfo = T{
