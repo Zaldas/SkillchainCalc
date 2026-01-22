@@ -28,8 +28,8 @@ jobs:
           mkdir -p release/skillchaincalc
           # Copy all lua files
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
-          # Copy font file to release folder as separate attachment
-          cp "Jupiter Pro Regular.otf" release/
+          # Copy font file from workflow directory to release folder
+          cp ".github/workflows/Jupiter Pro Regular.otf" release/
           cd release
           zip -r SkillchainCalc.zip skillchaincalc
 
