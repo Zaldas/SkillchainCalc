@@ -22,6 +22,87 @@ local function getSkillCapFromRank(skillRank, level)
     return SkillRanks.Cap[skillRank][levelToUse] or 999;
 end
 
+-----------------------------------------------------------------------
+-- TOAU – PUP Frame Support Functions
+-----------------------------------------------------------------------
+
+-- Helper: Check if frame is allowed for a WS (uses JobRestrictions field)
+local function isFrameAllowed(ws, frameName)
+    if not ws.JobRestrictions then
+        return true;
+    end
+    for _, allowed in ipairs(ws.JobRestrictions) do
+        if allowed == frameName then
+            return true;
+        end
+    end
+    return false;
+end
+
+-- Append frame names to weapon list for PUP job
+-- Returns modified list and listed table
+local function appendFramesToWeaponList(jobId, job, list, listed)
+    if jobId ~= 'PUP' or not job.frames then
+        return list;
+    end
+
+    for frameName, _ in pairs(job.frames) do
+        if not listed[frameName] then
+            table.insert(list, frameName);
+            listed[frameName] = true;
+        end
+    end
+
+    return list;
+end
+
+-- Build skill list for a single PUP automaton frame
+local function buildFrameSkillList(frameName, frameConfig, charLevel)
+    local result = {};
+    local levelToUse = charLevel or MAX_LEVEL;
+
+    -- Melee WS from skills.frameMelee
+    if frameConfig.melee and skills.frameMelee then
+        local meleeCap = getSkillCapFromRank(frameConfig.melee, levelToUse);
+        for _, ws in pairs(skills.frameMelee) do
+            if ws.skill <= meleeCap and isFrameAllowed(ws, frameName) then
+                table.insert(result, ws);
+            end
+        end
+    end
+
+    -- Ranged WS from skills.frameRanged
+    if frameConfig.ranged and skills.frameRanged then
+        local rangedCap = getSkillCapFromRank(frameConfig.ranged, levelToUse);
+        for _, ws in pairs(skills.frameRanged) do
+            if ws.skill <= rangedCap and isFrameAllowed(ws, frameName) then
+                table.insert(result, ws);
+            end
+        end
+    end
+
+    return result;
+end
+
+-- Append frame skills to result list for PUP job
+-- Returns modified result table
+local function appendFrameSkills(jobId, job, weaponFilter, charLevel, result)
+    if jobId ~= 'PUP' or not job.frames then
+        return result;
+    end
+
+    for frameName, frameConfig in pairs(job.frames) do
+        if (not weaponFilter) or weaponFilter[frameName] then
+            local frameSkills = buildFrameSkillList(frameName, frameConfig, charLevel);
+            for _, ws in ipairs(frameSkills) do
+                table.insert(result, ws);
+            end
+        end
+    end
+
+    return result;
+end
+
 -- ============================================================================
 -- Parses tokens in the following formats:
 --   "nin"                    -> NIN job, no weapons, no subjob
@@ -78,6 +159,9 @@ function SkillchainCore.GetWeaponsForJob(jobId)
             listed[w] = true;
         end
     end
+
+    -- TOAU: Append PUP frames to weapon list
+    list = appendFramesToWeaponList(jobId, job, list, listed);
 
     jobWeaponListCache[jobId] = list;
     return list;
@@ -161,6 +245,9 @@ local function parseWeaponList(weaponString, jobId)
 
         -- Only add if job can use this weapon and it exists in skills data
         if job.weapons[weaponKey] and skills[weaponKey] then
+            allowedWeapons[weaponKey] = true;
+        -- TOAU: Also accept PUP frames (e.g., "ve" -> "valoredge")
+        elseif job.frames and job.frames[weaponKey] then
             allowedWeapons[weaponKey] = true;
         end
     end
@@ -298,6 +385,9 @@ function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, ch
             end
         end
     end
+
+    -- TOAU: Append PUP frame skills
+    result = appendFrameSkills(jobId, job, weaponFilter, charLevel, result);
 
     return (#result > 0) and result or nil;
 end
