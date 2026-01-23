@@ -384,7 +384,8 @@ local function applyTokenToSide(side, token)
     -- If the token had an explicit weapon list (job:weapon1,weapon2)
     if allowedWeapons and next(allowedWeapons) then
         for w, _ in pairs(allowedWeapons) do
-            if job.weapons[w] then
+            -- Check both weapons and frames (for PUP automaton frames)
+            if job.weapons[w] or (job.frames and job.frames[w]) then
                 sel[w] = true;
             end
         end
