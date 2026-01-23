@@ -32,6 +32,13 @@ skills.aliases = {
     avatar = 'avatar',
     -- TOAU – uncomment when released
     -- blu = 'blu', bluemagic = 'blu',
+
+    -- PUP Automaton Frames – uncomment when TOAU releases
+    -- framemelee = 'frameMelee', frameranged = 'frameRanged',
+    -- valoredge = 'valoredge', ve = 'valoredge', val = 'valoredge',         -- tank frame
+    -- sharpshot = 'sharpshot', ss = 'sharpshot', sharp = 'sharpshot',       -- ranged DPS frame
+    -- stormwaker = 'stormwaker', sw = 'stormwaker', storm = 'stormwaker',   -- mage frame
+    -- harlequin = 'harlequin', hq = 'harlequin', harley = 'harlequin',      -- hybrid frame
 }
 
 skills.h2h = { -- Hand-to-Hand
@@ -373,6 +380,42 @@ skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
     [654] = {en='Sub-zero Smash',    skillchain={'Fragmentation'},               skill=72},
     [585] = {en='Ram Charge',        skillchain={'Fragmentation'},               skill=73},
     [617] = {en='Vertical Cleave',   skillchain={'Gravitation'},                 skill=75},
+};
+]]
+
+-----------------------------------------------------------------------
+-- TOAU – PUP Automaton Frame Weaponskills (uncomment when TOAU releases)
+-----------------------------------------------------------------------
+--[[
+skills.frameMelee = {
+    -- valoredge exclusive (tank frame)
+    [1940] = {en = 'Chimera Ripper',  skill = 0,   skillchain = {'Induration', 'Detonation'},
+              JobRestrictions = {'valoredge'}},
+    [1941] = {en = 'String Clipper',  skill = 0,   skillchain = {'Scission'},
+              JobRestrictions = {'valoredge'}},
+    [2065] = {en = 'Cannibal Blade',  skill = 150, skillchain = {'Compression', 'Reverberation'},
+              JobRestrictions = {'valoredge'}},
+    [2299] = {en = 'Bone Crusher',    skill = 245, skillchain = {'Fragmentation'},
+              JobRestrictions = {'valoredge'}},
+
+    -- harlequin & stormwaker shared (hybrid/mage frames)
+    [1943] = {en = 'Slapstick',       skill = 0,   skillchain = {'Impaction'},
+              JobRestrictions = {'harlequin', 'stormwaker'}},
+    [2067] = {en = 'Knockout',        skill = 145, skillchain = {'Scission', 'Detonation'},
+              JobRestrictions = {'harlequin', 'stormwaker'}},
+    [2301] = {en = 'Magic Mortar',    skill = 225, skillchain = {'Fusion', 'Liquefaction'},
+              JobRestrictions = {'harlequin', 'stormwaker'}},
+};
+
+skills.frameRanged = {
+    -- sharpshot exclusive (ranged DPS frame)
+    [1942] = {en = 'Arcuballista',    skill = 0,   skillchain = {'Liquefaction', 'Transfixion'},
+              JobRestrictions = {'sharpshot'}},
+    [2066] = {en = 'Daze',            skill = 150, skillchain = {'Transfixion', 'Impaction'},
+              JobRestrictions = {'sharpshot'}},
+    [2300] = {en = 'Armor Piercer',   skill = 245, skillchain = {'Gravitation'},
+              JobRestrictions = {'sharpshot'}},
+    -- [2744] = Armor Shatterer (skill 324) - excluded, beyond level 75 cap
 };
 ]]
 
