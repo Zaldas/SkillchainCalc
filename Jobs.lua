@@ -252,6 +252,12 @@ jobs.PUP = {
         dagger = { skillRank = 'C-' },
         club   = { skillRank = 'D' },
     },
+    frames = {
+        valoredge  = { melee = 'A-' },                 -- tank frame
+        sharpshot  = { melee = 'C+', ranged = 'A-' },  -- ranged DPS frame
+        stormwaker = { melee = 'C+' },                 -- mage frame
+        harlequin  = { melee = 'B-', ranged = 'B-' },  -- hybrid frame
+    },
 }
 ]]
 
