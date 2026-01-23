@@ -291,9 +291,8 @@ Autotranslate.Weaponskills = {
     ['Mountain Buster']    = '\xFD\x02\x02\x24\x1C\xFD',
 
     -----------------------------------------------------------------------
-    -- TOAU – Blue Magic physical spells (uncomment when TOAU releases)
+    -- TOAU – Blue Magic physical spells
     -----------------------------------------------------------------------
-    --[[
     ['Foot Kick']          = '\xFD\x02\x02\x26\x35\xFD',
     ['Sprout Smack']       = '\xFD\x02\x02\x26\x43\xFD',
     ['Wild Oats']          = '\xFD\x02\x02\x26\x46\xFD',
@@ -331,12 +330,19 @@ Autotranslate.Weaponskills = {
     ['Sub-zero Smash']     = '\xFD\x02\x02\x26\x76\xFD',
     ['Ram Charge']         = '\xFD\x02\x02\x26\x3A\xFD',
     ['Vertical Cleave']    = '\xFD\x02\x02\x26\x54\xFD',
-    ]]
+
+    -----------------------------------------------------------------------
+    -- TOAU – PUP Automaton Frame Weaponskills
+    -- Note: Auto-translate codes not yet available in HorizonXI DAT files
+    -- These will display as plain text until codes are added
+    -----------------------------------------------------------------------
 };
 
 --[[
-    Strips tier markers (¹, ², ³) and avatar prefixes from weaponskill names.
+    Strips tier markers (¹, ², ᵇ, ᶠ) and avatar prefixes from weaponskill names.
     Example: "Asuran Fists¹" -> "Asuran Fists"
+    Example: "Foot Kickᵇ" -> "Foot Kick"
+    Example: "Chimera Ripperᶠ" -> "Chimera Ripper"
     Example: "[I]Burning Strike" -> "Burning Strike"
 
     @param name (string) The weaponskill name to normalize
@@ -345,8 +351,10 @@ Autotranslate.Weaponskills = {
 function Autotranslate.NormalizeName(name)
     if not name then return nil; end
 
-    -- Remove tier markers (superscript numbers)
-    local normalized = name:gsub('[¹²³]', '');
+    -- Remove tier markers: ¹ (quested), ² (relic), ᵇ (blu), ᶠ (frame)
+    local normalized = name:gsub('[¹²]', '');
+    normalized = normalized:gsub('ᵇ', '');
+    normalized = normalized:gsub('ᶠ', '');
 
     -- Remove avatar prefixes like [I], [T], [L], [G], [S], [R], [C], [F]
     normalized = normalized:gsub('^%[.%]', '');
@@ -403,7 +411,8 @@ function Autotranslate.Format(name, lookupType)
     if code then
         return code;
     else
-        return name;
+        -- No auto-translate code found, return normalized plain text
+        return Autotranslate.NormalizeName(name) or name;
     end
 end
 
