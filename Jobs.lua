@@ -23,12 +23,12 @@ jobs.aliases = {
     drg = 'DRG', dragoon     = 'DRG',
     smn = 'SMN', summoner    = 'SMN',
 
-    -- ToAU+ jobs – stubs for now (empty weapons is fine)
-    blu = 'BLU', bluemage    = 'BLU',
-    cor = 'COR', corsair     = 'COR',
-    pup = 'PUP', puppetmaster = 'PUP',
-    dnc = 'DNC', dancer      = 'DNC',
-    sch = 'SCH', scholar     = 'SCH',
+    -- ToAU+ jobs – uncomment when TOAU releases
+    -- blu = 'BLU', bluemage    = 'BLU',
+    -- cor = 'COR', corsair     = 'COR',
+    -- pup = 'PUP', puppetmaster = 'PUP',
+    -- dnc = 'DNC', dancer      = 'DNC',
+    -- sch = 'SCH', scholar     = 'SCH',
 }
 
 jobs.WAR = {
