@@ -1,9 +1,14 @@
--- Jobs.lua – level 75 weapon skill caps (Era/Horizon style)
+-- Jobs.lua – Era/Horizon style job data
+-- For retail, change MAX_LEVEL to 99 and uncomment ToAU/WotG/SoA jobs.
+--
 -- Only includes weapon types that exist in skills.lua:
 -- h2h, dagger, sword, gs (Great Sword), ga (Great Axe), axe, scythe,
 -- polearm, katana, gkt (Great Katana), staff, club, archery, mm (Marksmanship).
 
 local jobs = {}
+
+-- Maximum character level for this version (Horizon: 75, Retail: 99)
+jobs.MAX_LEVEL = 75
 
 jobs.aliases = {
     -- Base jobs

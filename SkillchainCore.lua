@@ -8,17 +8,13 @@ local SkillRanks = require('SkillRanks');
 
 local SkillchainCore = {};
 
--- Shared constant: Maximum character level
-SkillchainCore.MAX_LEVEL = 75;
-local MAX_LEVEL = SkillchainCore.MAX_LEVEL; -- Local alias for internal use
-
 -- Helper function to get skill cap from rank and level
 local function getSkillCapFromRank(skillRank, level)
     if not skillRank or not SkillRanks.Cap[skillRank] then
         return 999;
     end
 
-    local levelToUse = level or MAX_LEVEL;
+    local levelToUse = level or jobs.MAX_LEVEL;
     return SkillRanks.Cap[skillRank][levelToUse] or 999;
 end
 
@@ -59,7 +55,7 @@ end
 -- Build skill list for a single PUP automaton frame
 local function buildFrameSkillList(frameName, frameConfig, charLevel)
     local result = {};
-    local levelToUse = charLevel or MAX_LEVEL;
+    local levelToUse = charLevel or jobs.MAX_LEVEL;
 
     -- Melee WS from skills.frameMelee
     if frameConfig.melee and skills.frameMelee then
@@ -351,7 +347,7 @@ end
 
 -- allow optional weapon filter set
 -- subJobId is optional; if provided, it will be used to filter weaponskills that have subjob restrictions
--- charLevel is optional; if provided, it will be used to calculate skill caps instead of MAX_LEVEL
+-- charLevel is optional; if provided, it will be used to calculate skill caps instead of jobs.MAX_LEVEL
 function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, charLevel)
     local job = jobs[jobId];
     if not job or not job.weapons then
@@ -368,7 +364,7 @@ function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, ch
     end
 
     local result = {};
-    local levelToUse = charLevel or MAX_LEVEL;
+    local levelToUse = charLevel or jobs.MAX_LEVEL;
 
     for weaponKey, cfg in pairs(job.weapons) do
         if (not weaponFilter) or weaponFilter[weaponKey] then

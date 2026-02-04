@@ -10,6 +10,7 @@ addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 require('common');
 require('imgui_compat');
 
+local jobs               = require('Jobs');
 local SkillchainCore     = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainGUI      = require('SkillchainGui');
@@ -421,7 +422,7 @@ ashita.events.register('command', 'command_cb', function(e)
             print(' [sc:<element>] optional filter by SC burst element, e.g. sc:ice, sc:fire');
             print('  e.g. sc:ice shows chains like Darkness / Distortion / Induration.');
             print(' [both] optional keyword to calculate skillchains in both directions.');
-            print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(SkillchainCore.MAX_LEVEL));
+            print((' [lvl:#] or [level:#] optional character level 1-%d for skill-based filtering.'):format(jobs.MAX_LEVEL));
             print('  e.g. lvl:50 or level:50');
             -- print(' Step Mode: Calculate what properties can close with a job/weapon\'s WS.');
             -- print('  e.g. /scc step nin      -- show Property > NIN WS combinations');
@@ -524,10 +525,10 @@ ashita.events.register('command', 'command_cb', function(e)
             -- Extract level value after the colon
             local colonPos = lower:find(':');
             local lvlVal = tonumber(lower:sub(colonPos + 1));
-            if lvlVal and lvlVal >= 1 and lvlVal <= SkillchainCore.MAX_LEVEL then
+            if lvlVal and lvlVal >= 1 and lvlVal <= jobs.MAX_LEVEL then
                 charLevel = lvlVal;
             else
-                print(('[SkillchainCalc] Invalid level value. Must be between 1 and %d.'):format(SkillchainCore.MAX_LEVEL));
+                print(('[SkillchainCalc] Invalid level value. Must be between 1 and %d.'):format(jobs.MAX_LEVEL));
                 return;
             end
         else
