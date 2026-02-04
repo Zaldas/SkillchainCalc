@@ -120,7 +120,7 @@ local state = {
     -- Custom level filter settings
     customLevel = {
         enabled = false,          -- Custom level checkbox
-        value   = SkillchainCore.MAX_LEVEL,  -- Level slider value
+        value   = jobsData.MAX_LEVEL,  -- Level slider value
     },
 
     -- Settings UI state
@@ -498,7 +498,7 @@ local function buildFavWsItems(jobState)
 
                         local maxSkill = 999;
                         if skillRank and SkillRanks and SkillRanks.Cap and SkillRanks.Cap[skillRank] then
-                            local levelToUse = charLevel or SkillchainCore.MAX_LEVEL;
+                            local levelToUse = charLevel or jobsData.MAX_LEVEL;
                             maxSkill = SkillRanks.Cap[skillRank][levelToUse] or 999;
                         end
 
@@ -591,7 +591,7 @@ local function drawCalculatorTab()
 
         -- Build character level dropdown (MAX_LEVEL to 1, descending)
         local levelItems = {};
-        for i = 1, SkillchainCore.MAX_LEVEL do
+        for i = 1, jobsData.MAX_LEVEL do
             table.insert(levelItems, tostring(i));
         end
 
@@ -1061,6 +1061,9 @@ local function drawSettingsTab()
     drawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
 
     local def = cache.settings.default or {};
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Max Level:        %d", jobsData.MAX_LEVEL));
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text(string.format("SkillChain Level: %s", tostring(def.scLevel)));
