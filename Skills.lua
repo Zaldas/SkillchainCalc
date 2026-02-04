@@ -264,7 +264,6 @@ skills.staff = { -- Staff
                 JobRestrictions={'WAR','MNK','WHM','PLD'}},
     [181] = {en='Shell Crusher',   skillchain={'Detonation'},                   skill=175},
     [182] = {en='Full Swing',      skillchain={'Liquefaction','Impaction'},     skill=200},
-    [183] = {en='Spirit Taker¹',   skillchain={'Compression','Induration'},     skill=215},
     [184] = {en='Retribution¹',    skillchain={'Gravitation','Reverberation'},  skill=230},
     -- Relic WS treat as high end
     [185] = {en='Gate of Tartarus²',skillchain={'Darkness','Distortion'},       skill=230,
