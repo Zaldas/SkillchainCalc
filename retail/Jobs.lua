@@ -2,7 +2,8 @@
 --
 -- Only includes weapon types that exist in skills.lua:
 -- h2h, dagger, sword, gs (Great Sword), ga (Great Axe), axe, scythe,
--- polearm, katana, gkt (Great Katana), staff, club, archery, mm (Marksmanship).
+-- polearm, katana, gkt (Great Katana), staff, club, archery, mm (Marksmanship),
+-- avatar (SMN pets), automaton (PUP pets), blu (Blue Magic).
 
 local jobs = {}
 
@@ -235,10 +236,11 @@ jobs.SMN = {
 
 jobs.BLU = {
     defaultSubjob = 'NIN',
-    primaryWeapons = { 'sword' },
+    primaryWeapons = { 'sword', 'blu' },
     weapons = {
         sword = { skillRank = 'A+' },
         club  = { skillRank = 'B-' },
+        blu   = { skillRank = 'Level' },
     },
 }
 
@@ -254,11 +256,12 @@ jobs.COR = {
 
 jobs.PUP = {
     defaultSubjob = 'WAR',
-    primaryWeapons = { 'h2h' },
+    primaryWeapons = { 'h2h', 'automaton' },
     weapons = {
-        h2h    = { skillRank = 'A+' },
-        dagger = { skillRank = 'C-' },
-        club   = { skillRank = 'D' },
+        h2h       = { skillRank = 'A+' },
+        dagger    = { skillRank = 'C-' },
+        club      = { skillRank = 'D' },
+        automaton = { skillRank = 'Level' },
     },
 }
 
