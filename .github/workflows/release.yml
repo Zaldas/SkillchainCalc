@@ -23,22 +23,35 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create release zip
+      - name: Create release zips
         run: |
-          mkdir -p release/skillchaincalc
-          # Copy all lua files
-          find . -maxdepth 1 -name "*.lua" -exec cp {} release/skillchaincalc/ \;
-          # Copy font file from workflow directory to release folder
+          # --- Horizon build ---
+          mkdir -p release/horizon/skillchaincalc
+          find . -maxdepth 1 -name "*.lua" -exec cp {} release/horizon/skillchaincalc/ \;
+          cd release/horizon
+          zip -r ../SkillchainCalc-horizon.zip skillchaincalc
+          cd ../..
+
+          # --- Retail build ---
+          mkdir -p release/retail/skillchaincalc
+          find . -maxdepth 1 -name "*.lua" -exec cp {} release/retail/skillchaincalc/ \;
+          # Overwrite with retail versions
+          cp retail/Skills.lua release/retail/skillchaincalc/
+          cp retail/Jobs.lua release/retail/skillchaincalc/
+          cd release/retail
+          zip -r ../SkillchainCalc-retail.zip skillchaincalc
+          cd ../..
+
+          # Copy font to release root
           cp ".github/workflows/Jupiter Pro Regular.otf" release/
-          cd release
-          zip -r SkillchainCalc.zip skillchaincalc
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: SkillchainCalc.${{ steps.version.outputs.VERSION }}
           files: |
-            release/SkillchainCalc.zip
+            release/SkillchainCalc-horizon.zip
+            release/SkillchainCalc-retail.zip
             release/Jupiter Pro Regular.otf
           generate_release_notes: true
           draft: true
