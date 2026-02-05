@@ -533,41 +533,35 @@ skills.mm = {
 
 -----------------------------------------------------------------------
 -- Avatar (SMN pet skills - level-based)
+-- Only physical Blood Pacts have skillchain properties
+-- Magical Blood Pacts (elemental damage) do NOT produce skillchains
 -----------------------------------------------------------------------
 skills.avatar = {
+    -- Physical Blood Pacts (Level 1-26)
     [301] = {en='Punch',            skillchain={'Impaction'},                     skill=1},
     [302] = {en='Rock Throw',       skillchain={'Scission'},                      skill=10},
     [303] = {en='Barracuda Dive',   skillchain={'Reverberation'},                 skill=10},
     [304] = {en='Claw',             skillchain={'Transfixion'},                   skill=10},
     [305] = {en='Axe Kick',         skillchain={'Liquefaction'},                  skill=10},
     [306] = {en='Shock Strike',     skillchain={'Impaction'},                     skill=10},
-    [307] = {en='Aero II',          skillchain={'Detonation'},                    skill=10},
-    [308] = {en='Tail Whip',        skillchain={'Compression'},                   skill=10},
-    [309] = {en='Stone II',         skillchain={'Induration'},                    skill=1},
-    [310] = {en='Double Punch',     skillchain={'Compression','Impaction'},       skill=21},
-    [311] = {en='Rock Buster',      skillchain={'Reverberation','Scission'},      skill=26},
-    [312] = {en='Tail Lash',        skillchain={'Reverberation'},                 skill=26},
-    [313] = {en='Chaotic Strike',   skillchain={'Transfixion'},                   skill=26},
-    [314] = {en='Double Slap',      skillchain={'Reverberation','Liquefaction'},  skill=26},
-    [315] = {en='Thunderspark',     skillchain={'Detonation','Impaction'},        skill=26},
-    [316] = {en='Aero IV',          skillchain={'Scission','Detonation'},         skill=26},
-    [317] = {en='Whispering Wind',  skillchain={'Reverberation'},                 skill=26},
-    [318] = {en='Geocrush',         skillchain={'Reverberation'},                 skill=70},
-    [319] = {en='Grand Fall',       skillchain={'Distortion'},                    skill=70},
-    [320] = {en='Predator Claws',   skillchain={'Fragmentation'},                 skill=70},
-    [321] = {en='Flaming Crush',    skillchain={'Fusion'},                        skill=70},
-    [322] = {en='Thunderstorm',     skillchain={'Fragmentation'},                 skill=70},
-    [323] = {en='Nether Blast',     skillchain={'Compression'},                   skill=70},
-    [324] = {en='Heavenly Strike',  skillchain={'Gravitation'},                   skill=70},
-    [325] = {en='Wind Blade',       skillchain={'Distortion'},                    skill=70},
-    [326] = {en='Meteor Strike',    skillchain={'Liquefaction','Fusion'},         skill=99},
-    [327] = {en='Spinning Dive',    skillchain={'Reverberation','Distortion'},    skill=99},
-    [328] = {en='Eclipse Bite',     skillchain={'Gravitation'},                   skill=99},
-    [329] = {en='Conflag Strike',   skillchain={'Fusion'},                        skill=99},
-    [330] = {en='Volt Strike',      skillchain={'Impaction','Fragmentation'},     skill=99},
-    [331] = {en='Night Terror',     skillchain={'Darkness'},                      skill=99},
-    [332] = {en='Holy Mist',        skillchain={'Light'},                         skill=99},
-    [333] = {en='Cataclysmic Fury', skillchain={'Fragmentation','Detonation'},    skill=99},
+    [307] = {en='Tail Whip',        skillchain={'Compression'},                   skill=10},
+    [308] = {en='Double Punch',     skillchain={'Compression','Impaction'},       skill=21},
+    [309] = {en='Rock Buster',      skillchain={'Reverberation','Scission'},      skill=26},
+    [310] = {en='Tail Lash',        skillchain={'Reverberation'},                 skill=26},
+    [311] = {en='Chaotic Strike',   skillchain={'Transfixion'},                   skill=26},
+    [312] = {en='Double Slap',      skillchain={'Reverberation','Liquefaction'},  skill=26},
+    -- Physical Blood Pacts (Level 70)
+    [313] = {en='Predator Claws',   skillchain={'Fragmentation','Scission'},      skill=70},
+    [314] = {en='Flaming Crush',    skillchain={'Fusion','Reverberation'},        skill=70},
+    -- Physical Blood Pacts (Level 99)
+    [315] = {en='Spinning Dive',    skillchain={'Distortion','Detonation'},       skill=99},
+    [316] = {en='Eclipse Bite',     skillchain={'Gravitation','Scission'},        skill=99},
+    [317] = {en='Volt Strike',      skillchain={'Fragmentation','Scission'},      skill=99},
+    [318] = {en='Crag Throw',       skillchain={'Gravitation','Scission'},        skill=99},
+    [319] = {en='Hysteric Assault', skillchain={'Fragmentation','Transfixion'},   skill=99},
+    [320] = {en='Blindside',        skillchain={'Gravitation','Transfixion'},     skill=99},
+    [321] = {en='Regal Gash',       skillchain={'Distortion','Detonation'},       skill=99},
+    [322] = {en='Cataclysmic Fury', skillchain={'Fragmentation','Detonation'},    skill=99},
 };
 
 -----------------------------------------------------------------------
