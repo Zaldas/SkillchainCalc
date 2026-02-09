@@ -1278,6 +1278,12 @@ function SkillchainGUI.DrawWindow()
 
     imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
 
+    -- Restore saved GUI position
+    local guiPos = cache.settings.guiPosition;
+    if guiPos then
+        imgui.SetNextWindowPos({ guiPos.x, guiPos.y }, ImGuiCond_Once);
+    end
+
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
         ImGuiWindowFlags_NoDocking,
@@ -1335,6 +1341,19 @@ function SkillchainGUI.DrawWindow()
         end
 
         imgui.EndTabBar();
+    end
+
+    -- Track window position changes for saving
+    local curPosX, curPosY = imgui.GetWindowPos();
+    if guiPos and curPosX then
+        local cx = curPosX - (curPosX % 1);
+        local cy = curPosY - (curPosY % 1);
+        if cx ~= guiPos.x or cy ~= guiPos.y then
+            guiPos.x = cx;
+            guiPos.y = cy;
+            request = request or {};
+            request.guiPositionChanged = true;
+        end
     end
 
     imgui.End();

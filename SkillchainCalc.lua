@@ -51,6 +51,10 @@ local sccSettings = T{
         x = 200,
         y = 100,
     },
+    guiPosition = {
+        x = 100,
+        y = 100,
+    },
     layout = {
         columnWidth = 315,
         entriesPerColumn = 30,      -- Soft cap: try to split at this point
@@ -236,6 +240,10 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 SkillchainRenderer.updateAnchor(cache.settings);
                 settings.save();
                 -- No need to re-parse skillchains - anchor is visual only
+            end
+
+            if req.guiPositionChanged then
+                settings.save();
             end
 
             if req.updateDefaults then
