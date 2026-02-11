@@ -2,7 +2,8 @@
 -- Handles all GDI rendering for skillchain results display
 
 require('common');
-local skills = require('Skills');
+local skills         = require('Skills');
+local SkillchainChat = require('SkillchainChat');
 -- Cache scaling module to avoid repeated requires
 local scaling = require('scaling');
 local gdi = nil;  -- Will be injected during initialization
@@ -538,7 +539,7 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
         notice:set_visible(true);
 
         -- Also print to console
-        print('[SkillchainCalc]' .. errorString);
+        SkillchainChat.err(errorString);
     end
 
     -- Adjust background dimensions
