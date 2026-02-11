@@ -2,9 +2,10 @@
 -- Core parsing / filtering / sorting logic for SkillchainCalc.
 
 require('common');
-local skills = require('Skills');
-local jobs   = require('Jobs');
-local SkillRanks = require('SkillRanks');
+local skills         = require('Skills');
+local jobs           = require('Jobs');
+local SkillRanks     = require('SkillRanks');
+local SkillchainChat = require('SkillchainChat');
 
 local SkillchainCore = {};
 
@@ -735,7 +736,7 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     local orderedResults = {};
 
     if debugMode then
-        print('[SkillchainCore] Starting level-based sorting');
+        SkillchainChat.msg('[Debug] Starting level-based sorting');
     end
 
     -- Sort chains by display order (via skills.GetDisplayIndex)
@@ -762,7 +763,7 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
         local sortedOpeners = {};
 
         if debugMode then
-            print(('[SkillchainCore] Sorting openers for chain %s'):format(chainName));
+            SkillchainChat.msg(('[Debug] Sorting openers for chain %s'):format(chainName));
         end
 
         for opener, closers in pairs(openers) do
@@ -789,7 +790,7 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     end
 
     if debugMode then
-        print('[SkillchainCore] Sorting completed');
+        SkillchainChat.msg('[Debug] Sorting completed');
     end
 
     return sortedResults, orderedResults;
