@@ -10,12 +10,14 @@ Now with ImGui interface to input parameters!!!
 &ensp;&ensp;Calculate - Has the Jobs and Weapons  
 &ensp;&ensp;&ensp;Character Level - Optional custom level filter (when enabled in Filters)  
 &ensp;&ensp;Filters - Filters to help narrow and adjust calculation  
-&ensp;&ensp;&ensp;Skillchain Element - element that you want to focus on for resulting skllchain  
+&ensp;&ensp;&ensp;Skillchain Element - element that you want to focus on for resulting skillchain  
 &ensp;&ensp;&ensp;Skillchain Level - level of skillchain to include  
+&ensp;&ensp;&ensp;Favorite WS - pin a specific weaponskill to use for one or both slots  
 &ensp;&ensp;&ensp;Advanced Filters:  
 &ensp;&ensp;&ensp;&ensp;Custom Character Level - Filters weapon skills by character level and skill caps  
 &ensp;&ensp;&ensp;&ensp;Both Directions - Calculates skillchains in both directions of jobs selected  
 &ensp;&ensp;&ensp;&ensp;SubJob - Enables the use of Subjobs to define skillchain options  
+&ensp;&ensp;&ensp;&ensp;Show REMA WS - Include REMA-only weapon skills (marked with ²)  
 &ensp;&ensp;Settings - Has the position of results window, and default filter settings  
   
 #### Usage:  
@@ -72,17 +74,24 @@ Now with ImGui interface to input parameters!!!
 &ensp;/scc nin/rng:mm,katana drk:ga 2 both  
 &ensp;/scc drk pld lvl:60 sc:light both  
   
+#### Clicking Results:  
+&ensp;Click any result line to send it to game chat with auto-translate skillchain name  
+&ensp;Results window is draggable  
+
 #### Commands:  
 &ensp;/scc -- opens GUI window  
 &ensp;/scc help -- show all commands  
 &ensp;/scc setx # -- set x anchor  
 &ensp;/scc sety # -- set y anchor  
-&ensp;/scc setlevel # -- set default level filter (1–3)  
+&ensp;/scc setsclevel # -- set default skillchain level filter (1–3)  
 &ensp;/scc setboth true|false -- set default for 'both' param  
 &ensp;/scc setsubjob true|false -- set default for enabling subjob in GUI  
+&ensp;/scc setfavws true|false -- set default for favorite WS filter  
+&ensp;/scc setrema true|false -- set default for showing REMA weapon skills  
+&ensp;/scc enabledrag true|false -- enable/disable mouse drag on results window  
 &ensp;/scc status -- show default filter status  
 &ensp;/scc clear -- clear out windows; close addon  
-&ensp;/scc debug -- enable debugging  
+&ensp;/scc debug -- toggle debug mode  
   
 #### Files:  
 &ensp;SkillchainCalc.lua -- main addon  
@@ -92,11 +101,11 @@ Now with ImGui interface to input parameters!!!
 &ensp;SkillchainCore.lua -- filtering and routing logic  
 &ensp;SkillchainGui.lua -- ImGui interface  
 &ensp;SkillchainRenderer.lua -- Results window renderer  
-&ensp;imgui_compat.lua -- ImGui compatability layer <[credit XIUI team](https://github.com/tirem/XIUI)>  
   
 #### Notes:  
 &ensp;This is adjusted for HorizonXI. No plans to support retail.  
-&ensp;Superscript 1/2 denote quested/relic weaponskills  
+&ensp;Superscript ¹/² denote quested/relic weaponskills; ² also marks REMA-only weapon skills  
 &ensp;Default title font is Times New Roman  
 &ensp;Output is limited to 150 lines; excess results are trimmed with a notice asking to use filters  
+&ensp;GUI window position is remembered between sessions  
   
