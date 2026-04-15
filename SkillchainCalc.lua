@@ -8,7 +8,6 @@ addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
 require('common');
-require('imgui_compat');
 local SkillchainChat     = require('SkillchainChat');
 
 local jobs               = require('Jobs');
