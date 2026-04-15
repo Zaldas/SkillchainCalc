@@ -8,7 +8,10 @@ addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
 require('common');
-local SkillchainChat     = require('SkillchainChat');
+local chat               = require('chat');
+
+local function msg(text) print(chat.header(addon.name):append(chat.message(text))); end
+local function err(text) print(chat.header(addon.name):append(chat.error(text))); end
 
 local jobs               = require('Jobs');
 local SkillchainCore     = require('SkillchainCore');
@@ -170,7 +173,7 @@ local function displaySkillchainResults(combinations, label)
         renderResults(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
-        SkillchainChat.msg(('No%s skillchain combinations found for filter level %d.'):format(suffix, cache.filters.scLevel));
+        msg(('No%s skillchain combinations found for filter level %d.'):format(suffix, cache.filters.scLevel));
         SkillchainRenderer.clear();
     end
 end
@@ -183,7 +186,7 @@ local function parseSkillchains(isStep)
 
         local wsList = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, nil, cache.filters.charLevel);
         if (not wsList) then
-            SkillchainChat.err('Invalid weapon/job token for step mode: ' .. tostring(cache.jobs.token1));
+            err('Invalid weapon/job token for step mode: ' .. tostring(cache.jobs.token1));
             SkillchainRenderer.clear();
             return;
         end
@@ -192,8 +195,8 @@ local function parseSkillchains(isStep)
 
         -- Check if filtering resulted in no combinations (possibly invalid property name)
         if cache.step.filterType == 'property' and #combinations == 0 then
-            SkillchainChat.err('Invalid property name "' .. tostring(cache.step.filter) .. '".');
-            SkillchainChat.msg('Valid properties: Compression, Detonation, Distortion, Fragmentation, Fusion, Gravitation, Impaction, Induration, Liquefaction, Reverberation, Scission, Transfixion, Light, Darkness');
+            err('Invalid property name "' .. tostring(cache.step.filter) .. '".');
+            msg('Valid properties: Compression, Detonation, Distortion, Fragmentation, Fusion, Gravitation, Impaction, Induration, Liquefaction, Reverberation, Scission, Transfixion, Light, Darkness');
             SkillchainRenderer.clear();
             return;
         end
@@ -212,7 +215,7 @@ local function parseSkillchains(isStep)
     local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, nil, cache.filters.charLevel);
 
     if (not skills1 or not skills2) then
-        SkillchainChat.err('Invalid weapon/job token(s): ' ..
+        err('Invalid weapon/job token(s): ' ..
             tostring(cache.jobs.token1) .. ', ' .. tostring(cache.jobs.token2));
         SkillchainRenderer.clear();
         return;
@@ -318,20 +321,20 @@ ashita.events.register('command', 'command_cb', function(e)
                     cache.settings.anchor.y = value;
                 end
                 SkillchainRenderer.updateAnchor(cache.settings);
-                SkillchainChat.msg('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
+                msg('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
                 validCommand = true;
             else
-                SkillchainChat.err('Invalid value for setx or sety. Must be a non-negative number.');
+                err('Invalid value for setx or sety. Must be a non-negative number.');
             end
         elseif (args[2] == 'setsclevel') then
             if (args[3]:any('1', '2', '3')) then
                 local l = tonumber(args[3]);
                 cache.settings.default.scLevel = l;
                 applyDefaultsToCache();
-                SkillchainChat.msg('Set default skillchain level: ' .. args[3]);
+                msg('Set default skillchain level: ' .. args[3]);
                 validCommand = true;
             else
-                SkillchainChat.err('Invalid value for setsclevel. Must be 1, 2, or 3.');
+                err('Invalid value for setsclevel. Must be 1, 2, or 3.');
             end
         else
             -- Table-driven boolean default commands
@@ -347,10 +350,10 @@ ashita.events.register('command', 'command_cb', function(e)
                 if (args[3]:any('true', 'false')) then
                     cache.settings.default[cmd.key] = args[3] == 'true';
                     if cmd.applyDefaults then applyDefaultsToCache(); end
-                    SkillchainChat.msg(cmd.msg .. args[3]);
+                    msg(cmd.msg .. args[3]);
                     validCommand = true;
                 else
-                    SkillchainChat.err('Invalid value for ' .. args[2] .. '. Must be true or false.');
+                    err('Invalid value for ' .. args[2] .. '. Must be true or false.');
                 end
             end
         end
@@ -358,10 +361,10 @@ ashita.events.register('command', 'command_cb', function(e)
             if (args[3]:any('true', 'false')) then
                 local d = args[3] == 'true';
                 SkillchainRenderer.setEnableDrag(d);
-                SkillchainChat.msg('Set enable drag = ' .. args[3]);
+                msg('Set enable drag = ' .. args[3]);
                 validCommand = true;
             else
-                SkillchainChat.err('Invalid value for enabledrag. Must be true or false.');
+                err('Invalid value for enabledrag. Must be true or false.');
             end
         end
 
@@ -387,26 +390,26 @@ ashita.events.register('command', 'command_cb', function(e)
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
-            SkillchainChat.msg('Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
+            msg('Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
             return;
         elseif (args[2] == 'status') then
-            SkillchainChat.msg('Status of Default Filter:');
-            SkillchainChat.msg(' Skillchain Level: Skillchains Level ' .. cache.settings.default.scLevel .. ' or higher.');
-            SkillchainChat.msg(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
-            SkillchainChat.msg(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
-            SkillchainChat.msg(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
-            SkillchainChat.msg(' Enable Favorite WS: ' .. tostring(cache.settings.default.enableFavWs or false));
-            SkillchainChat.msg(' Show REMA WS: ' .. tostring(cache.settings.default.showRema or false));
+            msg('Status of Default Filter:');
+            msg(' Skillchain Level: Skillchains Level ' .. cache.settings.default.scLevel .. ' or higher.');
+            msg(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
+            msg(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
+            msg(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
+            msg(' Enable Favorite WS: ' .. tostring(cache.settings.default.enableFavWs or false));
+            msg(' Show REMA WS: ' .. tostring(cache.settings.default.showRema or false));
             local poolInfo = SkillchainRenderer.getPoolInfo();
-            SkillchainChat.msg(' GDI Pool Size: ' .. poolInfo.poolSize .. ' (last used: ' .. poolInfo.lastUsedCount .. ')');
+            msg(' GDI Pool Size: ' .. poolInfo.poolSize .. ' (last used: ' .. poolInfo.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
-            SkillchainChat.msg('Commands:');
-            SkillchainChat.msg('  /scc                    - Open GUI');
-            SkillchainChat.msg('  /scc <token1> <token2>  - Calculate skillchains (CLI)');
-            SkillchainChat.msg('  /scc clear              - Clear results');
-            SkillchainChat.msg('  /scc status             - Show current defaults');
-            SkillchainChat.msg('  /scc debug              - Toggle debug mode');
+            msg('Commands:');
+            msg('  /scc                    - Open GUI');
+            msg('  /scc <token1> <token2>  - Calculate skillchains (CLI)');
+            msg('  /scc clear              - Clear results');
+            msg('  /scc status             - Show current defaults');
+            msg('  /scc debug              - Toggle debug mode');
             return;
         end
     end
@@ -446,7 +449,7 @@ ashita.events.register('command', 'command_cb', function(e)
                 SkillchainGUI.SetVisible(true);
             end
         end
-        SkillchainChat.msg('/scc help -- for usage help, or /scc to open GUI');
+        msg('/scc help -- for usage help, or /scc to open GUI');
         return;
     end
 
@@ -494,7 +497,7 @@ ashita.events.register('command', 'command_cb', function(e)
             if lvlVal and lvlVal >= 1 and lvlVal <= jobs.MAX_LEVEL then
                 charLevel = lvlVal;
             else
-                SkillchainChat.err(('Invalid level value. Must be between 1 and %d.'):format(jobs.MAX_LEVEL));
+                err(('Invalid level value. Must be between 1 and %d.'):format(jobs.MAX_LEVEL));
                 return;
             end
         else
@@ -507,31 +510,31 @@ ashita.events.register('command', 'command_cb', function(e)
     local token1, token2;
     if isStep then
         if #foundTokens == 0 then
-            SkillchainChat.err('Step mode requires a job/weapon token.');
-            SkillchainChat.msg('Usage: /scc step <job/weapon> [options]');
+            err('Step mode requires a job/weapon token.');
+            msg('Usage: /scc step <job/weapon> [options]');
             return;
         elseif #foundTokens > 1 then
-            SkillchainChat.err('Step mode only accepts one job/weapon token.');
-            SkillchainChat.msg('You cannot mix step calculation with job>job calculation.');
+            err('Step mode only accepts one job/weapon token.');
+            msg('You cannot mix step calculation with job>job calculation.');
             return;
         end
         token1 = foundTokens[1];
         token2 = nil;
     else
         if #foundTokens < 2 then
-            SkillchainChat.err('Normal mode requires two tokens.');
-            SkillchainChat.msg('/scc help -- for usage help');
+            err('Normal mode requires two tokens.');
+            msg('/scc help -- for usage help');
             return;
         elseif #foundTokens > 2 then
-            SkillchainChat.err('Too many tokens provided.');
-            SkillchainChat.msg('/scc help -- for usage help');
+            err('Too many tokens provided.');
+            msg('/scc help -- for usage help');
             return;
         end
 
         -- Validate: if user tried to use "step" as a token
         if foundTokens[1]:lower() == 'step' or foundTokens[2]:lower() == 'step' then
-            SkillchainChat.err('The "step" keyword must be the first token.');
-            SkillchainChat.msg('Usage: /scc step <job/weapon> [options]');
+            err('The "step" keyword must be the first token.');
+            msg('Usage: /scc step <job/weapon> [options]');
             return;
         end
 
