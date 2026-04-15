@@ -12,6 +12,23 @@ local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainGUI = {};
 local showWindow    = { false };
 
+local REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
+
+-- Precomputed set of REMA weapon skill names for O(1) lookup in hot paths.
+-- Built once at load time by scanning all skills for the ² suffix.
+local remaWsNames = {};
+do
+    for weaponType, weaponSkills in pairs(skills) do
+        if type(weaponSkills) == 'table' and weaponType ~= 'aliases' and weaponType ~= 'ChainInfo' then
+            for _, ws in pairs(weaponSkills) do
+                if type(ws) == 'table' and ws.en and ws.en:find(REMA_SUFFIX, 1, true) then
+                    remaWsNames[ws.en] = true;
+                end
+            end
+        end
+    end
+end
+
 -- Constants
 local JOB_COLUMN_WIDTH = 160; -- Shared width for each job column
 
@@ -115,6 +132,7 @@ local state = {
         both         = false,     -- "Both Directions" checkbox
         includeSubjob = false,    -- "Include Subjob" checkbox
         enableFavWs  = false,     -- "Favorite WS" checkbox
+        showRema     = false,     -- "Show REMA WS" checkbox (disabled by default)
     },
 
     -- Custom level filter settings
@@ -154,7 +172,7 @@ local function calculateTabHeight(tabName, maxWeapons)
         return (rowsBase + rowsWeapons + rowsSubjob + rowsFavWs + rowsLevel) * lineHeight + paddingAdjust;
     elseif tabName == 'Filters' then
         paddingAdjust = 3;
-        return 19 * lineHeight + paddingAdjust;
+        return 20 * lineHeight + paddingAdjust;
     elseif tabName == 'Settings' then
         --paddingAdjust = 0;
         return 19 * lineHeight + paddingAdjust;
@@ -502,8 +520,9 @@ local function buildFavWsItems(jobState)
                             maxSkill = SkillRanks.Cap[skillRank][levelToUse] or 999;
                         end
 
-                        -- Check job restrictions
-                        if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId) then
+                        -- Check job restrictions and REMA filter
+                        if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
+                            and (state.filters.showRema or not remaWsNames[ws.en]) then
                             table.insert(wsForWeapon, {
                                 name = ws.en,
                                 index = index
@@ -568,6 +587,7 @@ local function buildCalculationRequest()
         charLevel = state.customLevel.enabled and state.customLevel.value or nil,
         favWs1    = favWs1,
         favWs2    = favWs2,
+        showRema  = state.filters.showRema,
     };
 end
 
@@ -929,6 +949,25 @@ local function drawFiltersTab()
     imgui.SameLine();
     helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
 
+    -- Show REMA WS Checkbox
+    imgui.SetCursorPosX(baseX + indent);
+    local showRema = { state.filters.showRema };
+    if imgui.Checkbox('Show REMA weapon skills (²)', showRema) then
+        state.filters.showRema = showRema[1];
+        -- Reset favorite WS if it was a REMA WS that is now hidden
+        if not state.filters.showRema then
+            local function clearRemaFavWs(jobState)
+                if remaWsNames[jobState.favWsName] then
+                    jobState.favWsName = nil;
+                end
+            end
+            clearRemaFavWs(state.jobs[1]);
+            clearRemaFavWs(state.jobs[2]);
+        end
+    end
+    imgui.SameLine();
+    helpMarker('When enabled, includes Relic/Empyrean/Mythic/Aeonic weapon skills\n(marked with ²) in results. Disabled by default.');
+
     imgui.Spacing();
     imgui.Separator();
     imgui.Spacing();
@@ -954,6 +993,7 @@ local function drawFiltersTab()
         def.includeSubjob = state.filters.includeSubjob;
         def.useCharLevel = state.customLevel.enabled;
         def.enableFavWs = state.filters.enableFavWs;
+        def.showRema = state.filters.showRema;
         cache.settings.default = def;
 
         request = request or {};
@@ -971,6 +1011,7 @@ local function drawFiltersTab()
         state.filters.includeSubjob = def.includeSubjob or false;
         state.customLevel.enabled = def.useCharLevel or false;
         state.filters.enableFavWs = def.enableFavWs or false;
+        state.filters.showRema = def.showRema or false;
         state.filters.elementIndex = 1;
     end
 
@@ -1078,6 +1119,9 @@ local function drawSettingsTab()
     imgui.Text(string.format("Enable Fav WS:    %s", tostring(def.enableFavWs or false)));
 
     imgui.SetCursorPosX(baseX + indent);
+    imgui.Text(string.format("Show REMA WS:     %s", tostring(def.showRema or false)));
+
+    imgui.SetCursorPosX(baseX + indent);
     imgui.Text(string.format("Enable Both:      %s", tostring(def.both or false)));
 
     -----------------------------------------------------------------------
@@ -1098,6 +1142,9 @@ local function drawSettingsTab()
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setfavws <true|false>');
+
+    imgui.SetCursorPosX(baseX + indent);
+    imgui.Text('/scc setrema <true|false>');
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text('/scc setboth <true|false>');
@@ -1167,8 +1214,9 @@ function SkillchainGUI.OpenFromCli()
         state.customLevel.enabled = def.useCharLevel or false;
     end
 
-    -- Favorite WS filter from defaults (CLI doesn't support setting this directly)
+    -- Favorite WS / REMA filter from defaults (CLI doesn't support setting these directly)
     state.filters.enableFavWs = def.enableFavWs or false;
+    state.filters.showRema = def.showRema or false;
 
     -- Tell DrawWindow "don't re-init from defaults"
     state.initialized   = true;
@@ -1241,6 +1289,12 @@ function SkillchainGUI.DrawWindow()
                 state.filters.enableFavWs = def.enableFavWs;
             else
                 state.filters.enableFavWs = false;
+            end
+
+            if def.showRema ~= nil then
+                state.filters.showRema = def.showRema;
+            else
+                state.filters.showRema = false;
             end
 
             if def.useCharLevel ~= nil then

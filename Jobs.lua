@@ -113,7 +113,7 @@ jobs.THF = {
 
 jobs.PLD = {
     defaultSubjob = 'NIN',
-    primaryWeapons = { 'sword', 'gs' },
+    primaryWeapons = { 'sword' },
     weapons = {
         sword   = { skillRank = 'A+' },
         club    = { skillRank = 'A-' },
