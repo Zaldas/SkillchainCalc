@@ -3,9 +3,8 @@
 
 require('common');
 local skills         = require('Skills');
-local SkillchainChat = require('SkillchainChat');
--- Cache scaling module to avoid repeated requires
-local scaling = require('scaling');
+local chat           = require('chat');
+local scaling        = require('scaling');
 local gdi = nil;  -- Will be injected during initialization
 
 local SkillchainRenderer = {};
@@ -82,17 +81,26 @@ end
 -- Initialization and Cleanup
 -- ============================================================================
 
+local function setTitleAndBgPosition(settings)
+    if gdiObjects.title then
+        gdiObjects.title:set_position_x(settings.anchor.x + 5);
+        gdiObjects.title:set_position_y(settings.anchor.y);
+    end
+    if gdiObjects.background then
+        gdiObjects.background:set_position_x(settings.anchor.x);
+        gdiObjects.background:set_position_y(settings.anchor.y);
+    end
+end
+
 function SkillchainRenderer.initialize(gdiLib, settings)
     gdi = gdiLib;
 
     gdiObjects.title = gdi:create_object(settings.title_font);
     gdiObjects.title:set_text('Skillchains');
-    gdiObjects.title:set_position_x(settings.anchor.x + 5);
-    gdiObjects.title:set_position_y(settings.anchor.y);
 
     gdiObjects.background = gdi:create_rect(settings.bg);
-    gdiObjects.background:set_position_x(settings.anchor.x);
-    gdiObjects.background:set_position_y(settings.anchor.y);
+
+    setTitleAndBgPosition(settings);
 
     -- Start with minimum pool size
     addObjectsToPool(gdiObjects.minPoolSize, settings);
@@ -126,7 +134,6 @@ function SkillchainRenderer.clear()
         gdiObjects.title:set_visible(false);
     end
 
-    -- Only hide objects that were previously used
     hidePoolObjects(1, gdiObjects.lastUsedCount);
     gdiObjects.lastUsedCount = 0;
     gdiObjects.layoutData = nil;
@@ -149,15 +156,7 @@ end
 -- ============================================================================
 
 function SkillchainRenderer.updateAnchor(settings)
-    if gdiObjects.title then
-        gdiObjects.title:set_position_x(settings.anchor.x + 5);
-        gdiObjects.title:set_position_y(settings.anchor.y);
-    end
-
-    if gdiObjects.background then
-        gdiObjects.background:set_position_x(settings.anchor.x);
-        gdiObjects.background:set_position_y(settings.anchor.y);
-    end
+    setTitleAndBgPosition(settings);
 
     -- Update all visible text objects to match new anchor position
     -- We need to recalculate their positions based on stored layout data
@@ -292,14 +291,7 @@ function SkillchainRenderer.handleMouse(e, settings)
         dragState.dragPosition[2] = e.y;
 
         -- Only update title and background during drag (lightweight)
-        if gdiObjects.title then
-            gdiObjects.title:set_position_x(settings.anchor.x + 5);
-            gdiObjects.title:set_position_y(settings.anchor.y);
-        end
-        if gdiObjects.background then
-            gdiObjects.background:set_position_x(settings.anchor.x);
-            gdiObjects.background:set_position_y(settings.anchor.y);
-        end
+        setTitleAndBgPosition(settings);
 
         -- Hide text pool objects once at start of drag
         if not dragState.objectsHidden and gdiObjects.layoutData then
@@ -539,7 +531,7 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
         notice:set_visible(true);
 
         -- Also print to console
-        SkillchainChat.err(errorString);
+        print(chat.header(addon.name):append(chat.error(errorString)));
     end
 
     -- Adjust background dimensions

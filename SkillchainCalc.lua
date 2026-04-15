@@ -67,7 +67,8 @@ local sccSettings = T{
         both = false,
         includeSubjob = false,
         useCharLevel = false,
-        enableFavWs = false
+        enableFavWs = false,
+        showRema = false
     },
 };
 
@@ -90,6 +91,7 @@ local cache = {
         scElement = nil,       -- Element filter (e.g., "ice")
         includeSubjob = false, -- Whether subjob filtering was enabled
         charLevel = nil,       -- Character level for skill caps (or nil for max)
+        showRema = false,      -- Whether to include REMA weapon skills (² suffix)
     },
 
     -- Step mode configuration (property → WS calculations)
@@ -109,6 +111,7 @@ local function applyDefaultsToCache()
     cache.filters.scLevel = def.scLevel or 1;
     cache.filters.both = def.both or false;
     cache.filters.includeSubjob = def.includeSubjob or false;
+    cache.filters.showRema = def.showRema or false;
 end
 
 local function resetCacheFull()
@@ -159,7 +162,8 @@ local function displaySkillchainResults(combinations, label)
         scLevel = cache.filters.scLevel,
         scElement = cache.filters.scElement,
         favWs1 = cache.jobs.favWs1,
-        favWs2 = cache.jobs.favWs2
+        favWs2 = cache.jobs.favWs2,
+        showRema = cache.filters.showRema,
     });
 
     if (#filteredCombinations > 0) then
@@ -277,6 +281,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 cache.filters.charLevel = req.charLevel;
                 cache.jobs.favWs1 = req.favWs1;
                 cache.jobs.favWs2 = req.favWs2;
+                cache.filters.showRema = req.showRema or false;
 
                 -- GUI-initiated requests are always normal mode (tied to GUI)
                 cache.step.enabled = false;
@@ -329,45 +334,28 @@ ashita.events.register('command', 'command_cb', function(e)
             else
                 SkillchainChat.err('Invalid value for setsclevel. Must be 1, 2, or 3.');
             end
-        elseif (args[2] == 'setcharlevel') then
-            if (args[3]:any('true', 'false')) then
-                local b = args[3] == 'true';
-                cache.settings.default.useCharLevel = b;
-                applyDefaultsToCache();
-                SkillchainChat.msg('Set custom character level filter = ' .. args[3]);
-                validCommand = true;
-            else
-                SkillchainChat.err('Invalid value for setcharlevel. Must be true or false.');
+        else
+            -- Table-driven boolean default commands
+            local boolCommands = {
+                setcharlevel = { key = 'useCharLevel',  msg = 'Set custom character level filter = ', applyDefaults = true  },
+                setboth      = { key = 'both',          msg = "Set parameter 'both' = ",              applyDefaults = true  },
+                setsubjob    = { key = 'includeSubjob', msg = 'Set subjob filter default = ',         applyDefaults = false },
+                setfavws     = { key = 'enableFavWs',   msg = 'Set favorite WS filter default = ',    applyDefaults = false },
+                setrema      = { key = 'showRema',      msg = 'Set show REMA WS = ',                  applyDefaults = true  },
+            };
+            local cmd = boolCommands[args[2]];
+            if cmd then
+                if (args[3]:any('true', 'false')) then
+                    cache.settings.default[cmd.key] = args[3] == 'true';
+                    if cmd.applyDefaults then applyDefaultsToCache(); end
+                    SkillchainChat.msg(cmd.msg .. args[3]);
+                    validCommand = true;
+                else
+                    SkillchainChat.err('Invalid value for ' .. args[2] .. '. Must be true or false.');
+                end
             end
-        elseif (args[2] == 'setboth') then
-            if (args[3]:any('true', 'false')) then
-                local b = args[3] == 'true';
-                cache.settings.default.both = b;
-                applyDefaultsToCache();
-                SkillchainChat.msg('Set parameter \'both\' = ' .. args[3]);
-                validCommand = true;
-            else
-                SkillchainChat.err('Invalid value for setboth. Must be true or false.');
-            end
-        elseif (args[2] == 'setsubjob') then
-            if (args[3]:any('true', 'false')) then
-                local s = args[3] == 'true';
-                cache.settings.default.includeSubjob = s;
-                SkillchainChat.msg('Set subjob filter default = ' .. args[3]);
-                validCommand = true;
-            else
-                SkillchainChat.err('Invalid value for setsubjob. Must be true or false.');
-            end
-        elseif (args[2] == 'setfavws') then
-            if (args[3]:any('true', 'false')) then
-                local p = args[3] == 'true';
-                cache.settings.default.enableFavWs = p;
-                SkillchainChat.msg('Set favorite WS filter default = ' .. args[3]);
-                validCommand = true;
-            else
-                SkillchainChat.err('Invalid value for setfavws. Must be true or false.');
-            end
-        elseif (args[2] == 'enabledrag') then
+        end
+        if (args[2] == 'enabledrag') then
             if (args[3]:any('true', 'false')) then
                 local d = args[3] == 'true';
                 SkillchainRenderer.setEnableDrag(d);
@@ -409,6 +397,7 @@ ashita.events.register('command', 'command_cb', function(e)
             SkillchainChat.msg(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
             SkillchainChat.msg(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
             SkillchainChat.msg(' Enable Favorite WS: ' .. tostring(cache.settings.default.enableFavWs or false));
+            SkillchainChat.msg(' Show REMA WS: ' .. tostring(cache.settings.default.showRema or false));
             local poolInfo = SkillchainRenderer.getPoolInfo();
             SkillchainChat.msg(' GDI Pool Size: ' .. poolInfo.poolSize .. ' (last used: ' .. poolInfo.lastUsedCount .. ')');
             return;
@@ -451,9 +440,7 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    -- Step mode requires at least one token after "step" keyword
-    -- Normal mode requires two tokens
-    local minArgs = isStep and 3 or 3;
+    local minArgs = 3; -- both step (/scc step <token>) and normal (/scc <t1> <t2>) need at least 3 args
     if (#args < minArgs) then
         if (#args == 1) then
             if SkillchainGUI ~= nil then

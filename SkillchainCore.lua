@@ -5,9 +5,11 @@ require('common');
 local skills         = require('Skills');
 local jobs           = require('Jobs');
 local SkillRanks     = require('SkillRanks');
-local SkillchainChat = require('SkillchainChat');
+local chat           = require('chat');
 
 local SkillchainCore = {};
+
+local REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
 
 -- Helper function to get skill cap from rank and level
 local function getSkillCapFromRank(skillRank, level)
@@ -23,7 +25,6 @@ end
 -- TOAU – PUP Frame Support Functions
 -----------------------------------------------------------------------
 
--- Helper: Check if frame is allowed for a WS (uses JobRestrictions field)
 local function isFrameAllowed(ws, frameName)
     if not ws.JobRestrictions then
         return true;
@@ -36,8 +37,6 @@ local function isFrameAllowed(ws, frameName)
     return false;
 end
 
--- Append frame names to weapon list for PUP job
--- Returns modified list and listed table
 local function appendFramesToWeaponList(jobId, job, list, listed)
     if jobId ~= 'PUP' or not job.frames then
         return list;
@@ -657,7 +656,13 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
             pass = elementMatch;
         end
 
-        -- Filter 3: Weaponskill names
+        -- Filter 3: REMA weapon skills (² suffix)
+        if pass and not filters.showRema then
+            local isRema = combo.skill1:find(REMA_SUFFIX, 1, true) or combo.skill2:find(REMA_SUFFIX, 1, true);
+            pass = not isRema;
+        end
+
+        -- Filter 4: Weaponskill names
         if pass and (favWs1 or favWs2) then
             local ws1Match = not favWs1 or favWs1 == '' or combo.skill1 == favWs1;
             local ws2Match = not favWs2 or favWs2 == '' or combo.skill2 == favWs2;
@@ -736,7 +741,7 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     local orderedResults = {};
 
     if debugMode then
-        SkillchainChat.msg('[Debug] Starting level-based sorting');
+        print(chat.header(addon.name):append(chat.message('[Debug] Starting level-based sorting')));
     end
 
     -- Sort chains by display order (via skills.GetDisplayIndex)
@@ -763,7 +768,7 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
         local sortedOpeners = {};
 
         if debugMode then
-            SkillchainChat.msg(('[Debug] Sorting openers for chain %s'):format(chainName));
+            print(chat.header(addon.name):append(chat.message(('[Debug] Sorting openers for chain %s'):format(chainName))));
         end
 
         for opener, closers in pairs(openers) do
@@ -790,7 +795,7 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     end
 
     if debugMode then
-        SkillchainChat.msg('[Debug] Sorting completed');
+        print(chat.header(addon.name):append(chat.message('[Debug] Sorting completed')));
     end
 
     return sortedResults, orderedResults;
