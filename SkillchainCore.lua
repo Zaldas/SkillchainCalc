@@ -614,7 +614,7 @@ function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterT
 end
 
 -- Consolidated single-pass filter: applies all filters in one iteration
--- filters: {scLevel, scElement, favWs1, favWs2}
+-- filters: {scLevel, scElement, favWs1, favWs2, both}
 function SkillchainCore.FilterSkillchains(combinations, filters)
     if not filters then
         return combinations;
@@ -663,9 +663,17 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
         end
 
         -- Filter 4: Weaponskill names
+        -- In both-directions mode the reverse pass swaps skill1/skill2 roles, so a
+        -- favorite WS can appear in either position.
         if pass and (favWs1 or favWs2) then
-            local ws1Match = not favWs1 or favWs1 == '' or combo.skill1 == favWs1;
-            local ws2Match = not favWs2 or favWs2 == '' or combo.skill2 == favWs2;
+            local ws1Match, ws2Match;
+            if filters.both then
+                ws1Match = not favWs1 or favWs1 == '' or combo.skill1 == favWs1 or combo.skill2 == favWs1;
+                ws2Match = not favWs2 or favWs2 == '' or combo.skill2 == favWs2 or combo.skill1 == favWs2;
+            else
+                ws1Match = not favWs1 or favWs1 == '' or combo.skill1 == favWs1;
+                ws2Match = not favWs2 or favWs2 == '' or combo.skill2 == favWs2;
+            end
             pass = ws1Match and ws2Match;
         end
 

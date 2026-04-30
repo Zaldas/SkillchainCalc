@@ -166,6 +166,7 @@ local function displaySkillchainResults(combinations, label)
         favWs1 = cache.jobs.favWs1,
         favWs2 = cache.jobs.favWs2,
         showRema = cache.filters.showRema,
+        both = cache.filters.both,
     });
 
     if (#filteredCombinations > 0) then
