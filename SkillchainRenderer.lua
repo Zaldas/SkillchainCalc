@@ -190,7 +190,7 @@ end
 -- ============================================================================
 
 -- Calculate anchor position limits based on screen size and layout
-local function calculateAnchorLimits(settings)
+function SkillchainRenderer.calculateAnchorLimits(settings)
     local pad = 20;
     local layoutSettings = settings.layout;
     local colW = (layoutSettings and layoutSettings.columnWidth) or pad;
@@ -203,9 +203,6 @@ local function calculateAnchorLimits(settings)
 
     return { minX = pad, maxX = maxX, minY = pad, maxY = maxY };
 end
-
--- Export for use by GUI
-SkillchainRenderer.calculateAnchorLimits = calculateAnchorLimits;
 
 -- Check if mouse is over the draggable area (entire background)
 local function dragHitTest(mouseX, mouseY)
@@ -315,7 +312,7 @@ function SkillchainRenderer.handleMouse(e, settings)
             dragState.dragPosition[1] = e.x;
             dragState.dragPosition[2] = e.y;
             dragState.mouseBlocked = true;
-            dragState.limits = calculateAnchorLimits(settings);  -- Cache limits once
+            dragState.limits = SkillchainRenderer.calculateAnchorLimits(settings);  -- Cache limits once
             e.blocked = true;
             return;
         end

@@ -477,22 +477,43 @@ local function drawWeaponCheckboxes(jobState)
     return weaponsChanged;
 end
 
--- Build favorite WS dropdown items from selected weapons for a job state object
--- Returns: table of WS display names, starting with 'Any', in reverse skill order grouped by weapon type
--- jobState: reference to state.jobs[1] or state.jobs[2]
-local function buildFavWsItems(jobState)
-    local items = { 'Any' };
+-- Cached fav WS item lists; invalidated by cache key when job/weapons/level/showRema changes
+local favWsItemsCache = { [1] = { key = nil, items = nil }, [2] = { key = nil, items = nil } };
 
+-- Build favorite WS dropdown items from selected weapons for a job state object.
+-- Returns: table of WS display names, starting with 'Any', in reverse skill order grouped by weapon type.
+-- side: 1 or 2, used as cache slot key.
+local function buildFavWsItems(jobState, side)
     local jobId = jobItems[jobState.index] or jobItems[1];
     local subJobId = state.filters.includeSubjob and (jobItems[jobState.subIndex] or nil) or nil;
     local charLevel = state.customLevel.enabled and state.customLevel.value or nil;
 
+    -- Build cache key from all inputs that affect the result
+    local selectedWeapons = {};
+    if jobState.weapons then
+        for w, checked in pairs(jobState.weapons) do
+            if checked then table.insert(selectedWeapons, w); end
+        end
+        table.sort(selectedWeapons);
+    end
+    local cacheKey = (jobId or '') .. '|' .. (subJobId or '') .. '|' .. tostring(charLevel) ..
+                     '|' .. tostring(state.filters.showRema) .. '|' .. table.concat(selectedWeapons, ',');
+
+    local cached = favWsItemsCache[side];
+    if cached and cached.key == cacheKey then
+        return cached.items;
+    end
+
+    local items = { 'Any' };
+
     if not jobId or not jobState.weapons then
+        favWsItemsCache[side] = { key = cacheKey, items = items };
         return items;
     end
 
     local job = jobsData[jobId];
     if not job or not job.weapons then
+        favWsItemsCache[side] = { key = cacheKey, items = items };
         return items;
     end
 
@@ -547,13 +568,13 @@ local function buildFavWsItems(jobState)
     for _, weaponKey in ipairs(weaponList) do
         local group = weaponGroups[weaponKey];
         if group then
-            -- Add all weapon skills for this weapon (no header)
             for _, ws in ipairs(group) do
                 table.insert(items, ws.name);
             end
         end
     end
 
+    favWsItemsCache[side] = { key = cacheKey, items = items };
     return items;
 end
 
@@ -589,6 +610,17 @@ local function buildCalculationRequest()
         favWs2    = favWs2,
         showRema  = state.filters.showRema,
     };
+end
+
+local function ensureJobsAreDifferent(mainIdx, subIdx, prevMainIdx, prevSubIdx)
+    if mainIdx == subIdx then
+        if prevSubIdx ~= subIdx then
+            return prevSubIdx, subIdx;
+        elseif prevMainIdx ~= mainIdx then
+            return mainIdx, prevMainIdx;
+        end
+    end
+    return mainIdx, subIdx;
 end
 
 local function drawCalculatorTab()
@@ -688,20 +720,6 @@ local function drawCalculatorTab()
         state.jobs[2].subIndex = drawCombo('##tosubjob', jobItems, state.jobs[2].subIndex);
         imgui.PopItemWidth();
 
-        -- Prevent main and subjob from being the same - swap them if they match
-        local function ensureJobsAreDifferent(mainIdx, subIdx, prevMainIdx, prevSubIdx)
-            if mainIdx == subIdx then
-                -- If subjob was just changed to match main, swap main to previous subjob
-                if prevSubIdx ~= subIdx then
-                    return prevSubIdx, subIdx;
-                -- If main was just changed to match subjob, swap subjob to previous main
-                elseif prevMainIdx ~= mainIdx then
-                    return mainIdx, prevMainIdx;
-                end
-            end
-            return mainIdx, subIdx;
-        end
-
         state.jobs[1].index, state.jobs[1].subIndex = ensureJobsAreDifferent(state.jobs[1].index, state.jobs[1].subIndex, prevJob1Index, prevJob1SubIndex);
         state.jobs[2].index, state.jobs[2].subIndex = ensureJobsAreDifferent(state.jobs[2].index, state.jobs[2].subIndex, prevJob2Index, prevJob2SubIndex);
 
@@ -713,8 +731,8 @@ local function drawCalculatorTab()
 
     -- Row 1.75: favorite WS combos (if enabled)
     if state.filters.enableFavWs then
-        local job1FavWsItems = buildFavWsItems(state.jobs[1]);
-        local job2FavWsItems = buildFavWsItems(state.jobs[2]);
+        local job1FavWsItems = buildFavWsItems(state.jobs[1], 1);
+        local job2FavWsItems = buildFavWsItems(state.jobs[2], 2);
 
         imgui.NextColumn();
         imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
@@ -772,7 +790,7 @@ local function drawCalculatorTab()
 
     -- Smart reset: only reset favorite WS if it's no longer available after weapon change
     if job1WeaponsChanged and state.jobs[1].favWsName then
-        local items = buildFavWsItems(state.jobs[1]);
+        local items = buildFavWsItems(state.jobs[1], 1);
         local found = false;
         for _, name in ipairs(items) do
             if name == state.jobs[1].favWsName then
@@ -786,7 +804,7 @@ local function drawCalculatorTab()
     end
 
     if job2WeaponsChanged and state.jobs[2].favWsName then
-        local items = buildFavWsItems(state.jobs[2]);
+        local items = buildFavWsItems(state.jobs[2], 2);
         local found = false;
         for _, name in ipairs(items) do
             if name == state.jobs[2].favWsName then
@@ -1054,8 +1072,6 @@ local function drawSettingsTab()
     -----------------------------------------------------------------------
     local anchor = cache.settings.anchor;
 
-    -- Use shared limit calculation from SkillchainRenderer
-    local SkillchainRenderer = require('SkillchainRenderer');
     local limits = SkillchainRenderer.calculateAnchorLimits(cache.settings);
     local pad = limits.minX;
     local maxX = limits.maxX;
@@ -1340,7 +1356,7 @@ function SkillchainGUI.DrawWindow()
 
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
-        ImGuiWindowFlags_NoDocking,
+        ImGuiWindowFlags_NoDocking or 0,
         ImGuiWindowFlags_NoResize
     );
 
