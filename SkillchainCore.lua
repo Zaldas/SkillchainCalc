@@ -435,6 +435,23 @@ local function findChainLevel(chainName)
     return chainInfo and chainInfo.level or 0;
 end
 
+-- Built once at load time; keyed by WS display name → skill array index for sort ordering
+local wsNameToSortIndex = {};
+do
+    for weaponType, weaponSkills in pairs(skills) do
+        if type(weaponSkills) == 'table'
+            and weaponType ~= 'aliases'
+            and weaponType ~= 'ChainInfo'
+        then
+            for index, ws in pairs(weaponSkills) do
+                if type(ws) == 'table' and ws.en then
+                    wsNameToSortIndex[ws.en] = index;
+                end
+            end
+        end
+    end
+end
+
 local function findSkillLevel(name)
     -- 1) Property (Darkness, Distortion, etc.) – use displayOrder
     if skills.ChainInfo[name] then
@@ -446,21 +463,8 @@ local function findSkillLevel(name)
         return 0;
     end
 
-    -- 2) Weaponskill – use array index (higher index = higher tier)
-    for weaponType, weaponSkills in pairs(skills) do
-        if type(weaponSkills) == 'table'
-            and weaponType ~= 'aliases'
-            and weaponType ~= 'ChainInfo'
-        then
-            for index, skill in pairs(weaponSkills) do
-                if type(skill) == 'table' and skill.en == name then
-                    return index;
-                end
-            end
-        end
-    end
-
-    return 0;
+    -- 2) Weaponskill – O(1) lookup instead of linear scan
+    return wsNameToSortIndex[name] or 0;
 end
 
 local function normalizeChainSource(source)
