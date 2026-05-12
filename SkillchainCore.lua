@@ -480,12 +480,11 @@ local function normalizeChainSource(source)
     return {};
 end
 
-local function resolveChainProperties(source1, source2, suppress)
-    local props1  = normalizeChainSource(source1);
-    local props2  = normalizeChainSource(source2);
-    local results = {};
-
-    suppress = suppress or false;
+local function resolveChainProperties(source1, source2)
+    local props1   = normalizeChainSource(source1);
+    local props2   = normalizeChainSource(source2);
+    local maxTier  = 0;
+    local results  = {};
 
     for _, chain1 in ipairs(props1) do
         local chainInfo = skills.ChainInfo[chain1];
@@ -493,9 +492,11 @@ local function resolveChainProperties(source1, source2, suppress)
             for _, chain2 in ipairs(props2) do
                 local link = chainInfo[chain2];
                 if link then
-                    local resultChain = link.skillchain;
-                    if not suppress or (resultChain ~= 'Light' and resultChain ~= 'Darkness') then
-                        table.insert(results, resultChain);
+                    if link.level > maxTier then
+                        maxTier = link.level;
+                        results = { link.skillchain };
+                    elseif link.level == maxTier then
+                        results[#results + 1] = link.skillchain;
                     end
                 end
             end
@@ -526,8 +527,8 @@ local function buildCombinations(list1, list2, opts)
         return results;
     end
 
-    local function addCombo(src1, src2, suppressLv3)
-        local chains = resolveChainProperties(src1, src2, suppressLv3);
+    local function addCombo(src1, src2)
+        local chains = resolveChainProperties(src1, src2);
         local name1  = getSourceName(src1);
         local name2  = getSourceName(src2);
 
@@ -549,18 +550,38 @@ local function buildCombinations(list1, list2, opts)
     -- forward pass
     for _, s1 in pairs(list1) do
         for _, s2 in pairs(list2) do
-            addCombo(s1, s2, false);
+            addCombo(s1, s2);
         end
     end
 
-    -- optional reverse pass (used for WS both-direction support)
+    -- reverse pass
     if both then
         for _, s2 in pairs(list2) do
             for _, s1 in pairs(list1) do
-                -- suppress Lv3 Light/Darkness on reverse pass to avoid dup L/D
-                addCombo(s2, s1, true);
+                addCombo(s2, s1);
             end
         end
+    end
+
+    -- L/D chains are always reversible in-game: if A→B and B→A both produce
+    -- Darkness/Light, deduplicate to one direction (the ↔ arrow covers both).
+    if both then
+        local ldSeen    = {};
+        local filtered  = {};
+        for _, combo in ipairs(results) do
+            if combo.chain == 'Light' or combo.chain == 'Darkness' then
+                local a, b = combo.skill1, combo.skill2;
+                if a > b then a, b = b, a; end
+                local key = a .. '|' .. b .. '|' .. combo.chain;
+                if not ldSeen[key] then
+                    ldSeen[key] = true;
+                    table.insert(filtered, combo);
+                end
+            else
+                table.insert(filtered, combo);
+            end
+        end
+        results = filtered;
     end
 
     return results;
@@ -693,56 +714,12 @@ function SkillchainCore.BuildSkillchainTable(skillchains)
     local resultsTable = {};
 
     for _, combo in ipairs(skillchains) do
-        local opener     = combo.skill1;
-        local closer     = combo.skill2;
-        local chainLevel = findChainLevel(combo.chain);
+        local opener = combo.skill1;
+        local closer = combo.skill2;
 
-        -- Check if opener/closer already exists under any chain
-        local existingEntry;
-
-        for chain, openers in pairs(resultsTable) do
-            if openers[opener] then
-                for _, entry in ipairs(openers[opener]) do
-                    if entry.closer == closer then
-                        existingEntry = { chain = chain, entry = entry };
-                        break;
-                    end
-                end
-            end
-            if existingEntry then
-                break;
-            end
-        end
-
-        if existingEntry then
-            local existingLevel = findChainLevel(existingEntry.chain);
-            if chainLevel > existingLevel then
-                -- Remove lower-level chain version
-                local openers = resultsTable[existingEntry.chain];
-                for i, entry in ipairs(openers[opener]) do
-                    if entry.closer == closer then
-                        table.remove(openers[opener], i);
-                        break;
-                    end
-                end
-                if #openers[opener] == 0 then
-                    openers[opener] = nil;
-                end
-                if not next(openers) then
-                    resultsTable[existingEntry.chain] = nil;
-                end
-            else
-                -- Skip, higher-level version already exists
-                goto continue;
-            end
-        end
-
-        -- Add new chain
-        resultsTable[combo.chain] = resultsTable[combo.chain] or {};
+        resultsTable[combo.chain]         = resultsTable[combo.chain] or {};
         resultsTable[combo.chain][opener] = resultsTable[combo.chain][opener] or {};
         table.insert(resultsTable[combo.chain][opener], { closer = closer });
-
-        ::continue::
     end
 
     return resultsTable;
