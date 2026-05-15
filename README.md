@@ -3,7 +3,7 @@
 <img align="right" alt="image" width="500" height="1575" alt="skillchaincalcaddon" src="https://github.com/user-attachments/assets/d37da06e-5aff-409b-84dd-dd5a2d0ca008" />  
    
 Display skillchains possible given jobs and optional weapons, level, skillchain, or element!!  
-Now with ImGui interface to input parameters!!!   
+Now with ImGui interface to input parameters!!! You can also click on a skillchain to print to default chat channel currently set by game~!   
   
 ### GUI Interface  
 &ensp;Three Tabs:  
