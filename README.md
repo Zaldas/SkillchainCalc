@@ -32,7 +32,7 @@ The Party window reads your live party from memory and lets you calculate skillc
 |--------|-------------|
 | **Skillchain** | Limit results by chain family: All, Any Tier 2+, Fragmentation, Fusion, Gravitation, Distortion, or Light / Darkness |
 | **REMA** *(Advanced)* | Expand to mark which members have REMA (Relic/Empyrean/Mythic/Aeonic) weapons. Members flagged as REMA will include those weapon skills (marked ²) in the calculation. |
-| **Fav WS** *(Advanced)* | Pin a preferred weapon skill per member. Only skillchains that include at least one member's chosen WS will be shown. |
+| **Fav WS** *(Advanced)* | Pin a preferred weapon skill per member. A member with a fav WS set contributes only that WS to the calculation; members without one are unrestricted. |
 
 REMA and Fav WS are collapsible panels that are mutually exclusive — opening one closes the other. Both are disabled by default and can be enabled in the **Settings** tab.
 
