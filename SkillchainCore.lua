@@ -790,4 +790,193 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     return sortedResults, orderedResults;
 end
 
+-- ============================================================================
+-- Party Skillchain Calculation
+-- ============================================================================
+
+-- Append name to list if not already present
+local function appendNameUnique(list, name)
+    for _, existing in ipairs(list) do
+        if existing == name then
+            return;
+        end
+    end
+    table.insert(list, name);
+end
+
+-- Calculate all skillchains between every ordered pair of active party members.
+-- members: array of {name, jobId, subJobId, level, subLevel, enabled, weapon}
+-- Returns a flat array of:
+--   {opener, closer, chain, chainLevel, openerNames, closerNames}
+function SkillchainCore.CalculatePartySkillchains(members)
+    if not members then
+        return {};
+    end
+
+    -- Filter to active members with a chosen weapon, resolving skills once each.
+    local active = {};
+    for _, m in ipairs(members) do
+        if m.enabled and m.weapon then
+            local token = m.jobId:lower()
+                .. (m.subJobId and ('/' .. m.subJobId:lower()) or '')
+                .. ':' .. m.weapon;
+            local skillList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
+            if skillList then
+                if not m.hasRema then
+                    local noRema = {};
+                    for _, ws in ipairs(skillList) do
+                        if not ws.en:find(REMA_SUFFIX, 1, true) then
+                            table.insert(noRema, ws);
+                        end
+                    end
+                    skillList = noRema;
+                end
+                if #skillList > 0 then
+                    table.insert(active, { member = m, skills = skillList });
+                end
+            end
+        end
+    end
+
+    local merged = {};
+    local order  = {};
+
+    for i = 1, #active do
+        -- Build a WS-name set for active[i] to resolve direction per combo.
+        local wsSetI = {};
+        for _, ws in ipairs(active[i].skills) do wsSetI[ws.en] = true; end
+
+        for j = i + 1, #active do
+            local mA    = active[i].member;
+            local mB    = active[j].member;
+            -- both=true: covers A→B and B→A in one call; buildCombinations
+            -- already deduplicates Light/Darkness to a single direction.
+            local combos = SkillchainCore.CalculateSkillchains(active[i].skills, active[j].skills, true);
+
+            for _, combo in ipairs(combos) do
+                -- skill1 belongs to whichever member opened the chain.
+                local opMember = wsSetI[combo.skill1] and mA or mB;
+                local clMember = wsSetI[combo.skill1] and mB or mA;
+                local key      = combo.skill1 .. '|' .. combo.skill2 .. '|' .. combo.chain;
+                local entry    = merged[key];
+                if not entry then
+                    entry = {
+                        opener      = combo.skill1,
+                        closer      = combo.skill2,
+                        chain       = combo.chain,
+                        chainLevel  = findChainLevel(combo.chain),
+                        openerNames = { opMember.name },
+                        closerNames = { clMember.name },
+                    };
+                    merged[key] = entry;
+                    table.insert(order, key);
+                else
+                    appendNameUnique(entry.openerNames, opMember.name);
+                    appendNameUnique(entry.closerNames, clMember.name);
+                end
+            end
+        end
+    end
+
+    local results = {};
+    for _, key in ipairs(order) do
+        table.insert(results, merged[key]);
+    end
+
+    return results;
+end
+
+-- Build the display table for party results in the same shape as SortSkillchainTable,
+-- extended with per-WS member-name lists.
+-- partyResults: flat array from CalculatePartySkillchains (already SC-level filtered).
+-- Returns sortedResults, orderedResults where:
+--   orderedResults = array of chain names in display order
+--   sortedResults[chainName] = array of {opener, openerNames, closers={{closer, closerNames}}}
+function SkillchainCore.BuildPartySkillchainTable(partyResults)
+    local sortedResults  = {};
+    local orderedResults = {};
+
+    -- Group: chain -> opener -> { openerNames, closers = { closer -> closerNames } }
+    local byChain = {};
+
+    for _, entry in ipairs(partyResults) do
+        local chainName = entry.chain;
+
+        local chainGroup = byChain[chainName];
+        if not chainGroup then
+            chainGroup = { openers = {}, openerOrder = {} };
+            byChain[chainName] = chainGroup;
+        end
+
+        local openerGroup = chainGroup.openers[entry.opener];
+        if not openerGroup then
+            openerGroup = { openerNames = {}, closers = {}, closerOrder = {} };
+            chainGroup.openers[entry.opener] = openerGroup;
+            table.insert(chainGroup.openerOrder, entry.opener);
+        end
+
+        -- Union opener names for this opener WS + chain
+        for _, name in ipairs(entry.openerNames or {}) do
+            appendNameUnique(openerGroup.openerNames, name);
+        end
+
+        local closerNameList = openerGroup.closers[entry.closer];
+        if not closerNameList then
+            closerNameList = {};
+            openerGroup.closers[entry.closer] = closerNameList;
+            table.insert(openerGroup.closerOrder, entry.closer);
+        end
+        for _, name in ipairs(entry.closerNames or {}) do
+            appendNameUnique(closerNameList, name);
+        end
+    end
+
+    -- Order chains by display index (same as the rest of the codebase)
+    local chainList = {};
+    for chainName, _ in pairs(byChain) do
+        table.insert(chainList, chainName);
+    end
+    table.sort(chainList, function(a, b)
+        return skills.GetDisplayIndex(a) < skills.GetDisplayIndex(b);
+    end);
+
+    for _, chainName in ipairs(chainList) do
+        local chainGroup = byChain[chainName];
+
+        -- Sort openers by WS skill level (highest first), matching SortSkillchainTable
+        local sortedOpeners = {};
+        for _, openerName in ipairs(chainGroup.openerOrder) do
+            local openerGroup = chainGroup.openers[openerName];
+
+            local closers = {};
+            for _, closerName in ipairs(openerGroup.closerOrder) do
+                table.insert(closers, {
+                    closer      = closerName,
+                    closerNames = openerGroup.closers[closerName],
+                });
+            end
+
+            table.sort(closers, function(a, b)
+                return findSkillLevel(a.closer) > findSkillLevel(b.closer);
+            end);
+
+            table.insert(sortedOpeners, {
+                opener      = openerName,
+                openerNames = openerGroup.openerNames,
+                closers     = closers,
+                level       = findSkillLevel(openerName),
+            });
+        end
+
+        table.sort(sortedOpeners, function(a, b)
+            return a.level > b.level;
+        end);
+
+        sortedResults[chainName] = sortedOpeners;
+        table.insert(orderedResults, chainName);
+    end
+
+    return sortedResults, orderedResults;
+end
+
 return SkillchainCore;

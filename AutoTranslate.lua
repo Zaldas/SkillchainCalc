@@ -433,4 +433,15 @@ function Autotranslate.FormatCombo(opener, closer, chainName)
     return string.format('%s > %s > %s', openerFmt, closerFmt, chainFmt);
 end
 
+function Autotranslate.FormatPartyCombo(opener, openerNames, closer, closerNames, chainName)
+    local openerFmt = Autotranslate.Format(opener, 'weaponskill');
+    local closerFmt = Autotranslate.Format(closer, 'weaponskill');
+    local chainFmt  = Autotranslate.Format(chainName, 'skillchain');
+
+    local openerStr = table.concat(openerNames or {}, '/');
+    local closerStr = table.concat(closerNames or {}, '/');
+
+    return string.format('%s [%s] > %s [%s] > %s', openerFmt, openerStr, closerFmt, closerStr, chainFmt);
+end
+
 return Autotranslate;
