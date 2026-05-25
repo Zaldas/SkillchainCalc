@@ -4,7 +4,7 @@
 
 SkillchainCalc provides two dedicated ImGui windows — one tuned for real party play, one for general-purpose planning. Both feed into the same GDI results window, where any result can be clicked to send directly to chat.
 
-> Adjusted for HorizonXI. No plans to support retail.
+> Adjusted for HorizonXI. Minimal support for retail.
 
 ---
 
