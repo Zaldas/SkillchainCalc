@@ -428,20 +428,22 @@ end
 function Autotranslate.FormatCombo(opener, closer, chainName)
     local openerFmt = Autotranslate.Format(opener, 'weaponskill');
     local closerFmt = Autotranslate.Format(closer, 'weaponskill');
-    local chainFmt = Autotranslate.Format(chainName, 'skillchain');
+    local chainFmt  = Autotranslate.Format(chainName, 'skillchain');
+    local sep       = (chainName == 'Light' or chainName == 'Darkness') and '<>' or '>';
 
-    return string.format('%s > %s > %s', openerFmt, closerFmt, chainFmt);
+    return string.format('%s %s %s > %s', openerFmt, sep, closerFmt, chainFmt);
 end
 
 function Autotranslate.FormatPartyCombo(opener, openerNames, closer, closerNames, chainName)
     local openerFmt = Autotranslate.Format(opener, 'weaponskill');
     local closerFmt = Autotranslate.Format(closer, 'weaponskill');
     local chainFmt  = Autotranslate.Format(chainName, 'skillchain');
+    local sep       = (chainName == 'Light' or chainName == 'Darkness') and '<>' or '>';
 
     local openerStr = table.concat(openerNames or {}, '/');
     local closerStr = table.concat(closerNames or {}, '/');
 
-    return string.format('%s [%s] > %s [%s] > %s', openerFmt, openerStr, closerFmt, closerStr, chainFmt);
+    return string.format('%s [%s] %s %s [%s] > %s', openerFmt, openerStr, sep, closerFmt, closerStr, chainFmt);
 end
 
 return Autotranslate;
