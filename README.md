@@ -1,111 +1,128 @@
-# Skillchain Calculator   
-   
-<img align="right" alt="image" width="500" height="1575" alt="skillchaincalcaddon" src="https://github.com/user-attachments/assets/d37da06e-5aff-409b-84dd-dd5a2d0ca008" />  
-   
-Display skillchains possible given jobs and optional weapons, level, skillchain, or element!!  
-Now with ImGui interface to input parameters!!! You can also click on a skillchain to print to default chat channel currently set by game~!   
-  
-### GUI Interface  
-&ensp;Three Tabs:  
-&ensp;&ensp;Calculate - Has the Jobs and Weapons  
-&ensp;&ensp;&ensp;Character Level - Optional custom level filter (when enabled in Filters)  
-&ensp;&ensp;Filters - Filters to help narrow and adjust calculation  
-&ensp;&ensp;&ensp;Skillchain Element - element that you want to focus on for resulting skillchain  
-&ensp;&ensp;&ensp;Skillchain Level - level of skillchain to include  
-&ensp;&ensp;&ensp;Favorite WS - pin a specific weaponskill to use for one or both slots  
-&ensp;&ensp;&ensp;Advanced Filters:  
-&ensp;&ensp;&ensp;&ensp;Custom Character Level - Filters weapon skills by character level and skill caps  
-&ensp;&ensp;&ensp;&ensp;Both Directions - Calculates skillchains in both directions of jobs selected  
-&ensp;&ensp;&ensp;&ensp;SubJob - Enables the use of Subjobs to define skillchain options  
-&ensp;&ensp;&ensp;&ensp;Show REMA WS - Include REMA-only weapon skills (marked with ²)  
-&ensp;&ensp;Settings - Has the position of results window, and default filter settings  
-  
-#### Usage:  
-&ensp;`/scc` -- opens the GUI interface  
-&ensp;`/scc token1 token2 [level] [both] [sc:element] [lvl:#]`  
-&ensp;`/scc clear` -- closes addon  
-  
-### <ins>Tokens can be one of the following:</ins>   
-  
-#### Weapon Types:  
-&ensp;h2h, dagger, sword, gs, axe, ga, scythe,  
-&ensp;polearm, katana, gkt, club, staff, archery, mm, smn  
-&ensp;Weapons Alias as well: e.g. ga or greataxe work, full list in Skills.lua  
-  
-#### Jobs:  
-&ensp;WAR, MNK, WHM, BLM, RDM, THF, PLD, DRK, BST, BRD,  
-&ensp;RNG, SAM, NIN, DRG, SMN  
-  
-#### Job + Weapon Filters:  
-&ensp;Use the syntax `job:weapon` or `job:weapon1,weapon2` to limit WS by weapon type  
-&ensp;Can also define subjob: `main/sub:weapon` to include subjob accessible weaponskills  
-&ensp;e.g. `/scc thf:sword war:ga,polearm`  
-&ensp;e.g. `/scc nin/rng:mm,katana drk/sam`  
-  
-#### Primary Weapon Auto-Limit:  
-&ensp;If a plain job token is used (e.g. `thf`), the job’s `primaryWeapons` list defined in Jobs.lua is used.  
-&ensp;Example: `/scc thf war` is internally treated as `/scc thf:dagger war:ga,axe`  
-  
-*[#]*  
-&ensp;Optional number value that filters skillchain tier  
-&ensp;2 only shows tier 2 and 3 skillchains  
-&ensp;1 or empty shows all  
-  
-*[both]*  
-&ensp;Optional keyword to calculate skillchains in both directions  
-  
-*[sc:element]*  
-&ensp;Optional filter that limits results to skillchains whose burst table contains the given element  
-&ensp;e.g. `/scc thf war sc:ice` will show only SCs with Ice as a burst element  
-&ensp;Case-insensitive (`sc:ice`, `sc:Ice`, `SC:ICE` etc.)  
-  
-*[lvl:#]* or *[level:#]*  
-&ensp;Optional character level (1-75) for skill-based weapon skill filtering  
-&ensp;Filters out weapon skills that require more skill than achievable at the specified level  
-&ensp;e.g. `/scc nin sam lvl:50` will exclude weapon skills requiring >153 katana skill for NIN  
-&ensp;Aliases: Both `lvl:` and `level:` are supported  
-  
-#### Examples:  
-&ensp;/scc katana h2h both 2  
-&ensp;/scc thf war  
-&ensp;/scc thf:sword war:ga  
-&ensp;/scc thf war sc:ice  
-&ensp;/scc nin sam lvl:50  
-&ensp;/scc nin/rng:mm,katana drk:ga 2 both  
-&ensp;/scc drk pld lvl:60 sc:light both  
-  
-#### Clicking Results:  
-&ensp;Click any result line to send it to game chat with auto-translate skillchain name  
-&ensp;Results window is draggable  
+# SkillchainCalc
 
-#### Commands:  
-&ensp;/scc -- opens GUI window  
-&ensp;/scc help -- show all commands  
-&ensp;/scc setx # -- set x anchor  
-&ensp;/scc sety # -- set y anchor  
-&ensp;/scc setsclevel # -- set default skillchain level filter (1–3)  
-&ensp;/scc setboth true|false -- set default for 'both' param  
-&ensp;/scc setsubjob true|false -- set default for enabling subjob in GUI  
-&ensp;/scc setfavws true|false -- set default for favorite WS filter  
-&ensp;/scc setrema true|false -- set default for showing REMA weapon skills  
-&ensp;/scc enabledrag true|false -- enable/disable mouse drag on results window  
-&ensp;/scc status -- show default filter status  
-&ensp;/scc clear -- clear out windows; close addon  
-&ensp;/scc debug -- toggle debug mode  
-  
-#### Files:  
-&ensp;SkillchainCalc.lua -- main addon  
-&ensp;Skills.lua -- weaponskill data and colors  
-&ensp;Jobs.lua -- job skill caps + primaryWeapons  
-&ensp;SkillRanks.lua -- skill rank progression tables (A+, A-, B+, etc.)  
-&ensp;SkillchainCore.lua -- filtering and routing logic  
-&ensp;SkillchainGui.lua -- ImGui interface  
-&ensp;SkillchainRenderer.lua -- Results window renderer  
-  
-#### Notes:  
-&ensp;This is adjusted for HorizonXI. No plans to support retail.  
-&ensp;Superscript ¹/² denote quested/relic weaponskills; ² also marks REMA-only weapon skills  
-&ensp;Default title font is Times New Roman  
-&ensp;Output is limited to 150 lines; excess results are trimmed with a notice asking to use filters  
-&ensp;GUI window position is remembered between sessions  
-  
+**An FFXI addon for HorizonXI (Ashita v4) that calculates skillchain combinations between jobs and weapon types.**
+
+SkillchainCalc provides two dedicated ImGui windows — one tuned for real party play, one for general-purpose planning. Both feed into the same GDI results window, where any result can be clicked to send directly to chat.
+
+> Adjusted for HorizonXI. No plans to support retail.
+
+---
+
+## Party Calculator
+
+Open with `/scc` or `/scc party`.
+
+The Party window reads your live party from memory and lets you calculate skillchains for your actual group. It has two tabs: **Party** and **Settings**.
+
+### Party Tab
+
+**Party section**
+
+- Press **Update Party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown.
+- Casters and support jobs (BLM, WHM, SMN, BRD, RDM) default to disabled — toggle the checkbox next to any member's name to include or exclude them.
+- Change any member's weapon type via the dropdown to explore different skillchain options for that combination.
+- The local player's weapon is auto-detected from their currently equipped main-hand weapon when loading.
+- Press **Clear Party** to reset.
+
+**Filter section**
+
+| Filter | Description |
+|--------|-------------|
+| **Skillchain** | Limit results by chain family: All, Any Tier 2+, Fragmentation, Fusion, Gravitation, Distortion, or Light / Darkness |
+| **REMA** *(Advanced)* | Expand to mark which members have REMA (Relic/Empyrean/Mythic/Aeonic) weapons. Members flagged as REMA will include those weapon skills (marked ²) in the calculation. |
+| **Fav WS** *(Advanced)* | Pin a preferred weapon skill per member. Only skillchains that include at least one member's chosen WS will be shown. |
+
+REMA and Fav WS are collapsible panels that are mutually exclusive — opening one closes the other. Both are disabled by default and can be enabled in the **Settings** tab.
+
+Press **Calculate Skillchains** to run the calculation. If party data is stale (member joined, left, changed job, or leveled since the last Update Party), a warning is shown in chat.
+
+### Settings Tab
+
+- **Results Window** — X/Y sliders and a drag checkbox to position the results window on screen.
+- **Advanced Filters** — Toggles to globally enable the REMA and Fav WS sections in the Party tab.
+- **Local Player** — Declare which weapon types you personally own a REMA weapon for. When you are loaded into the party list, your REMA status is flagged automatically based on your equipped weapon and this configuration.
+
+---
+
+## Calculator
+
+Open with `/scc calc`.
+
+The Calculator window is for general-purpose planning — pick any two jobs (not necessarily your party) and find all viable skillchain combinations. It has three tabs: **Calculator**, **Filters**, and **Settings**.
+
+### Calculator Tab
+
+- Select a job for each side from the dropdown. Primary weapons for that job are pre-selected (highlighted in gold).
+- Check or uncheck weapon types to narrow which weapon skills are considered.
+- Press **Calculate** to display results, or **Clear** to reset the results window.
+
+**Optional controls** (enabled via the Filters tab):
+
+| Control | What It Does |
+|---------|-------------|
+| **Subjob** | Adds a `/subjob` dropdown under each job. Useful for jobs that access weapon skills through a subjob (e.g., RNG subjob for Marksmanship). |
+| **Fav WS** | Adds a favorite weapon skill dropdown per side. Results are filtered to combos that include the chosen WS on at least one side. |
+| **Character Level** | Adds a level selector. Weapon skills requiring more skill than achievable at that level are excluded. |
+
+### Filters Tab
+
+| Filter | Description |
+|--------|-------------|
+| **Skillchain Element** | Show only skillchains whose burst element matches (e.g., Ice, Fire, Light). |
+| **Skillchain Level** | Minimum tier: 1 = all, 2 = Tier 2+, 3 = Tier 3 only. |
+| **Custom Character Level** | Enables the level selector in the Calculator tab. |
+| **Enable SubJob** | Enables subjob dropdowns in the Calculator tab. |
+| **Enable Favorite WS** | Enables the Fav WS dropdowns in the Calculator tab. |
+| **Both Directions** | Calculates Job1→Job2 and Job2→Job1. |
+| **Show REMA WS (²)** | Includes Relic/Empyrean/Mythic/Aeonic weapon skills. Hidden by default. |
+
+**Set as Defaults** saves the current filter state as your startup defaults. **Reset Filters** reverts to those stored defaults.
+
+### Settings Tab
+
+- **Results Window** — X/Y sliders and a drag checkbox to position the results window. The GUI window itself is draggable by its title bar.
+- **Stored Defaults** — A read-only view of currently saved default filter values.
+
+---
+
+## Results Window
+
+The results window appears after any calculation and displays all valid skillchain combinations grouped by chain name and tier.
+
+- Results are laid out in columns when there are many entries. If results exceed the display limit, a notice prompts you to narrow your filters.
+- **Click any result** to send it to your current chat channel with the skillchain name formatted using the game's auto-translate system.
+- The window is draggable when **Enable Mouse Drag** is checked in Settings. Drag is automatically disabled when a new calculation runs.
+- Position is remembered between sessions.
+
+### Weapon Skill Notation
+
+| Marker | Meaning |
+|--------|---------|
+| ¹ | Quested weapon skill |
+| ² | REMA-only weapon skill (Relic/Empyrean/Mythic/Aeonic) |
+
+---
+
+## Commands
+
+| Command | Action |
+|---------|--------|
+| `/scc` | Toggle the Party Calculator |
+| `/scc party` | Toggle the Party Calculator |
+| `/scc calc` | Toggle the Calculator |
+
+---
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `SkillchainCalc.lua` | Main addon, command handling, event wiring |
+| `SkillchainParty.lua` | Party window UI and party data logic |
+| `SkillchainGui.lua` | Calculator window UI |
+| `SkillchainCore.lua` | Filtering, skillchain calculation, party pair logic |
+| `SkillchainRenderer.lua` | GDI results window rendering |
+| `Skills.lua` | Weapon skill data, properties, and colors |
+| `Jobs.lua` | Job skill caps and primary weapon lists |
+| `SkillRanks.lua` | Skill rank progression tables (A+, A−, B+, etc.) |
+| `AutoTranslate.lua` | Auto-translate formatting for chat output |
