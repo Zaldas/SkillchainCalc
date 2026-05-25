@@ -759,16 +759,4 @@ function SkillchainParty.IsVisible()
     return showWindow[1];
 end
 
-function SkillchainParty.InjectDebugParty()
-    partyState.loaded  = true;
-    partyState.members = {
-        { name = 'Zaldas',           jobId = 'NIN', subJobId = 'WAR', level = 75, subLevel = 37, enabled = not defaultDisabledJobs['NIN'], weapon = 'katana', hasRema = false, favWs = nil },
-        { name = 'Thrall',           jobId = 'WAR', subJobId = 'SAM', level = 75, subLevel = 37, enabled = not defaultDisabledJobs['WAR'], weapon = 'ga',     hasRema = false, favWs = nil },
-        { name = 'Anduril',          jobId = 'THF', subJobId = 'NIN', level = 75, subLevel = 37, enabled = not defaultDisabledJobs['THF'], weapon = 'dagger', hasRema = false, favWs = nil },
-        { name = 'Kessler',          jobId = 'RDM', subJobId = 'BLM', level = 75, subLevel = 37, enabled = not defaultDisabledJobs['RDM'], weapon = 'sword',  hasRema = false, favWs = nil },
-        { name = 'Fyrie',            jobId = 'WHM', subJobId = 'SMN', level = 75, subLevel = 37, enabled = not defaultDisabledJobs['WHM'], weapon = 'club',   hasRema = false, favWs = nil },
-        { name = 'Luministhewander', jobId = 'SMN', subJobId = 'WHM', level = 75, subLevel = 37, enabled = not defaultDisabledJobs['SMN'], weapon = 'staff',  hasRema = false, favWs = nil },
-    };
-end
-
 return SkillchainParty;
