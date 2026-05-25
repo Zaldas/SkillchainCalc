@@ -472,12 +472,6 @@ ashita.events.register('command', 'command_cb', function(e)
             debugMode = not debugMode;
             msg('Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
             return;
-        elseif (args[2] == 'ptdebug') then
-            SkillchainParty.InjectDebugParty();
-            if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
-            SkillchainParty.SetVisible(true);
-            msg('Party debug data injected.');
-            return;
         elseif (args[2] == 'status') then
             msg('Status of Default Filter:');
             msg(' Skillchain Level: Skillchains Level ' .. cache.settings.default.scLevel .. ' or higher.');
