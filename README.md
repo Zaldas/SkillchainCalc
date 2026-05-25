@@ -6,6 +6,8 @@ SkillchainCalc provides two dedicated ImGui windows — one tuned for real party
 
 > Adjusted for HorizonXI. Minimal support for retail.
 
+<img width="1099" height="539" alt="image" src="https://github.com/user-attachments/assets/203d9b67-0814-4659-995b-052e567ac734" />
+  
 ---
 
 ## Party Calculator
