@@ -18,7 +18,7 @@ local SkillchainParty = {};
 -----------------------------------------------------------------------
 local partyScFilters = {
     { label = 'All',              chains = nil },
-    { label = 'Any Tier 2+',     chains = { Fragmentation = true, Fusion = true, Gravitation = true, Distortion = true, Light = true, Darkness = true } },
+    { label = 'Any Tier 2+',      chains = { Fragmentation = true, Fusion = true, Gravitation = true, Distortion = true, Light = true, Darkness = true } },
     { label = 'Fragmentation',    chains = { Fragmentation = true, Light     = true } },
     { label = 'Fusion',           chains = { Fusion        = true, Light     = true } },
     { label = 'Gravitation',      chains = { Gravitation   = true, Darkness  = true } },
@@ -38,12 +38,15 @@ local partyState = {
     members   = {},  -- array of {name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs}
     filters   = {
         scFilterIndex = 1,  -- index into partyScFilters (1 = 'All')
-        remaOpen     = false,
+        remaOpen      = false,
         favWsOpen     = false,
         showRema      = false,
         showFavWs     = false,
+        localRemaOpen = false,
     },
 };
+
+local cache = nil;
 
 -- Human-readable weapon names for dropdown display
 local weaponDisplayNames = {
@@ -63,6 +66,23 @@ local weaponDisplayNames = {
     mm      = 'Marksmanship',
     avatar  = 'Avatar (Pet)',
 };
+
+-- Weapon types that have at least one REMA weapon skill, sorted for stable display.
+local remaWeaponTypes = {};
+do
+    for weaponKey, _ in pairs(weaponDisplayNames) do
+        local weaponSkills = skills[weaponKey];
+        if type(weaponSkills) == 'table' then
+            for _, ws in pairs(weaponSkills) do
+                if type(ws) == 'table' and ws.en and ws.en:find(REMA_SUFFIX, 1, true) then
+                    table.insert(remaWeaponTypes, weaponKey);
+                    break;
+                end
+            end
+        end
+    end
+    table.sort(remaWeaponTypes);
+end
 
 -- Maps FFXI CombatSkill enum IDs (item.Skill from resource manager) to weapon keys
 local skillIdToWeapon = {
@@ -228,6 +248,13 @@ local function loadParty()
                     end
                 end
 
+                local isLocal = (i == 0);
+                local isRema  = false;
+                if isLocal and cache and cache.settings and cache.settings.localPlayer then
+                    local remaOwned = cache.settings.localPlayer.remaWeapons or {};
+                    isRema = defaultWeapon ~= nil and (remaOwned[defaultWeapon] == true);
+                end
+
                 table.insert(partyState.members, {
                     name     = party:GetMemberName(i) or ('Member ' .. i),
                     jobId    = jobId,
@@ -236,7 +263,8 @@ local function loadParty()
                     subLevel = party:GetMemberSubJobLevel(i),
                     enabled  = not defaultDisabledJobs[jobId],
                     weapon   = defaultWeapon,
-                    hasRema  = false,
+                    isLocal  = isLocal,
+                    hasRema  = isRema,
                     favWs    = nil,
                 });
             end
@@ -288,9 +316,14 @@ local function drawMemberRow(member, index, contentWidth)
             for _, w in ipairs(weaponOptions) do
                 local selected = (member.weapon == w);
                 if imgui.Selectable(weaponDisplayNames[w] or w, selected) then
-                    member.weapon  = w;
-                    member.hasRema = false;
-                    member.favWs   = nil;
+                    member.weapon = w;
+                    member.favWs  = nil;
+                    if member.isLocal and cache and cache.settings and cache.settings.localPlayer then
+                        local remaOwned = cache.settings.localPlayer.remaWeapons or {};
+                        member.hasRema = remaOwned[w] == true;
+                    else
+                        member.hasRema = false;
+                    end
                 end
                 if selected then imgui.SetItemDefaultFocus(); end
             end
@@ -331,7 +364,6 @@ end
 -----------------------------------------------------------------------
 local showWindow = { false };
 
-local cache = nil;
 local partyGuiState = { enableDrag = false };
 
 -----------------------------------------------------------------------
@@ -354,7 +386,8 @@ function SkillchainParty.DrawWindow()
     local favWsFixed   = partyState.filters.showFavWs and 1 or 0;
 
     local partyTabRows    = (memberCount == 0) and 5 or (memberCount + 7 + remaFixed + remaRows + favWsFixed + favWsRows);
-    local settingsTabRows = 10;
+    local localRemaRows   = partyState.filters.localRemaOpen and math.ceil(#remaWeaponTypes / 2) or 0;
+    local settingsTabRows = 12 + localRemaRows;
     local contentRows     = (partyState.activeTab == 'Settings') and settingsTabRows or partyTabRows;
     local padding         = (partyState.activeTab == 'Settings') and 0 or (remaFixed * 4 + favWsFixed * 4 + 4);
     local winHeight       = (contentRows + 1) * lineHeight + padding;
@@ -640,6 +673,59 @@ function SkillchainParty.DrawWindow()
                 end
                 request = request or {};
                 request.settingsChanged = true;
+            end
+
+            imgui.Spacing();
+            imgui.Separator();
+            imgui.Spacing();
+
+            -----------------------------------------------------------------------
+            -- Local Player
+            -----------------------------------------------------------------------
+            drawGradientHeader('Local Player', contentWidth);
+            imgui.Spacing();
+
+            do
+                local remaSettings = (cache and cache.settings and cache.settings.localPlayer and
+                                      cache.settings.localPlayer.remaWeapons) or {};
+
+                local remaToggleLabel = partyState.filters.localRemaOpen
+                    and '\xe2\x96\xb2 REMA Weapons'
+                    or  '\xe2\x96\xbc REMA Weapons';
+                local remaToggleW = contentWidth * 0.80;
+                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaToggleW) * 0.5);
+                if styledButton(remaToggleLabel, { remaToggleW, 0 }, false) then
+                    partyState.filters.localRemaOpen = not partyState.filters.localRemaOpen;
+                end
+                if imgui.IsItemHovered() then
+                    imgui.BeginTooltip();
+                    imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
+                    imgui.TextUnformatted('Select weapon types you own a REMA (Relic/Empyrean/Mythic/Aeonic) weapon for. When loaded into the party list, your REMA status will be set automatically based on your equipped weapon.');
+                    imgui.PopTextWrapPos();
+                    imgui.EndTooltip();
+                end
+
+                if partyState.filters.localRemaOpen then
+                    imgui.Indent(contentWidth * 0.08);
+                    imgui.Columns(2, 'localrema_cols', false);
+                    for _, weaponKey in ipairs(remaWeaponTypes) do
+                        local owned = { remaSettings[weaponKey] == true };
+                        if imgui.Checkbox(weaponDisplayNames[weaponKey] or weaponKey, owned) then
+                            if cache and cache.settings and cache.settings.localPlayer then
+                                if owned[1] then
+                                    cache.settings.localPlayer.remaWeapons[weaponKey] = true;
+                                else
+                                    cache.settings.localPlayer.remaWeapons[weaponKey] = nil;
+                                end
+                            end
+                            request = request or {};
+                            request.settingsChanged = true;
+                        end
+                        imgui.NextColumn();
+                    end
+                    imgui.Columns(1);
+                    imgui.Unindent(contentWidth * 0.08);
+                end
             end
 
             imgui.EndTabItem();

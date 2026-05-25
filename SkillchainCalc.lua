@@ -77,6 +77,9 @@ local sccSettings = T{
         showRema  = false,
         showFavWs = false,
     },
+    localPlayer = {
+        remaWeapons = {},
+    },
 };
 
 -- CACHE: Stores the last skillchain calculation that was performed.
