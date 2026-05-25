@@ -249,25 +249,6 @@ local function parsePartySkillchains(members, partyFilters)
         end
     end
 
-    -- Filter by favored WS: only include combos that feature at least one member's favWs
-    local favWsSet = {};
-    local hasFavWs = false;
-    for _, m in ipairs(members) do
-        if m.enabled and m.favWs then
-            favWsSet[m.favWs] = true;
-            hasFavWs = true;
-        end
-    end
-    if hasFavWs then
-        local favFiltered = {};
-        for _, entry in ipairs(filtered) do
-            if favWsSet[entry.opener] or favWsSet[entry.closer] then
-                table.insert(favFiltered, entry);
-            end
-        end
-        filtered = favFiltered;
-    end
-
     if #filtered == 0 then
         msg('No party skillchain combinations found for the selected filter.');
         SkillchainRenderer.clear();

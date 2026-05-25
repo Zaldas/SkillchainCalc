@@ -436,7 +436,7 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
                     closer = closerData.closer,
                     chainName = chainName,
                     -- Party mode fields (nil in normal mode):
-                    openerNames = openerData.openerNames,
+                    openerNames = closerData.openerNames,
                     closerNames = closerData.closerNames,
                 });
                 currentCol.entriesCount = currentCol.entriesCount + 1;
