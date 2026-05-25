@@ -1077,7 +1077,7 @@ local function drawSettingsTab()
     local maxX = limits.maxX;
     local maxY = limits.maxY;
 
-    drawGradientHeader('Results Window Anchor (top-left)', imgui.GetContentRegionAvail());
+    drawGradientHeader('Results Window', imgui.GetContentRegionAvail());
     imgui.Spacing();
 
     -- 5px indent

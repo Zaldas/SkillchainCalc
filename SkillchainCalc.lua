@@ -17,6 +17,7 @@ local jobs               = require('Jobs');
 local SkillchainCore     = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainGUI      = require('SkillchainGui');
+local SkillchainParty    = require('SkillchainParty');
 local Autotranslate      = require('Autotranslate');
 local gdi                = require('gdifonts.include');
 local settings           = require('settings');
@@ -71,6 +72,10 @@ local sccSettings = T{
         useCharLevel = false,
         enableFavWs = false,
         showRema = false
+    },
+    partyFilters = {
+        showRema  = false,
+        showFavWs = false,
     },
 };
 
@@ -141,6 +146,7 @@ ashita.events.register('load', 'load_cb', function()
     cache.settings = settings.load(sccSettings);
     applyDefaultsToCache();
     SkillchainGUI.SetCache(cache);
+    SkillchainParty.SetCache(cache);
     SkillchainRenderer.initialize(gdi, cache.settings);
 
     settings.register('settings', 'settings_update', function(s)
@@ -227,18 +233,89 @@ local function parseSkillchains(isStep)
     displaySkillchainResults(combinations);
 end
 
+local function parsePartySkillchains(members, partyFilters)
+    local chains = partyFilters and partyFilters.chains or nil;
+
+    local partyResults = SkillchainCore.CalculatePartySkillchains(members);
+
+    -- Filter by chain family set (nil = Any, pass all)
+    local filtered = {};
+    for _, entry in ipairs(partyResults) do
+        if not chains or chains[entry.chain] then
+            table.insert(filtered, entry);
+        end
+    end
+
+    -- Filter by favored WS: only include combos that feature at least one member's favWs
+    local favWsSet = {};
+    local hasFavWs = false;
+    for _, m in ipairs(members) do
+        if m.enabled and m.favWs then
+            favWsSet[m.favWs] = true;
+            hasFavWs = true;
+        end
+    end
+    if hasFavWs then
+        local favFiltered = {};
+        for _, entry in ipairs(filtered) do
+            if favWsSet[entry.opener] or favWsSet[entry.closer] then
+                table.insert(favFiltered, entry);
+            end
+        end
+        filtered = favFiltered;
+    end
+
+    if #filtered == 0 then
+        msg('No party skillchain combinations found for the selected filter.');
+        SkillchainRenderer.clear();
+        return;
+    end
+
+    local sortedResults, orderedResults = SkillchainCore.BuildPartySkillchainTable(filtered);
+    SkillchainRenderer.clear();
+    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, true, minResultsAfterHeader);
+end
+
 -- Mouse event handler for drag functionality and combo clicks
 ashita.events.register('mouse', 'mouse_cb', function(e)
     local result = SkillchainRenderer.handleMouse(e, cache.settings);
     -- Check if a combo was clicked
     if result and result.opener and result.closer and result.chainName then
-        local message = Autotranslate.FormatCombo(result.opener, result.closer, result.chainName);
+        local message;
+        if result.openerNames then
+            message = Autotranslate.FormatPartyCombo(result.opener, result.openerNames, result.closer, result.closerNames, result.chainName);
+        else
+            message = Autotranslate.FormatCombo(result.opener, result.closer, result.chainName);
+        end
         AshitaCore:GetChatManager():QueueCommand(1, message);
     end
 end);
 
--- Draw IMGUI Input Window
+-- Draw IMGUI Input Windows
 ashita.events.register('d3d_present', 'scc_present_cb', function()
+    -- Party window (standalone, default /scc)
+    local partyReq = SkillchainParty.DrawWindow();
+    if partyReq then
+        if partyReq.anchorChanged then
+            SkillchainRenderer.updateAnchor(cache.settings);
+            settings.save();
+        end
+        if partyReq.settingsChanged then
+            settings.save();
+        end
+        if partyReq.mode == 'party' then
+            if partyReq.warnings and #partyReq.warnings > 0 then
+                msg('[Party] Warning: party data may be outdated:');
+                for _, w in ipairs(partyReq.warnings) do
+                    msg('  ' .. w);
+                end
+            end
+            cache.step.enabled = false;
+            cache.keepResultsOpen = false;
+            parsePartySkillchains(partyReq.members, partyReq.partyFilters);
+        end
+    end
+
     if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
         local req = SkillchainGUI.DrawWindow();
         if req ~= nil then
@@ -293,8 +370,9 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 parseSkillchains(false);
             end
         end
-    else
+    elseif not SkillchainParty.IsVisible() then
         -- Only clear renderer if results are not set to stay open
+        -- (Party window manages its own results; don't clear while it's visible)
         if not cache.keepResultsOpen then
             SkillchainRenderer.clear();
         end
@@ -380,18 +458,41 @@ ashita.events.register('command', 'command_cb', function(e)
 
     -- 1-arg utility commands
     if (#args == 2) then
-        if (args[2] == 'clear') then
-            SkillchainRenderer.clear();
-            resetCacheFull();
-
-            if (SkillchainGUI ~= nil) then
-                SkillchainGUI.SetVisible(false);
+        if (args[2] == 'calc') then
+            if SkillchainGUI ~= nil then
+                if SkillchainGUI.IsVisible() then
+                    SkillchainGUI.SetVisible(false);
+                    SkillchainRenderer.clear();
+                    resetCacheFull();
+                else
+                    SkillchainParty.SetVisible(false);
+                    SkillchainGUI.SetVisible(true);
+                    msg('/scc calc - Generic skillchain calculator');
+                    msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+                end
             end
-
+            return;
+        elseif (args[2] == 'party') then
+            if SkillchainParty.IsVisible() then
+                SkillchainParty.SetVisible(false);
+                SkillchainRenderer.clear();
+                resetCacheFull();
+            else
+                if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+                SkillchainParty.SetVisible(true);
+                msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+                msg('/scc calc - Generic skillchain calculator');
+            end
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
             msg('Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
+            return;
+        elseif (args[2] == 'ptdebug') then
+            SkillchainParty.InjectDebugParty();
+            if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+            SkillchainParty.SetVisible(true);
+            msg('Party debug data injected.');
             return;
         elseif (args[2] == 'status') then
             msg('Status of Default Filter:');
@@ -406,11 +507,9 @@ ashita.events.register('command', 'command_cb', function(e)
             return;
         elseif (args[2] == 'help') then
             msg('Commands:');
-            msg('  /scc                    - Open GUI');
-            msg('  /scc <token1> <token2>  - Calculate skillchains (CLI)');
-            msg('  /scc clear              - Clear results');
-            msg('  /scc status             - Show current defaults');
-            msg('  /scc debug              - Toggle debug mode');
+            msg('  /scc (or /scc party) - Toggle party skillchain calculator');
+            msg('  /scc calc - Toggle generic skillchain calculator');
+            msg('  /scc debug - Toggle debug mode');
             return;
         end
     end
@@ -446,11 +545,18 @@ ashita.events.register('command', 'command_cb', function(e)
     local minArgs = 3; -- both step (/scc step <token>) and normal (/scc <t1> <t2>) need at least 3 args
     if (#args < minArgs) then
         if (#args == 1) then
-            if SkillchainGUI ~= nil then
-                SkillchainGUI.SetVisible(true);
+            local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
+            if anyOpen then
+                SkillchainParty.SetVisible(false);
+                if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+                SkillchainRenderer.clear();
+                resetCacheFull();
+            else
+                SkillchainParty.SetVisible(true);
+                msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+                msg('/scc calc - Generic skillchain calculator');
             end
         end
-        msg('/scc help -- for usage help, or /scc to open GUI');
         return;
     end
 
