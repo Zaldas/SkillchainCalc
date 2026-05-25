@@ -575,7 +575,9 @@ local function buildCombinations(list1, list2, opts)
                 local key = a .. '|' .. b .. '|' .. combo.chain;
                 if not ldSeen[key] then
                     ldSeen[key] = true;
-                    table.insert(filtered, combo);
+                    -- Always store in canonical (alphabetical) direction so the
+                    -- merger key is stable regardless of which member is list1/list2.
+                    table.insert(filtered, { skill1 = a, skill2 = b, chain = combo.chain });
                 end
             else
                 table.insert(filtered, combo);
@@ -831,6 +833,16 @@ function SkillchainCore.CalculatePartySkillchains(members)
                     end
                     skillList = noRema;
                 end
+                -- If member has a favWs, restrict them to that WS only.
+                if m.favWs then
+                    local favOnly = {};
+                    for _, ws in ipairs(skillList) do
+                        if ws.en == m.favWs then
+                            table.insert(favOnly, ws);
+                        end
+                    end
+                    skillList = favOnly;
+                end
                 if #skillList > 0 then
                     table.insert(active, { member = m, skills = skillList });
                 end
@@ -842,37 +854,49 @@ function SkillchainCore.CalculatePartySkillchains(members)
     local order  = {};
 
     for i = 1, #active do
-        -- Build a WS-name set for active[i] to resolve direction per combo.
         local wsSetI = {};
         for _, ws in ipairs(active[i].skills) do wsSetI[ws.en] = true; end
 
         for j = i + 1, #active do
             local mA    = active[i].member;
             local mB    = active[j].member;
+
+            local wsSetJ = {};
+            for _, ws in ipairs(active[j].skills) do wsSetJ[ws.en] = true; end
+
             -- both=true: covers A→B and B→A in one call; buildCombinations
             -- already deduplicates Light/Darkness to a single direction.
             local combos = SkillchainCore.CalculateSkillchains(active[i].skills, active[j].skills, true);
 
             for _, combo in ipairs(combos) do
-                -- skill1 belongs to whichever member opened the chain.
-                local opMember = wsSetI[combo.skill1] and mA or mB;
-                local clMember = wsSetI[combo.skill1] and mB or mA;
-                local key      = combo.skill1 .. '|' .. combo.skill2 .. '|' .. combo.chain;
-                local entry    = merged[key];
-                if not entry then
-                    entry = {
-                        opener      = combo.skill1,
-                        closer      = combo.skill2,
-                        chain       = combo.chain,
-                        chainLevel  = findChainLevel(combo.chain),
-                        openerNames = { opMember.name },
-                        closerNames = { clMember.name },
-                    };
-                    merged[key] = entry;
-                    table.insert(order, key);
-                else
-                    appendNameUnique(entry.openerNames, opMember.name);
-                    appendNameUnique(entry.closerNames, clMember.name);
+                -- Verify each direction independently: the opener must own skill1
+                -- AND the closer must own skill2. Both can be true when WS overlap.
+                local iOpens = wsSetI[combo.skill1] and wsSetJ[combo.skill2];
+                local jOpens = wsSetJ[combo.skill1] and wsSetI[combo.skill2];
+
+                if iOpens or jOpens then
+                    local key   = combo.skill1 .. '|' .. combo.skill2 .. '|' .. combo.chain;
+                    local entry = merged[key];
+                    if not entry then
+                        entry = {
+                            opener      = combo.skill1,
+                            closer      = combo.skill2,
+                            chain       = combo.chain,
+                            chainLevel  = findChainLevel(combo.chain),
+                            openerNames = {},
+                            closerNames = {},
+                        };
+                        merged[key] = entry;
+                        table.insert(order, key);
+                    end
+                    if iOpens then
+                        appendNameUnique(entry.openerNames, mA.name);
+                        appendNameUnique(entry.closerNames, mB.name);
+                    end
+                    if jOpens then
+                        appendNameUnique(entry.openerNames, mB.name);
+                        appendNameUnique(entry.closerNames, mA.name);
+                    end
                 end
             end
         end
@@ -881,6 +905,29 @@ function SkillchainCore.CalculatePartySkillchains(members)
     local results = {};
     for _, key in ipairs(order) do
         table.insert(results, merged[key]);
+    end
+
+    -- If a name is the SOLE contributor to one position and also appears in the
+    -- other, they must fill their unique role — remove them from the other side.
+    -- When multiple names share a position, leave all of them (party decides).
+    local function inList(list, name)
+        for _, n in ipairs(list) do if n == name then return true; end end
+        return false;
+    end
+    local function removeFrom(list, name)
+        local out = {};
+        for _, n in ipairs(list) do if n ~= name then table.insert(out, n); end end
+        return out;
+    end
+    for _, entry in ipairs(results) do
+        if #entry.closerNames == 1 and inList(entry.openerNames, entry.closerNames[1]) then
+            local pruned = removeFrom(entry.openerNames, entry.closerNames[1]);
+            if #pruned > 0 then entry.openerNames = pruned; end
+        end
+        if #entry.openerNames == 1 and inList(entry.closerNames, entry.openerNames[1]) then
+            local pruned = removeFrom(entry.closerNames, entry.openerNames[1]);
+            if #pruned > 0 then entry.closerNames = pruned; end
+        end
     end
 
     return results;
@@ -896,7 +943,7 @@ function SkillchainCore.BuildPartySkillchainTable(partyResults)
     local sortedResults  = {};
     local orderedResults = {};
 
-    -- Group: chain -> opener -> { openerNames, closers = { closer -> closerNames } }
+    -- Group: chain -> opener -> { closers = { closer -> { openerNames, closerNames } } }
     local byChain = {};
 
     for _, entry in ipairs(partyResults) do
@@ -910,24 +957,24 @@ function SkillchainCore.BuildPartySkillchainTable(partyResults)
 
         local openerGroup = chainGroup.openers[entry.opener];
         if not openerGroup then
-            openerGroup = { openerNames = {}, closers = {}, closerOrder = {} };
+            openerGroup = { closers = {}, closerOrder = {} };
             chainGroup.openers[entry.opener] = openerGroup;
             table.insert(chainGroup.openerOrder, entry.opener);
         end
 
-        -- Union opener names for this opener WS + chain
-        for _, name in ipairs(entry.openerNames or {}) do
-            appendNameUnique(openerGroup.openerNames, name);
-        end
-
-        local closerNameList = openerGroup.closers[entry.closer];
-        if not closerNameList then
-            closerNameList = {};
-            openerGroup.closers[entry.closer] = closerNameList;
+        -- Store opener names per-closer so names pruned for one closer
+        -- don't bleed into other closers sharing the same opener WS.
+        local closerEntry = openerGroup.closers[entry.closer];
+        if not closerEntry then
+            closerEntry = { openerNames = {}, closerNames = {} };
+            openerGroup.closers[entry.closer] = closerEntry;
             table.insert(openerGroup.closerOrder, entry.closer);
         end
+        for _, name in ipairs(entry.openerNames or {}) do
+            appendNameUnique(closerEntry.openerNames, name);
+        end
         for _, name in ipairs(entry.closerNames or {}) do
-            appendNameUnique(closerNameList, name);
+            appendNameUnique(closerEntry.closerNames, name);
         end
     end
 
@@ -950,9 +997,11 @@ function SkillchainCore.BuildPartySkillchainTable(partyResults)
 
             local closers = {};
             for _, closerName in ipairs(openerGroup.closerOrder) do
+                local closerEntry = openerGroup.closers[closerName];
                 table.insert(closers, {
                     closer      = closerName,
-                    closerNames = openerGroup.closers[closerName],
+                    openerNames = closerEntry.openerNames,
+                    closerNames = closerEntry.closerNames,
                 });
             end
 
@@ -961,10 +1010,9 @@ function SkillchainCore.BuildPartySkillchainTable(partyResults)
             end);
 
             table.insert(sortedOpeners, {
-                opener      = openerName,
-                openerNames = openerGroup.openerNames,
-                closers     = closers,
-                level       = findSkillLevel(openerName),
+                opener  = openerName,
+                closers = closers,
+                level   = findSkillLevel(openerName),
             });
         end
 
