@@ -375,74 +375,6 @@ ashita.events.register('command', 'command_cb', function(e)
 
     e.blocked = true;
 
-    -- Settings-style commands
-    local validCommand = false;
-    if #args > 2 then
-        if (args[2]:any('setx', 'sety')) then
-            local value = tonumber(args[3]);
-            if value and value >= 0 then
-                if (args[2] == 'setx') then
-                    cache.settings.anchor.x = value;
-                else
-                    cache.settings.anchor.y = value;
-                end
-                SkillchainRenderer.updateAnchor(cache.settings);
-                msg('New Anchor: x = ' .. cache.settings.anchor.x .. ', y = ' .. cache.settings.anchor.y);
-                validCommand = true;
-            else
-                err('Invalid value for setx or sety. Must be a non-negative number.');
-            end
-        elseif (args[2] == 'setsclevel') then
-            if (args[3]:any('1', '2', '3')) then
-                local l = tonumber(args[3]);
-                cache.settings.default.scLevel = l;
-                applyDefaultsToCache();
-                msg('Set default skillchain level: ' .. args[3]);
-                validCommand = true;
-            else
-                err('Invalid value for setsclevel. Must be 1, 2, or 3.');
-            end
-        else
-            -- Table-driven boolean default commands
-            local boolCommands = {
-                setcharlevel = { key = 'useCharLevel',  msg = 'Set custom character level filter = ', applyDefaults = true  },
-                setboth      = { key = 'both',          msg = "Set parameter 'both' = ",              applyDefaults = true  },
-                setsubjob    = { key = 'includeSubjob', msg = 'Set subjob filter default = ',         applyDefaults = false },
-                setfavws     = { key = 'enableFavWs',   msg = 'Set favorite WS filter default = ',    applyDefaults = false },
-                setrema      = { key = 'showRema',      msg = 'Set show REMA WS = ',                  applyDefaults = true  },
-            };
-            local cmd = boolCommands[args[2]];
-            if cmd then
-                if (args[3]:any('true', 'false')) then
-                    cache.settings.default[cmd.key] = args[3] == 'true';
-                    if cmd.applyDefaults then applyDefaultsToCache(); end
-                    msg(cmd.msg .. args[3]);
-                    validCommand = true;
-                else
-                    err('Invalid value for ' .. args[2] .. '. Must be true or false.');
-                end
-            end
-        end
-        if (args[2] == 'enabledrag') then
-            if (args[3]:any('true', 'false')) then
-                local d = args[3] == 'true';
-                SkillchainRenderer.setEnableDrag(d);
-                msg('Set enable drag = ' .. args[3]);
-                validCommand = true;
-            else
-                err('Invalid value for enabledrag. Must be true or false.');
-            end
-        end
-
-        if (validCommand) then
-            settings.save();
-            if (SkillchainRenderer.isVisible()) then
-                parseSkillchains(cache.step.enabled);
-            end
-            return;
-        end
-    end
-
     -- 1-arg utility commands
     if (#args == 2) then
         if (args[2] == 'calc') then
@@ -474,17 +406,6 @@ ashita.events.register('command', 'command_cb', function(e)
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
             msg('Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
-            return;
-        elseif (args[2] == 'status') then
-            msg('Status of Default Filter:');
-            msg(' Skillchain Level: Skillchains Level ' .. cache.settings.default.scLevel .. ' or higher.');
-            msg(' Calculate Both Direction: ' .. tostring(cache.settings.default.both));
-            msg(' Include Subjob Filter: ' .. tostring(cache.settings.default.includeSubjob or false));
-            msg(' Use Character Level: ' .. tostring(cache.settings.default.useCharLevel or false));
-            msg(' Enable Favorite WS: ' .. tostring(cache.settings.default.enableFavWs or false));
-            msg(' Show REMA WS: ' .. tostring(cache.settings.default.showRema or false));
-            local poolInfo = SkillchainRenderer.getPoolInfo();
-            msg(' GDI Pool Size: ' .. poolInfo.poolSize .. ' (last used: ' .. poolInfo.lastUsedCount .. ')');
             return;
         elseif (args[2] == 'help') then
             msg('Commands:');

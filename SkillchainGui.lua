@@ -8,11 +8,10 @@ local skills   = require('Skills');
 local SkillRanks = require('SkillRanks');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
+local SkillchainUI = require('SkillchainUI');
 
 local SkillchainGUI = {};
 local showWindow    = { false };
-
-local REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
 
 -- Precomputed set of REMA weapon skill names for O(1) lookup in hot paths.
 -- Built once at load time by scanning all skills for the ² suffix.
@@ -21,7 +20,7 @@ do
     for weaponType, weaponSkills in pairs(skills) do
         if type(weaponSkills) == 'table' and weaponType ~= 'aliases' and weaponType ~= 'ChainInfo' then
             for _, ws in pairs(weaponSkills) do
-                if type(ws) == 'table' and ws.en and ws.en:find(REMA_SUFFIX, 1, true) then
+                if type(ws) == 'table' and ws.en and ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) then
                     remaWsNames[ws.en] = true;
                 end
             end
@@ -214,63 +213,6 @@ local function helpMarker(text)
         imgui.PopTextWrapPos();
         imgui.EndTooltip();
     end
-end
-
--- Styled button helper: handles primary (blue) and ghost (transparent) button styles
-local function styledButton(label, size, isPrimary)
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-
-    if isPrimary then
-        -- Primary button style (blue)
-        imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
-    else
-        -- Ghost button style (transparent)
-        imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
-        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
-    end
-
-    local clicked = imgui.Button(label, size);
-
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
-
-    return clicked;
-end
-
--- Gradient header helper: color > transparent with small text padding.
-local function drawGradientHeader(text, width)
-    local drawlist = imgui.GetWindowDrawList();
-    local x, y     = imgui.GetCursorScreenPos();
-    local lineH    = imgui.GetTextLineHeightWithSpacing();
-
-    local fadeFraction = 0.75;
-    local gradWidth    = width * fadeFraction;
-
-    local colLeft      = {0.25, 0.40, 0.85, 1.00};
-    local colLeftU32   = imgui.GetColorU32(colLeft);
-    local colRight     = {colLeft[1], colLeft[2], colLeft[3], 0.00};
-    local colRightU32  = imgui.GetColorU32(colRight);
-
-    drawlist:AddRectFilledMultiColor(
-        {x, y},
-        {x + gradWidth, y + lineH},
-        colLeftU32,
-        colRightU32,
-        colRightU32,
-        colLeftU32
-    );
-
-    local padX = 4;
-    local padY = 2;
-    imgui.SetCursorScreenPos({ x + padX, y + padY });
-    imgui.Text(text);
-
-    local _, newY = imgui.GetCursorScreenPos();
-    imgui.SetCursorScreenPos({ x, newY });
-    imgui.Spacing();
 end
 
 local function countJobWeapons(jobId)
@@ -630,7 +572,7 @@ local function drawCalculatorTab()
     -- Custom Level section (if enabled)
     -----------------------------------------------------------------------
     if state.customLevel.enabled then
-        drawGradientHeader('Character Level', imgui.GetContentRegionAvail());
+        SkillchainUI.drawGradientHeader('Character Level', imgui.GetContentRegionAvail());
 
         local indent = 5;
 
@@ -661,7 +603,7 @@ local function drawCalculatorTab()
     -----------------------------------------------------------------------
     -- Jobs + weapons section
     -----------------------------------------------------------------------
-    drawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
+    SkillchainUI.drawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
 
     ensureJobWeaponSelection(state.jobs[1]);
     ensureJobWeaponSelection(state.jobs[2]);
@@ -834,14 +776,14 @@ local function drawCalculatorTab()
     end
 
     -- Primary action: Calculate
-    if styledButton('Calculate', { buttonWidth, 0 }, true) then
+    if SkillchainUI.styledButton('Calculate', { buttonWidth, 0 }, true) then
         request = buildCalculationRequest();
     end
 
     imgui.SameLine();
 
     -- Secondary action: Clear (ghost button style)
-    if styledButton('Clear', { buttonWidth, 0 }, false) then
+    if SkillchainUI.styledButton('Clear', { buttonWidth, 0 }, false) then
         local curJob1Id = jobItems[state.jobs[1].index];
         local curJob2Id = jobItems[state.jobs[2].index];
 
@@ -864,7 +806,7 @@ local function drawFiltersTab()
     -----------------------------------------------------------------------
     -- Element Filter
     -----------------------------------------------------------------------
-    drawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
+    SkillchainUI.drawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
 
     imgui.Text('Filter results by burst element:');
     imgui.SetCursorPosX(baseX + indent);
@@ -879,7 +821,7 @@ local function drawFiltersTab()
     -----------------------------------------------------------------------
     -- Level Filter
     -----------------------------------------------------------------------
-    drawGradientHeader('Skillchain Level (1, 2, 3)', imgui.GetContentRegionAvail());
+    SkillchainUI.drawGradientHeader('Skillchain Level (1, 2, 3)', imgui.GetContentRegionAvail());
 
     imgui.Text('Minimum skillchain tier:');
     imgui.SetCursorPosX(baseX + indent);
@@ -902,7 +844,7 @@ local function drawFiltersTab()
     -----------------------------------------------------------------------
     -- Advanced Filters Section
     -----------------------------------------------------------------------
-    drawGradientHeader('Advanced Filters', imgui.GetContentRegionAvail());
+    SkillchainUI.drawGradientHeader('Advanced Filters', imgui.GetContentRegionAvail());
 
     -- Custom Level Checkbox
     imgui.SetCursorPosX(baseX + indent);
@@ -1004,7 +946,7 @@ local function drawFiltersTab()
     end
 
     -- Set Defaults button
-    if styledButton('Set as Defaults', { buttonWidth, 0 }, true) then
+    if SkillchainUI.styledButton('Set as Defaults', { buttonWidth, 0 }, true) then
         local def = (cache and cache.settings and cache.settings.default) or {};
         def.scLevel = state.filters.scLevel;
         def.both  = state.filters.both;
@@ -1021,7 +963,7 @@ local function drawFiltersTab()
     imgui.SameLine();
 
     -- Reset Filters button (ghost style)
-    if styledButton('Reset Filters', { buttonWidth, 0 }, false) then
+    if SkillchainUI.styledButton('Reset Filters', { buttonWidth, 0 }, false) then
         -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
         state.filters.scLevel = def.scLevel or 1;
@@ -1048,7 +990,7 @@ local function drawFiltersTab()
     end
 
     -- Calculate button (primary style)
-    if styledButton('Calculate', { calcButtonWidth, 0 }, true) then
+    if SkillchainUI.styledButton('Calculate', { calcButtonWidth, 0 }, true) then
         -- Ensure weapon selections exist for current jobs
         ensureJobWeaponSelection(state.jobs[1]);
         ensureJobWeaponSelection(state.jobs[2]);
@@ -1077,7 +1019,7 @@ local function drawSettingsTab()
     local maxX = limits.maxX;
     local maxY = limits.maxY;
 
-    drawGradientHeader('Results Window', imgui.GetContentRegionAvail());
+    SkillchainUI.drawGradientHeader('Results Window', imgui.GetContentRegionAvail());
     imgui.Spacing();
 
     -- 5px indent
@@ -1115,7 +1057,7 @@ local function drawSettingsTab()
     -- Stored Default Filter Status (read-only)
     -----------------------------------------------------------------------
     imgui.Separator();
-    drawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
+    SkillchainUI.drawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
 
     local def = cache.settings.default or {};
 
@@ -1139,37 +1081,6 @@ local function drawSettingsTab()
 
     imgui.SetCursorPosX(baseX + indent);
     imgui.Text(string.format("Enable Both:      %s", tostring(def.both or false)));
-
-    -----------------------------------------------------------------------
-    -- How to update defaults (CLI instructions)
-    -----------------------------------------------------------------------
-    imgui.Spacing();
-    imgui.Separator();
-    drawGradientHeader('How to Update Defaults (CLI)', imgui.GetContentRegionAvail());
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setsclevel <1-3>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setcharlevel <true|false>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setsubjob <true|false>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setfavws <true|false>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setrema <true|false>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setboth <true|false>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc setx <value>');
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text('/scc sety <value>');
 
     return request;
 end
@@ -1273,6 +1184,23 @@ function SkillchainGUI.SetCache(cacheRef)
     cache = cacheRef;
 end
 
+-- DrawWindow() renders the Calculator/Filters/Settings tabs and returns a request table.
+-- The caller (SkillchainCalc.lua:d3d_present_cb) inspects the table and acts on set fields.
+-- Fields not listed below are never set; nil / absent means "not requested this frame".
+--
+-- anchorChanged        (bool)        Results window was dragged; call SkillchainRenderer.updateAnchor + settings.save
+-- guiPositionChanged   (bool)        GUI window was dragged; call settings.save
+-- updateDefaults       (bool)        User saved new defaults; call applyDefaultsToCache + settings.save, re-parse if visible
+-- clear                (bool)        User clicked Clear; call SkillchainRenderer.clear + resetCacheFull
+-- token1               (string)      Opener job token; presence triggers full skillchain recalculation
+-- token2               (string)      Closer job token (always paired with token1)
+-- scLevel              (number 1-3)  Skillchain level filter override
+-- both                 (bool)        Calculate both opener→closer and closer→opener directions
+-- scElement            (string|nil)  Burst element filter token (lowercase); nil = Any
+-- charLevel            (number|nil)  Character level cap; nil = use maximum
+-- favWs1               (string|nil)  Opener favorite WS name filter; nil = Any
+-- favWs2               (string|nil)  Closer favorite WS name filter; nil = Any
+-- showRema             (bool)        Include REMA (²) weapon skills in results
 function SkillchainGUI.DrawWindow()
     if not showWindow[1] then
         -- Disable drag and reset checkbox state when GUI is closed
