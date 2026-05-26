@@ -6,6 +6,7 @@ local imgui    = require('imgui');
 local jobsData = require('Jobs');
 local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
+local SkillchainUI = require('SkillchainUI');
 local SkillchainRenderer = require('SkillchainRenderer');
 
 local SkillchainParty = {};
@@ -25,8 +26,6 @@ local partyScFilters = {
     { label = 'Distortion',       chains = { Distortion    = true, Darkness  = true } },
     { label = 'Light / Darkness', chains = { Light         = true, Darkness  = true } },
 };
-
-local REMA_SUFFIX = '\xC2\xB2';
 
 -- Jobs defaulted to disabled at seed time (casters/support with no melee WS contribution)
 local defaultDisabledJobs = { BLM=true, WHM=true, SMN=true, BRD=true, RDM=true };
@@ -74,7 +73,7 @@ do
         local weaponSkills = skills[weaponKey];
         if type(weaponSkills) == 'table' then
             for _, ws in pairs(weaponSkills) do
-                if type(ws) == 'table' and ws.en and ws.en:find(REMA_SUFFIX, 1, true) then
+                if type(ws) == 'table' and ws.en and ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) then
                     table.insert(remaWeaponTypes, weaponKey);
                     break;
                 end
@@ -150,28 +149,6 @@ local function readLocalPlayerWeapon()
     end
 
     return skillIdToWeapon[itemInfo.Skill];
-end
-
--- Styled button helper: handles primary (blue) and ghost (transparent) button styles
-local function styledButton(label, size, isPrimary)
-    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0);
-
-    if isPrimary then
-        imgui.PushStyleColor(ImGuiCol_Button,        { 0.25, 0.40, 0.85, 1.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 0.30, 0.48, 0.95, 1.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 0.18, 0.32, 0.70, 1.00 });
-    else
-        imgui.PushStyleColor(ImGuiCol_Button,        { 0.00, 0.00, 0.00, 0.00 });
-        imgui.PushStyleColor(ImGuiCol_ButtonHovered, { 1.00, 1.00, 1.00, 0.12 });
-        imgui.PushStyleColor(ImGuiCol_ButtonActive,  { 1.00, 1.00, 1.00, 0.20 });
-    end
-
-    local clicked = imgui.Button(label, size);
-
-    imgui.PopStyleColor(3);
-    imgui.PopStyleVar(1);
-
-    return clicked;
 end
 
 local function getPartyWarnings()
@@ -278,7 +255,7 @@ local function drawCenteredButton(label, isPrimary, contentWidth)
     local buttonWidth = contentWidth * 0.80;
     local startX = imgui.GetCursorPosX() + ((contentWidth - buttonWidth) / 2);
     imgui.SetCursorPosX(startX);
-    return styledButton(label, { buttonWidth, 0 }, isPrimary);
+    return SkillchainUI.styledButton(label, { buttonWidth, 0 }, isPrimary);
 end
 
 local function drawMemberRow(member, index, contentWidth)
@@ -287,7 +264,7 @@ local function drawMemberRow(member, index, contentWidth)
         member.enabled = enabled[1];
     end
     imgui.SameLine();
-    imgui.Text(member.hasRema and (member.name .. REMA_SUFFIX) or member.name);
+    imgui.Text(member.hasRema and (member.name .. SkillchainCore.REMA_SUFFIX) or member.name);
 
     -- Job/sub label: right-aligned flush against the weapon dropdown
     local comboWidth = 130;
@@ -334,31 +311,6 @@ local function drawMemberRow(member, index, contentWidth)
     imgui.PopItemWidth();
 end
 
--- Gradient section header (mirrors SkillchainGui.drawGradientHeader)
-local function drawGradientHeader(text, width)
-    local drawlist = imgui.GetWindowDrawList();
-    local x, y    = imgui.GetCursorScreenPos();
-    local lineH   = imgui.GetTextLineHeightWithSpacing();
-
-    local gradWidth  = width * 0.75;
-    local colLeft    = { 0.25, 0.40, 0.85, 1.00 };
-    local colLeftU32 = imgui.GetColorU32(colLeft);
-    local colRight   = { colLeft[1], colLeft[2], colLeft[3], 0.00 };
-    local colRightU32 = imgui.GetColorU32(colRight);
-
-    drawlist:AddRectFilledMultiColor(
-        { x, y }, { x + gradWidth, y + lineH },
-        colLeftU32, colRightU32, colRightU32, colLeftU32
-    );
-
-    imgui.SetCursorScreenPos({ x + 4, y + 2 });
-    imgui.Text(text);
-
-    local _, newY = imgui.GetCursorScreenPos();
-    imgui.SetCursorScreenPos({ x, newY });
-    imgui.Spacing();
-end
-
 -----------------------------------------------------------------------
 -- Window visibility state
 -----------------------------------------------------------------------
@@ -370,6 +322,18 @@ local partyGuiState = { enableDrag = false };
 -- Public API
 -----------------------------------------------------------------------
 
+-- DrawWindow() renders the Party/Settings tabs and returns a request table.
+-- The caller (SkillchainCalc.lua:d3d_present_cb) inspects the table and acts on set fields.
+-- Fields not listed below are never set; nil / absent means "not requested this frame".
+--
+-- anchorChanged        (bool)          Results window was dragged; call SkillchainRenderer.updateAnchor + settings.save
+-- partyPositionChanged (bool)          Party window was dragged; call settings.save
+-- settingsChanged      (bool)          REMA/FavWs/localPlayer settings changed; call settings.save
+-- mode                 (string)        'party' — triggers party skillchain calculation in the caller
+-- members              (array)         Party member snapshot; present when mode == 'party';
+--                                      each entry: { name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs }
+-- partyFilters         (table)         { chains: table|nil } — set of SC family names or nil for Any
+-- warnings             (array)         Stale-party warnings (strings) to print to chat; present when mode == 'party'
 function SkillchainParty.DrawWindow()
     if not showWindow[1] then
         -- Disable drag and reset checkbox state when window is closed
@@ -426,11 +390,11 @@ function SkillchainParty.DrawWindow()
                 local btnW   = (contentWidth - 8) * 0.5;
                 local startX = imgui.GetCursorPosX() + (contentWidth - btnW * 2 - 8) * 0.5;
                 imgui.SetCursorPosX(startX);
-                if styledButton('Update Party', { btnW, 0 }, false) then
+                if SkillchainUI.styledButton('Update Party', { btnW, 0 }, false) then
                     loadParty();
                 end
                 imgui.SameLine(0, 8);
-                if styledButton('Clear Party', { btnW, 0 }, false) then
+                if SkillchainUI.styledButton('Clear Party', { btnW, 0 }, false) then
                     partyState.loaded  = false;
                     partyState.members = {};
                 end
@@ -441,7 +405,7 @@ function SkillchainParty.DrawWindow()
             -----------------------------------------------------------------------
             -- Party section
             -----------------------------------------------------------------------
-            drawGradientHeader('Party', contentWidth);
+            SkillchainUI.drawGradientHeader('Party', contentWidth);
 
             if (not partyState.loaded) or (#partyState.members == 0) then
                 local hint  = 'No party loaded — press Update Party';
@@ -458,7 +422,7 @@ function SkillchainParty.DrawWindow()
                 -----------------------------------------------------------------------
                 -- Filters section
                 -----------------------------------------------------------------------
-                drawGradientHeader('Filter', contentWidth);
+                SkillchainUI.drawGradientHeader('Filter', contentWidth);
 
                 do
                     local fidx    = partyState.filters.scFilterIndex;
@@ -494,14 +458,14 @@ function SkillchainParty.DrawWindow()
                         local remaLabel = partyState.filters.remaOpen and '\xe2\x96\xb2 REMA' or '\xe2\x96\xbc REMA';
                         local remaW     = contentWidth * 0.80;
                         imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaW) * 0.5);
-                        if styledButton(remaLabel, { remaW, 0 }, false) then
+                        if SkillchainUI.styledButton(remaLabel, { remaW, 0 }, false) then
                             partyState.filters.remaOpen = not partyState.filters.remaOpen;
                             if partyState.filters.remaOpen then partyState.filters.favWsOpen = false; end
                         end
                         if imgui.IsItemHovered() then
                             imgui.BeginTooltip();
                             imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                            imgui.TextUnformatted('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (' .. REMA_SUFFIX .. ') in the calculation.');
+                            imgui.TextUnformatted('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (' .. SkillchainCore.REMA_SUFFIX .. ') in the calculation.');
                             imgui.PopTextWrapPos();
                             imgui.EndTooltip();
                         end
@@ -525,7 +489,7 @@ function SkillchainParty.DrawWindow()
                         local favWsLabel = partyState.filters.favWsOpen and '\xe2\x96\xb2 Fav WS' or '\xe2\x96\xbc Fav WS';
                         local favWsW     = contentWidth * 0.80;
                         imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - favWsW) * 0.5);
-                        if styledButton(favWsLabel, { favWsW, 0 }, false) then
+                        if SkillchainUI.styledButton(favWsLabel, { favWsW, 0 }, false) then
                             partyState.filters.favWsOpen = not partyState.filters.favWsOpen;
                             if partyState.filters.favWsOpen then partyState.filters.remaOpen = false; end
                         end
@@ -563,7 +527,7 @@ function SkillchainParty.DrawWindow()
                                 if member.favWs == nil then imgui.SetItemDefaultFocus(); end
                                 if wsList then
                                     for _, ws in ipairs(wsList) do
-                                        local isRema = ws.en:find(REMA_SUFFIX, 1, true) ~= nil;
+                                        local isRema = ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) ~= nil;
                                         if not isRema or member.hasRema then
                                             local selected = (member.favWs == ws.en);
                                             if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
@@ -613,7 +577,7 @@ function SkillchainParty.DrawWindow()
             local baseX  = imgui.GetCursorPosX();
             local indent = 5;
 
-            drawGradientHeader('Results Window', contentWidth);
+            SkillchainUI.drawGradientHeader('Results Window', contentWidth);
             imgui.Spacing();
 
             if cache and cache.settings and cache.settings.anchor then
@@ -653,7 +617,7 @@ function SkillchainParty.DrawWindow()
             -----------------------------------------------------------------------
             -- Advanced Filters
             -----------------------------------------------------------------------
-            drawGradientHeader('Advanced Filters', contentWidth);
+            SkillchainUI.drawGradientHeader('Advanced Filters', contentWidth);
             imgui.Spacing();
 
             imgui.SetCursorPosX(baseX + indent);
@@ -687,7 +651,7 @@ function SkillchainParty.DrawWindow()
             -----------------------------------------------------------------------
             -- Local Player
             -----------------------------------------------------------------------
-            drawGradientHeader('Local Player', contentWidth);
+            SkillchainUI.drawGradientHeader('Local Player', contentWidth);
             imgui.Spacing();
 
             do
@@ -699,7 +663,7 @@ function SkillchainParty.DrawWindow()
                     or  '\xe2\x96\xbc REMA Weapons';
                 local remaToggleW = contentWidth * 0.80;
                 imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaToggleW) * 0.5);
-                if styledButton(remaToggleLabel, { remaToggleW, 0 }, false) then
+                if SkillchainUI.styledButton(remaToggleLabel, { remaToggleW, 0 }, false) then
                     partyState.filters.localRemaOpen = not partyState.filters.localRemaOpen;
                 end
                 if imgui.IsItemHovered() then

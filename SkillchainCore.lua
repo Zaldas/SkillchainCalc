@@ -9,7 +9,7 @@ local chat           = require('chat');
 
 local SkillchainCore = {};
 
-local REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
+SkillchainCore.REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
 
 -- Helper function to get skill cap from rank and level
 local function getSkillCapFromRank(skillRank, level)
@@ -685,7 +685,7 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
 
         -- Filter 3: REMA weapon skills (² suffix)
         if pass and not filters.showRema then
-            local isRema = combo.skill1:find(REMA_SUFFIX, 1, true) or combo.skill2:find(REMA_SUFFIX, 1, true);
+            local isRema = combo.skill1:find(SkillchainCore.REMA_SUFFIX, 1, true) or combo.skill2:find(SkillchainCore.REMA_SUFFIX, 1, true);
             pass = not isRema;
         end
 
@@ -827,7 +827,7 @@ function SkillchainCore.CalculatePartySkillchains(members)
                 if not m.hasRema then
                     local noRema = {};
                     for _, ws in ipairs(skillList) do
-                        if not ws.en:find(REMA_SUFFIX, 1, true) then
+                        if not ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) then
                             table.insert(noRema, ws);
                         end
                     end
