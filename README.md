@@ -115,6 +115,51 @@ The results window appears after any calculation and displays all valid skillcha
 
 ---
 
+## Advanced Command Line Interface (CLI)
+
+The CLI lets you run calculations directly. The Calculator window opens alongside the results.
+
+Calculations take two **tokens** — one per job. A token describes the job, an optional subjob, and an optional weapon restriction:
+
+```
+job[/subjob][:weapon,weapon,...]
+```
+
+| Part | Description |
+|------|-------------|
+| `job` | Any job abbreviation |
+| `/subjob` | Optional — adds weapon skills accessible through that subjob |
+| `:weapon,...` | Optional — comma-separated list of weapon types to restrict the calculation to |
+
+**Usage:**
+
+```
+/scc <token1> <token2> [options]
+```
+
+> Options not specified in the command fall back to your saved filter defaults (set via **Set as Defaults** in the Calculator's Filters tab); any option specified overrides the default for that run.
+
+**Options:**
+
+| Option | Format | Description |
+|--------|--------|-------------|
+| Tier filter | `1` / `2` / `3` | Minimum skillchain tier to include |
+| Both directions | `both` | Calculate both Job1→Job2 and Job2→Job1 |
+| Element filter | `sc:<element>` | Limit results to a specific burst element |
+| Level cap | `lvl:<n>` or `level:<n>` | Exclude weapon skills above the skill cap for level n |
+
+**Examples:**
+
+| Command | What it does |
+|---------|-------------|
+| `/scc war mnk` | All skillchains between WAR and MNK using their default weapons |
+| `/scc thf:sword war` | THF restricted to Sword only (non-default weapon), WAR unrestricted |
+| `/scc sam/rng nin` | SAM with RNG subjob — pulls in Archery/Marksmanship weapon skills via subjob |
+| `/scc war mnk 2 both` | Tier 2+ only, both directions |
+| `/scc sam drk lvl:66 sc:distortion` | Level-capped at 66, results filtered to Distortion burst |
+
+---
+
 ## Files
 
 | File | Purpose |
