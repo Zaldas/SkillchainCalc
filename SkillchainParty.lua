@@ -393,7 +393,12 @@ function SkillchainParty.DrawWindow()
     local winHeight       = (contentRows + 1) * lineHeight + padding;
 
     imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
-    imgui.SetNextWindowPos({ 50, 50 }, ImGuiCond_Once);
+    local guiPos = cache and cache.settings and cache.settings.guiPosition;
+    if guiPos then
+        imgui.SetNextWindowPos({ guiPos.x, guiPos.y }, ImGuiCond_Once);
+    else
+        imgui.SetNextWindowPos({ 50, 50 }, ImGuiCond_Once);
+    end
 
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
@@ -732,6 +737,21 @@ function SkillchainParty.DrawWindow()
         end
 
         imgui.EndTabBar();
+    end
+
+    -- Track position changes (shared with calc window — they're mutually exclusive)
+    if guiPos then
+        local curPosX, curPosY = imgui.GetWindowPos();
+        if curPosX then
+            local cx = curPosX - (curPosX % 1);
+            local cy = curPosY - (curPosY % 1);
+            if cx ~= guiPos.x or cy ~= guiPos.y then
+                guiPos.x = cx;
+                guiPos.y = cy;
+                request = request or {};
+                request.partyPositionChanged = true;
+            end
+        end
     end
 
     imgui.End();

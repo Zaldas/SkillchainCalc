@@ -287,6 +287,9 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
         if partyReq.settingsChanged then
             settings.save();
         end
+        if partyReq.partyPositionChanged then
+            settings.save();
+        end
         if partyReq.mode == 'party' then
             if partyReq.warnings and #partyReq.warnings > 0 then
                 msg('[Party] Warning: party data may be outdated:');
