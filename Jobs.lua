@@ -82,7 +82,7 @@ jobs.BLM = {
         staff  = { skillRank = 'B-' },
         club   = { skillRank = 'C+' },
         dagger = { skillRank = 'D' },
-        scythe = { skillRank = 'F' },
+        scythe = { skillRank = 'E' },
     },
 }
 
@@ -102,7 +102,7 @@ jobs.THF = {
     defaultSubjob = 'NIN',
     primaryWeapons = { 'dagger' },
     weapons = {
-        dagger  = { skillRank = 'A+' },
+        dagger  = { skillRank = 'A-' },
         mm      = { skillRank = 'C+' },
         archery = { skillRank = 'C-' },
         sword   = { skillRank = 'D' },
@@ -120,7 +120,7 @@ jobs.PLD = {
         staff   = { skillRank = 'A-' },
         gs      = { skillRank = 'B' },
         dagger  = { skillRank = 'C-' },
-        polearm = { skillRank = 'F' },
+        polearm = { skillRank = 'E' },
     },
 }
 
@@ -142,11 +142,11 @@ jobs.BST = {
     defaultSubjob = 'NIN',
     primaryWeapons = { 'axe' },
     weapons = {
-        axe    = { skillRank = 'A+' },
+        axe    = { skillRank = 'A-' },
         scythe = { skillRank = 'B-' },
         dagger = { skillRank = 'C+' },
         club   = { skillRank = 'D' },
-        sword  = { skillRank = 'F' },
+        sword  = { skillRank = 'E' },
     },
 }
 
@@ -191,7 +191,7 @@ jobs.NIN = {
     defaultSubjob = 'WAR',
     primaryWeapons = { 'katana' },
     weapons = {
-        katana  = { skillRank = 'A+' },
+        katana  = { skillRank = 'A-' },
         dagger  = { skillRank = 'C+' },
         sword   = { skillRank = 'C' },
         gkt     = { skillRank = 'C-' },
@@ -220,7 +220,7 @@ jobs.SMN = {
     weapons = {
         avatar = { skillRank = 'Level' },     -- avatar skills are based on level
         staff  = { skillRank = 'B' },
-        club   = { skillRank = 'C' },
+        club   = { skillRank = 'C+' },
         dagger = { skillRank = 'E' },
     },
 }
