@@ -143,8 +143,6 @@ local state = {
     -- Settings UI state
     enableDrag = false,           -- Enable drag checkbox (not persisted)
 
-    -- UI state tracking
-    activeTab = 'Calculator',     -- Current active tab (for dynamic height)
 };
 
 -- Module-level cache reference (set externally via SetCache)
@@ -153,33 +151,6 @@ local cache = nil;
 -----------------------------------------------------------------------
 -- Helpers
 -----------------------------------------------------------------------
-local function calculateTabHeight(tabName, maxWeapons)
-    local lineHeight = imgui.GetFrameHeightWithSpacing();
-    local paddingAdjust = 0;
-    -- All values are manually tweaked to make GUI look good
-    if tabName == 'Calculator' then
-        paddingAdjust = -8;
-        -- Base rows: header + job combos + buttons + spacing
-        local rowsBase    = 6;
-        local rowsWeapons = maxWeapons or 0;
-        -- Add extra rows for subjob dropdowns if enabled
-        local rowsSubjob = state.filters.includeSubjob and 1 or 0;
-        -- Add extra row for favorite WS dropdown if enabled
-        local rowsFavWs = state.filters.enableFavWs and 1 or 0;
-        -- Add extra row for custom level dropdown if enabled
-        local rowsLevel = state.customLevel.enabled and 2.5 or 0;
-        return (rowsBase + rowsWeapons + rowsSubjob + rowsFavWs + rowsLevel) * lineHeight + paddingAdjust;
-    elseif tabName == 'Filters' then
-        paddingAdjust = 3;
-        return 20 * lineHeight + paddingAdjust;
-    elseif tabName == 'Settings' then
-        --paddingAdjust = 0;
-        return 19 * lineHeight + paddingAdjust;
-    end
-
-    return 400; -- fallback
-end
-
 local function drawCombo(label, items, currentIndex)
     local idx   = currentIndex or 1;
     if idx < 1 or idx > #items then
@@ -213,11 +184,6 @@ local function helpMarker(text)
         imgui.PopTextWrapPos();
         imgui.EndTooltip();
     end
-end
-
-local function countJobWeapons(jobId)
-    local list = SkillchainCore.GetWeaponsForJob(jobId);
-    return #list;
 end
 
 -- Build default weapon selection for a job
@@ -1263,18 +1229,7 @@ function SkillchainGUI.DrawWindow()
         state.openedFromCli = false;
     end
 
-    -- derive current jobs to estimate height for Calculator tab
-    local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
-    local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
-
-    local count1     = countJobWeapons(job1Id);
-    local count2     = countJobWeapons(job2Id);
-    local maxWeapons = math.max(count1, count2);
-
-    -- Calculate window height based on active tab
-    local winHeight = calculateTabHeight(state.activeTab, maxWeapons);
-
-    imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
+    imgui.SetNextWindowSizeConstraints({ 380, 0 }, { 380, 9999 });
 
     -- Restore saved GUI position
     local guiPos = cache.settings.guiPosition;
@@ -1285,7 +1240,7 @@ function SkillchainGUI.DrawWindow()
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
         ImGuiWindowFlags_NoDocking or 0,
-        ImGuiWindowFlags_NoResize
+        ImGuiWindowFlags_AlwaysAutoResize
     );
 
     if not imgui.Begin('SkillchainCalc', showWindow, flags) then
@@ -1298,9 +1253,6 @@ function SkillchainGUI.DrawWindow()
     if imgui.BeginTabBar('##scc_tabs', ImGuiTabBarFlags_None) then
         -- Calculator tab
         if imgui.BeginTabItem('Calculator') then
-            if state.activeTab ~= 'Calculator' then
-                state.activeTab = 'Calculator';
-            end
             local r = drawCalculatorTab();
             if r then
                 request = r;
@@ -1310,9 +1262,6 @@ function SkillchainGUI.DrawWindow()
 
         -- Filters tab
         if imgui.BeginTabItem('Filters') then
-            if state.activeTab ~= 'Filters' then
-                state.activeTab = 'Filters';
-            end
             local r = drawFiltersTab();
             if r then
                 request = request or {};
@@ -1325,9 +1274,6 @@ function SkillchainGUI.DrawWindow()
 
         -- Settings tab
         if imgui.BeginTabItem('Settings') then
-            if state.activeTab ~= 'Settings' then
-                state.activeTab = 'Settings';
-            end
             local r = drawSettingsTab();
             if r then
                 request = request or {};

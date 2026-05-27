@@ -33,7 +33,6 @@ local defaultDisabledJobs = { BLM=true, WHM=true, SMN=true, BRD=true, RDM=true }
 -- Party state: seeded snapshot of party members + party-specific filters
 local partyState = {
     loaded    = false,
-    activeTab = 'Party',
     members   = {},  -- array of {name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs}
     filters   = {
         scFilterIndex = 1,  -- index into partyScFilters (1 = 'All')
@@ -342,21 +341,7 @@ function SkillchainParty.DrawWindow()
         return nil;
     end
 
-    local lineHeight   = imgui.GetFrameHeightWithSpacing();
-    local memberCount  = #partyState.members;
-    local remaRows    = (partyState.filters.showRema and partyState.filters.remaOpen) and memberCount or 0;
-    local favWsRows    = (partyState.filters.showFavWs and partyState.filters.favWsOpen) and memberCount or 0;
-    local remaFixed   = partyState.filters.showRema  and 1 or 0;
-    local favWsFixed   = partyState.filters.showFavWs and 1 or 0;
-
-    local partyTabRows    = (memberCount == 0) and 5 or (memberCount + 7 + remaFixed + remaRows + favWsFixed + favWsRows);
-    local localRemaRows   = partyState.filters.localRemaOpen and math.ceil(#remaWeaponTypes / 2) or 0;
-    local settingsTabRows = 12 + localRemaRows;
-    local contentRows     = (partyState.activeTab == 'Settings') and settingsTabRows or partyTabRows;
-    local padding         = (partyState.activeTab == 'Settings') and 0 or (remaFixed * 4 + favWsFixed * 4 + 4);
-    local winHeight       = (contentRows + 1) * lineHeight + padding;
-
-    imgui.SetNextWindowSize({ 380, winHeight }, ImGuiCond_Always);
+    imgui.SetNextWindowSizeConstraints({ 380, 0 }, { 380, 9999 });
     local guiPos = cache and cache.settings and cache.settings.guiPosition;
     if guiPos then
         imgui.SetNextWindowPos({ guiPos.x, guiPos.y }, ImGuiCond_Once);
@@ -367,7 +352,7 @@ function SkillchainParty.DrawWindow()
     local flags = bit.bor(
         ImGuiWindowFlags_NoSavedSettings,
         ImGuiWindowFlags_NoDocking or 0,
-        ImGuiWindowFlags_NoResize
+        ImGuiWindowFlags_AlwaysAutoResize
     );
 
     if not imgui.Begin('SkillchainCalc - Party', showWindow, flags) then
@@ -383,8 +368,6 @@ function SkillchainParty.DrawWindow()
         -- Party tab
         -------------------------------------------------------------------
         if imgui.BeginTabItem('Party') then
-            partyState.activeTab = 'Party';
-
             -- Update Party | Clear Party (no category header, top of tab)
             do
                 local btnW   = (contentWidth - 8) * 0.5;
@@ -572,8 +555,6 @@ function SkillchainParty.DrawWindow()
         -- Settings tab
         -------------------------------------------------------------------
         if imgui.BeginTabItem('Settings') then
-            partyState.activeTab = 'Settings';
-
             local baseX  = imgui.GetCursorPosX();
             local indent = 5;
 
