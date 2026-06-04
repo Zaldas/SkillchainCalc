@@ -481,10 +481,8 @@ local function normalizeChainSource(source)
 end
 
 local function resolveChainProperties(source1, source2)
-    local props1   = normalizeChainSource(source1);
-    local props2   = normalizeChainSource(source2);
-    local maxTier  = 0;
-    local results  = {};
+    local props1 = normalizeChainSource(source1);
+    local props2 = normalizeChainSource(source2);
 
     for _, chain1 in ipairs(props1) do
         local chainInfo = skills.ChainInfo[chain1];
@@ -492,16 +490,13 @@ local function resolveChainProperties(source1, source2)
             for _, chain2 in ipairs(props2) do
                 local link = chainInfo[chain2];
                 if link then
-                    if link.level > maxTier then
-                        maxTier = link.level;
-                        results = { link.skillchain };
-                    end
+                    return { link.skillchain };
                 end
             end
         end
     end
 
-    return results;
+    return {};
 end
 
 local function getSourceName(source)
