@@ -24,10 +24,6 @@ local settings           = require('settings');
 
 local debugMode = false; -- Debug mode flag
 
--- Soft cap configuration: minimum results to show after a header before allowing column split
--- This prevents columns with just a header and 1-4 results
-local minResultsAfterHeader = 8;
-
 local sccSettings = T{
     font = {
         font_family = 'Arial',
@@ -64,6 +60,7 @@ local sccSettings = T{
         entriesPerColumn = 30,      -- Soft cap: try to split at this point
         softOverflow = 8,           -- Allow up to 8 extra entries before hard cap
         entriesHeight = 20,
+        minResultsAfterHeader = 8,  -- Min results after a header before allowing column split
     },
     default = {
         scLevel = 1,
@@ -141,7 +138,7 @@ local function renderResults(skillchains)
     local resultsTable = SkillchainCore.BuildSkillchainTable(skillchains);
     local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable, debugMode);
 
-    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.filters.both, minResultsAfterHeader);
+    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.filters.both);
 end
 
 -- Event handler for addon loading
@@ -257,7 +254,7 @@ local function parsePartySkillchains(members, partyFilters)
 
     local sortedResults, orderedResults = SkillchainCore.BuildPartySkillchainTable(filtered);
     SkillchainRenderer.clear();
-    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, true, minResultsAfterHeader);
+    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, true);
 end
 
 -- Mouse event handler for drag functionality and combo clicks
@@ -366,6 +363,19 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     end
 end);
 
+-- Normalize a CLI token by round-tripping through the core parser.
+-- Strips redundant subjobs and canonicalizes weapon ordering.
+local function normalizeToken(token)
+    if not token or type(token) ~= 'string' then
+        return token;
+    end
+    local jobId, allowedWeapons, subJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
+    if jobId then
+        return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, subJobId);
+    end
+    return token;
+end
+
 -- Event handler for commands
 ashita.events.register('command', 'command_cb', function(e)
     local args = e.command:args();
@@ -462,23 +472,6 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
-    -- Helper to normalize tokens: strip duplicate subjobs and validate format
-    -- The core parser already handles this, but we normalize for cleaner cache storage
-    local function normalizeToken(token)
-        if not token or type(token) ~= 'string' then
-            return token;
-        end
-
-        -- Parse and rebuild using core logic for consistency
-        local jobId, allowedWeapons, subJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
-        if jobId then
-            return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, subJobId);
-        end
-
-        -- Not a job token, might be a weapon type - return as-is
-        return token;
-    end
-
     -- Parse all arguments and separate tokens from keywords
     local scLevel   = nil;
     local both      = nil;
@@ -493,8 +486,9 @@ ashita.events.register('command', 'command_cb', function(e)
         local param = args[i];
         local lower = param:lower();
 
-        if param:any('1', '2', '3') then
-            scLevel = tonumber(param);
+        local paramNum = tonumber(param);
+        if paramNum == 1 or paramNum == 2 or paramNum == 3 then
+            scLevel = paramNum;
         elseif lower == 'both' then
             both = true;
         elseif lower:sub(1, 3) == 'sc:' then

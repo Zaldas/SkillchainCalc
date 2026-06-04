@@ -13,6 +13,7 @@ local SkillchainRenderer = {};
 local gdiObjects = {
     title = nil,
     background = nil,
+    bgRect = { x = 0, y = 0, w = 0, h = 0 },  -- Tracked internally; avoids reading .settings
     textPool = {},          -- Active text objects
     poolSize = 0,           -- Current pool size
     maxPoolSize = 150,      -- Hard cap
@@ -89,6 +90,8 @@ local function setTitleAndBgPosition(settings)
     if gdiObjects.background then
         gdiObjects.background:set_position_x(settings.anchor.x);
         gdiObjects.background:set_position_y(settings.anchor.y);
+        gdiObjects.bgRect.x = settings.anchor.x;
+        gdiObjects.bgRect.y = settings.anchor.y;
     end
 end
 
@@ -215,15 +218,9 @@ local function dragHitTest(mouseX, mouseY)
         return false;
     end
 
-    -- Use background's own dimensions directly
-    local bg = gdiObjects.background.settings;
-    local x = bg.position_x;
-    local y = bg.position_y;
-    local width = bg.width;
-    local height = bg.height;
-
-    return mouseX >= x and mouseX <= (x + width) and
-           mouseY >= y and mouseY <= (y + height);
+    local r = gdiObjects.bgRect;
+    return mouseX >= r.x and mouseX <= r.x + r.w and
+           mouseY >= r.y and mouseY <= r.y + r.h;
 end
 
 -- Check if mouse clicked on a combo line, returns combo data or nil
@@ -356,7 +353,8 @@ end
 
 -- Calculate the layout structure without rendering
 -- Returns: array of columns, each containing layout items with positions
-local function calculateLayout(sortedResults, orderedResults, layoutSettings, both, minResultsAfterHeader)
+local function calculateLayout(sortedResults, orderedResults, layoutSettings, both)
+    local minResultsAfterHeader = layoutSettings.minResultsAfterHeader or 8;
     local columns = {{items = {}, entriesCount = 0}};
     local currentColIdx = 1;
 
@@ -453,14 +451,14 @@ end
 -- Rendering (Pass 2: Draw the calculated layout)
 -- ============================================================================
 
-function SkillchainRenderer.render(sortedResults, orderedResults, settings, both, minResultsAfterHeader)
+function SkillchainRenderer.render(sortedResults, orderedResults, settings, both)
     isVisible = true;
 
     gdiObjects.background:set_visible(true);
     gdiObjects.title:set_visible(true);
 
     -- Calculate layout structure
-    local columns = calculateLayout(sortedResults, orderedResults, settings.layout, both, minResultsAfterHeader);
+    local columns = calculateLayout(sortedResults, orderedResults, settings.layout, both);
 
     -- Store layout data for anchor updates
     gdiObjects.layoutData = { columns = columns };
@@ -529,7 +527,7 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
         notice:set_text(errorString);
         notice:set_font_color(0xFFFF5555);
         notice:set_position_x(settings.anchor.x + 5);
-        notice:set_position_y(settings.anchor.y - 20);
+        notice:set_position_y(math.max(0, settings.anchor.y - 20));
         notice:set_visible(true);
 
         -- Also print to console
@@ -541,6 +539,8 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     local totalHeight = maxColumnHeight + 5;
     gdiObjects.background:set_height(totalHeight);
     gdiObjects.background:set_width(totalWidth);
+    gdiObjects.bgRect.w = totalWidth;
+    gdiObjects.bgRect.h = totalHeight;
 
     -- Shrink pool if oversized (do this after a delay to avoid thrashing)
     if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then

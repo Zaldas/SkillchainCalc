@@ -130,6 +130,7 @@ end
 -- Returns a weapon key string (e.g. 'gkt') or nil if unequipped/unrecognised.
 local function readLocalPlayerWeapon()
     local inv   = AshitaCore:GetMemoryManager():GetInventory();
+    if inv == nil then return nil; end
     local eitem = inv:GetEquippedItem(0);  -- slot 0 = Main hand
     if eitem == nil or eitem.Index == 0 then
         return nil;
@@ -157,6 +158,7 @@ local function getPartyWarnings()
     end
 
     local party = AshitaCore:GetMemoryManager():GetParty();
+    if party == nil then return warnings; end
 
     -- Build live snapshot keyed by name
     local live = {};
@@ -203,6 +205,7 @@ end
 
 local function loadParty()
     local party = AshitaCore:GetMemoryManager():GetParty();
+    if party == nil then return; end
     partyState.members = {};
 
     for i = 0, 5 do

@@ -495,8 +495,6 @@ local function resolveChainProperties(source1, source2)
                     if link.level > maxTier then
                         maxTier = link.level;
                         results = { link.skillchain };
-                    elseif link.level == maxTier then
-                        results[#results + 1] = link.skillchain;
                     end
                 end
             end
@@ -548,16 +546,16 @@ local function buildCombinations(list1, list2, opts)
     end
 
     -- forward pass
-    for _, s1 in pairs(list1) do
-        for _, s2 in pairs(list2) do
+    for _, s1 in ipairs(list1) do
+        for _, s2 in ipairs(list2) do
             addCombo(s1, s2);
         end
     end
 
     -- reverse pass
     if both then
-        for _, s2 in pairs(list2) do
-            for _, s1 in pairs(list1) do
+        for _, s2 in ipairs(list2) do
+            for _, s1 in ipairs(list1) do
                 addCombo(s2, s1);
             end
         end
