@@ -1179,39 +1179,16 @@ function SkillchainGUI.DrawWindow()
     if (not state.initialized) and cache and cache.settings and cache.settings.default then
         local def = cache.settings.default;
 
-        -- Only apply defaults when NOT opened from CLI
+        -- Only apply defaults when NOT opened from CLI.
+        -- cache.filters is the authoritative source (set by applyDefaultsToCache at load time).
+        -- Only GUI-only state (enableFavWs, useCharLevel) still reads directly from def.
         if not state.openedFromCli then
-            state.filters.scLevel = def.scLevel or 1;
-
-            if def.both ~= nil then
-                state.filters.both = def.both;
-            else
-                state.filters.both = false;
-            end
-
-            if def.includeSubjob ~= nil then
-                state.filters.includeSubjob = def.includeSubjob;
-            else
-                state.filters.includeSubjob = false;
-            end
-
-            if def.enableFavWs ~= nil then
-                state.filters.enableFavWs = def.enableFavWs;
-            else
-                state.filters.enableFavWs = false;
-            end
-
-            if def.showRema ~= nil then
-                state.filters.showRema = def.showRema;
-            else
-                state.filters.showRema = false;
-            end
-
-            if def.useCharLevel ~= nil then
-                state.customLevel.enabled = def.useCharLevel;
-            else
-                state.customLevel.enabled = false;
-            end
+            state.filters.scLevel       = cache.filters.scLevel;
+            state.filters.both          = cache.filters.both;
+            state.filters.includeSubjob = cache.filters.includeSubjob;
+            state.filters.showRema      = cache.filters.showRema;
+            state.filters.enableFavWs   = def.enableFavWs or false;
+            state.customLevel.enabled   = def.useCharLevel or false;
         end
 
         state.filters.elementIndex = 1;
