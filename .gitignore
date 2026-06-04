@@ -4,3 +4,6 @@
 # Release archives
 *.zip
 *.rar
+
+# asimov knowledge base (lives in private addons monorepo)
+knowledge
