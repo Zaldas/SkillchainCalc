@@ -82,8 +82,9 @@ local sccSettings = T{
         showRema = false
     },
     partyFilters = {
-        showRema  = false,
-        showFavWs = false,
+        showRema      = false,
+        showFavWs     = false,
+        scFilterIndex = 1,  -- index into partyScFilters (1 = 'All'); last Skillchain filter used
     },
     localPlayer = {
         remaWeapons = {},

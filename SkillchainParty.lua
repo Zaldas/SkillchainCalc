@@ -442,6 +442,11 @@ local function drawPartyTab(contentWidth)
                     local selected = (i == fidx);
                     if imgui.Selectable(partyScFilters[i].label, selected) then
                         partyState.filters.scFilterIndex = i;
+                        if cache and cache.settings and cache.settings.partyFilters then
+                            cache.settings.partyFilters.scFilterIndex = i;
+                        end
+                        request = request or {};
+                        request.settingsChanged = true;
                     end
                     if selected then imgui.SetItemDefaultFocus(); end
                 end
@@ -783,8 +788,9 @@ function SkillchainParty.SetCache(cacheRef)
     cache = cacheRef;
     if cache and cache.settings and cache.settings.partyFilters then
         local pf = cache.settings.partyFilters;
-        partyState.filters.showRema  = pf.showRema  or false;
-        partyState.filters.showFavWs = pf.showFavWs or false;
+        partyState.filters.showRema      = pf.showRema  or false;
+        partyState.filters.showFavWs     = pf.showFavWs or false;
+        partyState.filters.scFilterIndex = pf.scFilterIndex or 1;
     end
 end
 
