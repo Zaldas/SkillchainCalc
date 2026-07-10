@@ -409,102 +409,86 @@ local function normalizeToken(token)
     return token;
 end
 
--- Event handler for commands
-ashita.events.register('command', 'command_cb', function(e)
-    local args = e.command:args();
-    if (#args == 0 or args[1] ~= '/scc') then
-        return;
+-- Handles the 1-arg utility commands (calc/party/debug/help). Returns true if
+-- the command was recognized and handled (caller should return immediately).
+local function handleUtilityCommand(args)
+    if #args ~= 2 then
+        return false;
     end
 
-    e.blocked = true;
-
-    -- 1-arg utility commands
-    if (#args == 2) then
-        if (args[2] == 'calc') then
-            if SkillchainGUI ~= nil then
-                if SkillchainGUI.IsVisible() then
-                    closeAllWindows();
-                else
-                    showCalculator();
-                    msg('/scc calc - Generic skillchain calculator');
-                    msg('/scc (or /scc party) - Party skillchain calculator for your current party');
-                end
-            end
-            return;
-        elseif (args[2] == 'party') then
-            if SkillchainParty.IsVisible() then
+    if (args[2] == 'calc') then
+        if SkillchainGUI ~= nil then
+            if SkillchainGUI.IsVisible() then
                 closeAllWindows();
             else
-                showParty();
-                msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+                showCalculator();
                 msg('/scc calc - Generic skillchain calculator');
-            end
-            return;
-        elseif (args[2] == 'debug') then
-            debugMode = not debugMode;
-            msg(('Debug mode %s.'):format(debugMode and 'enabled' or 'disabled'));
-            return;
-        elseif (args[2] == 'help') then
-            msg('Commands:');
-            msg('  /scc (or /scc party) - Toggle party skillchain calculator');
-            msg('  /scc calc - Toggle generic skillchain calculator');
-            msg('  /scc debug - Toggle debug mode');
-            return;
-        end
-    end
-
-    -- Detect step mode early and parse step filter
-    local isStep = false;
-    local stepFilter = nil;  -- Can be a tier number (1-4) or property name (e.g., "distortion")
-    local stepFilterType = nil;  -- "tier" or "property"
-
-    if (#args >= 2 and args[2]:lower():sub(1, 4) == 'step') then
-        isStep = true;
-        local stepArg = args[2]:lower();
-
-        -- Check if step has a filter: "step:2" or "step:distortion"
-        if stepArg:find(':') then
-            local colonPos = stepArg:find(':');
-            local filterValue = stepArg:sub(colonPos + 1);
-
-            -- Try to parse as a tier number (1-4)
-            local tierNum = tonumber(filterValue);
-            if tierNum and tierNum >= 1 and tierNum <= 4 then
-                stepFilter = tierNum;
-                stepFilterType = 'tier';
-            else
-                -- Treat as property name (e.g., "distortion", "fusion")
-                -- Validate it's a valid property name (case-insensitive)
-                stepFilter = filterValue;
-                stepFilterType = 'property';
-            end
-        end
-    end
-
-    local minArgs = 3; -- both step (/scc step <token>) and normal (/scc <t1> <t2>) need at least 3 args
-    if (#args < minArgs) then
-        if (#args == 1) then
-            local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
-            if anyOpen then
-                closeAllWindows();
-            else
-                showParty();
                 msg('/scc (or /scc party) - Party skillchain calculator for your current party');
-                msg('/scc calc - Generic skillchain calculator');
             end
         end
-        return;
+        return true;
+    elseif (args[2] == 'party') then
+        if SkillchainParty.IsVisible() then
+            closeAllWindows();
+        else
+            showParty();
+            msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+            msg('/scc calc - Generic skillchain calculator');
+        end
+        return true;
+    elseif (args[2] == 'debug') then
+        debugMode = not debugMode;
+        msg(('Debug mode %s.'):format(debugMode and 'enabled' or 'disabled'));
+        return true;
+    elseif (args[2] == 'help') then
+        msg('Commands:');
+        msg('  /scc (or /scc party) - Toggle party skillchain calculator');
+        msg('  /scc calc - Toggle generic skillchain calculator');
+        msg('  /scc debug - Toggle debug mode');
+        return true;
     end
 
-    -- Parse all arguments and separate tokens from keywords
-    local scLevel   = nil;
-    local both      = nil;
-    local scElement = nil;
-    local charLevel = nil;
+    return false;
+end
+
+-- Detects step mode from args[2] ("step", "step:2", "step:distortion") and
+-- parses its optional filter. Returns isStep, stepFilter (tier number or
+-- property name), stepFilterType ("tier" or "property").
+local function detectStepMode(args)
+    if not (#args >= 2 and args[2]:lower():sub(1, 4) == 'step') then
+        return false, nil, nil;
+    end
+
+    local stepArg = args[2]:lower();
+    local stepFilter = nil;
+    local stepFilterType = nil;
+
+    -- Check if step has a filter: "step:2" or "step:distortion"
+    if stepArg:find(':') then
+        local colonPos = stepArg:find(':');
+        local filterValue = stepArg:sub(colonPos + 1);
+
+        -- Try to parse as a tier number (1-4)
+        local tierNum = tonumber(filterValue);
+        if tierNum and tierNum >= 1 and tierNum <= 4 then
+            stepFilter = tierNum;
+            stepFilterType = 'tier';
+        else
+            -- Treat as property name (e.g., "distortion", "fusion")
+            stepFilter = filterValue;
+            stepFilterType = 'property';
+        end
+    end
+
+    return true, stepFilter, stepFilterType;
+end
+
+-- Parses scLevel/both/scElement/charLevel keywords and remaining job/weapon
+-- tokens starting at startIdx. Returns false (after printing an error) if a
+-- keyword value is invalid; otherwise true plus the parsed values.
+local function parseCommandArgs(args, startIdx)
+    local scLevel, both, scElement, charLevel = nil, nil, nil, nil;
     local foundTokens = {};
-
-    -- Determine where to start parsing based on mode
-    local startIdx = isStep and 3 or 2;
 
     for i = startIdx, #args do
         local param = args[i];
@@ -525,7 +509,7 @@ ashita.events.register('command', 'command_cb', function(e)
                 charLevel = lvlVal;
             else
                 err(('Invalid level value. Must be between 1 and %d.'):format(jobs.MAX_LEVEL));
-                return;
+                return false;
             end
         else
             -- Not a keyword, treat as a token
@@ -533,44 +517,95 @@ ashita.events.register('command', 'command_cb', function(e)
         end
     end
 
-    -- Validate token count based on mode
-    local token1, token2;
+    return true, scLevel, both, scElement, charLevel, foundTokens;
+end
+
+-- Validates the parsed token count against step/normal mode and resolves
+-- token1/token2 (nil token2 in step mode). Returns false (after printing an
+-- error) if validation fails; otherwise true, token1, token2, both (both is
+-- forced nil when token1 == token2, matching normal-mode dedup rules).
+local function resolveTokens(isStep, foundTokens, both)
     if isStep then
         if #foundTokens == 0 then
             err('Step mode requires a job/weapon token.');
             msg('Usage: /scc step <job/weapon> [options]');
-            return;
+            return false;
         elseif #foundTokens > 1 then
             err('Step mode only accepts one job/weapon token.');
             msg('You cannot mix step calculation with job>job calculation.');
-            return;
+            return false;
         end
-        token1 = foundTokens[1];
-        token2 = nil;
-    else
-        if #foundTokens < 2 then
-            err('Normal mode requires two tokens.');
-            msg('/scc help -- for usage help');
-            return;
-        elseif #foundTokens > 2 then
-            err('Too many tokens provided.');
-            msg('/scc help -- for usage help');
-            return;
-        end
+        return true, foundTokens[1], nil, both;
+    end
 
-        -- Validate: if user tried to use "step" as a token
-        if foundTokens[1]:lower() == 'step' or foundTokens[2]:lower() == 'step' then
-            err('The "step" keyword must be the first token.');
-            msg('Usage: /scc step <job/weapon> [options]');
-            return;
-        end
+    if #foundTokens < 2 then
+        err('Normal mode requires two tokens.');
+        msg('/scc help -- for usage help');
+        return false;
+    elseif #foundTokens > 2 then
+        err('Too many tokens provided.');
+        msg('/scc help -- for usage help');
+        return false;
+    end
 
-        token1 = foundTokens[1];
-        token2 = foundTokens[2];
+    -- Validate: if user tried to use "step" as a token
+    if foundTokens[1]:lower() == 'step' or foundTokens[2]:lower() == 'step' then
+        err('The "step" keyword must be the first token.');
+        msg('Usage: /scc step <job/weapon> [options]');
+        return false;
+    end
 
-        if token1 == token2 then
-            both = nil;
+    local token1, token2 = foundTokens[1], foundTokens[2];
+    if token1 == token2 then
+        both = nil;
+    end
+
+    return true, token1, token2, both;
+end
+
+-- Event handler for commands
+ashita.events.register('command', 'command_cb', function(e)
+    local args = e.command:args();
+    if (#args == 0 or args[1] ~= '/scc') then
+        return;
+    end
+
+    e.blocked = true;
+
+    if handleUtilityCommand(args) then
+        return;
+    end
+
+    -- Detect step mode early and parse step filter
+    local isStep, stepFilter, stepFilterType = detectStepMode(args);
+
+    local minArgs = 3; -- both step (/scc step <token>) and normal (/scc <t1> <t2>) need at least 3 args
+    if (#args < minArgs) then
+        if (#args == 1) then
+            local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
+            if anyOpen then
+                closeAllWindows();
+            else
+                showParty();
+                msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+                msg('/scc calc - Generic skillchain calculator');
+            end
         end
+        return;
+    end
+
+    -- Determine where to start parsing based on mode
+    local startIdx = isStep and 3 or 2;
+
+    local parseOk, scLevel, both, scElement, charLevel, foundTokens = parseCommandArgs(args, startIdx);
+    if not parseOk then
+        return;
+    end
+
+    local tokensOk, token1, token2;
+    tokensOk, token1, token2, both = resolveTokens(isStep, foundTokens, both);
+    if not tokensOk then
+        return;
     end
 
     cache.jobs.token1 = token1;

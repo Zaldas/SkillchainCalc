@@ -329,6 +329,324 @@ local wasVisible  = false;  -- Tracks prior-frame visibility to detect the open-
 
 local partyGuiState = { enableDrag = false };
 
+-- Draws the Party tab body: Update/Clear buttons, member list, SC/REMA/Fav WS
+-- filters, and the Calculate button. Returns a request table or nil.
+local function drawPartyTab(contentWidth)
+    local request = nil;
+
+    -- Update Party | Clear Party (no category header, top of tab)
+    do
+        local btnW   = (contentWidth - 8) * 0.5;
+        local startX = imgui.GetCursorPosX() + (contentWidth - btnW * 2 - 8) * 0.5;
+        imgui.SetCursorPosX(startX);
+        if SkillchainUI.styledButton('Update Party', { btnW, 0 }, false) then
+            loadParty();
+        end
+        imgui.SameLine(0, 8);
+        if SkillchainUI.styledButton('Clear Party', { btnW, 0 }, false) then
+            partyState.loaded  = false;
+            partyState.members = {};
+        end
+    end
+
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Party section
+    -----------------------------------------------------------------------
+    SkillchainUI.drawGradientHeader('Party', contentWidth);
+
+    if (not partyState.loaded) or (#partyState.members == 0) then
+        local hint  = 'No party loaded — press Update Party';
+        local textW = imgui.CalcTextSize(hint);
+        imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - textW) * 0.5);
+        imgui.TextDisabled(hint);
+    else
+        for i, member in ipairs(partyState.members) do
+            drawMemberRow(member, i, contentWidth);
+        end
+
+        imgui.Spacing();
+
+        -----------------------------------------------------------------------
+        -- Filters section
+        -----------------------------------------------------------------------
+        SkillchainUI.drawGradientHeader('Filter', contentWidth);
+
+        do
+            local fidx    = partyState.filters.scFilterIndex;
+            local fLabel  = partyScFilters[fidx] and partyScFilters[fidx].label or 'All';
+            local scLabel  = 'Skillchain:';
+            local scLabelW = imgui.CalcTextSize(scLabel);
+            local comboW   = contentWidth * 0.65;
+            local startX   = imgui.GetCursorPosX() + (contentWidth - scLabelW - 6 - comboW) * 0.5;
+            local baseY    = imgui.GetCursorPosY();
+            imgui.SetCursorPosX(startX);
+            imgui.SetCursorPosY(baseY + 4);
+            imgui.Text(scLabel);
+            imgui.SameLine(0, 6);
+            imgui.SetCursorPosY(baseY);
+            imgui.PushItemWidth(comboW);
+            if imgui.BeginCombo('##ptScFilter', fLabel) then
+                for i = 1, #partyScFilters do
+                    local selected = (i == fidx);
+                    if imgui.Selectable(partyScFilters[i].label, selected) then
+                        partyState.filters.scFilterIndex = i;
+                    end
+                    if selected then imgui.SetItemDefaultFocus(); end
+                end
+                imgui.EndCombo();
+            end
+            imgui.PopItemWidth();
+        end
+
+        if partyState.filters.showRema then
+            imgui.Spacing();
+
+            do
+                local remaLabel = partyState.filters.remaOpen and '\xe2\x96\xb2 REMA' or '\xe2\x96\xbc REMA';
+                local remaW     = contentWidth * 0.80;
+                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaW) * 0.5);
+                if SkillchainUI.styledButton(remaLabel, { remaW, 0 }, false) then
+                    partyState.filters.remaOpen = not partyState.filters.remaOpen;
+                    if partyState.filters.remaOpen then partyState.filters.favWsOpen = false; end
+                end
+                if imgui.IsItemHovered() then
+                    imgui.BeginTooltip();
+                    imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
+                    imgui.TextUnformatted('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (' .. SkillchainCore.REMA_SUFFIX .. ') in the calculation.');
+                    imgui.PopTextWrapPos();
+                    imgui.EndTooltip();
+                end
+            end
+            if partyState.filters.remaOpen then
+                imgui.Indent(contentWidth * 0.15);
+                for i, member in ipairs(partyState.members) do
+                    local hr = { member.hasRema or false };
+                    if imgui.Checkbox(member.name .. '##rema' .. i, hr) then
+                        member.hasRema = hr[1];
+                    end
+                end
+                imgui.Unindent(contentWidth * 0.15);
+            end
+        end
+
+        if partyState.filters.showFavWs then
+            imgui.Spacing();
+
+            do
+                local favWsLabel = partyState.filters.favWsOpen and '\xe2\x96\xb2 Fav WS' or '\xe2\x96\xbc Fav WS';
+                local favWsW     = contentWidth * 0.80;
+                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - favWsW) * 0.5);
+                if SkillchainUI.styledButton(favWsLabel, { favWsW, 0 }, false) then
+                    partyState.filters.favWsOpen = not partyState.filters.favWsOpen;
+                    if partyState.filters.favWsOpen then partyState.filters.remaOpen = false; end
+                end
+                if imgui.IsItemHovered() then
+                    imgui.BeginTooltip();
+                    imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
+                    imgui.TextUnformatted('Fav WS: Choose a preferred weapon skill per member. Only skillchains that include at least one member\'s favored WS will be shown.');
+                    imgui.PopTextWrapPos();
+                    imgui.EndTooltip();
+                end
+            end
+            if partyState.filters.favWsOpen then
+                imgui.Indent(contentWidth * 0.12);
+                for i, member in ipairs(partyState.members) do
+                    imgui.Text(member.name);
+                    imgui.SameLine();
+                    imgui.SetCursorPosX(contentWidth * 0.50);
+                    imgui.PushItemWidth(contentWidth * 0.40);
+
+                    local curLabel = member.favWs or '(Any)';
+                    if not member.weapon then
+                        imgui.TextDisabled('(no weapon)');
+                    elseif imgui.BeginCombo('##favws' .. i, curLabel) then
+                        -- Only resolve the skill list while the combo is actually
+                        -- open, not every frame the Fav WS panel is expanded.
+                        local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
+                        local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
+
+                        if imgui.Selectable('(Any)', member.favWs == nil) then
+                            member.favWs = nil;
+                        end
+                        if member.favWs == nil then imgui.SetItemDefaultFocus(); end
+                        if wsList then
+                            for _, ws in ipairs(wsList) do
+                                local isRema = ws.rema == true;
+                                if not isRema or member.hasRema then
+                                    local selected = (member.favWs == ws.en);
+                                    if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
+                                        member.favWs = ws.en;
+                                    end
+                                    if selected then imgui.SetItemDefaultFocus(); end
+                                end
+                            end
+                        end
+                        imgui.EndCombo();
+                    end
+
+                    imgui.PopItemWidth();
+                end
+                imgui.Unindent(contentWidth * 0.12);
+            end
+        end
+
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Spacing();
+
+        if drawCenteredButton('Calculate Skillchains', true, contentWidth) then
+            partyState.filters.remaOpen   = false;
+            partyState.filters.favWsOpen  = false;
+            local fidx = partyState.filters.scFilterIndex;
+            request = {
+                mode         = 'party',
+                members      = partyState.members,
+                partyFilters = {
+                    chains = partyScFilters[fidx] and partyScFilters[fidx].chains or nil,
+                },
+                warnings = getPartyWarnings(),
+            };
+        end
+    end
+
+    return request;
+end
+
+-- Draws the Settings tab body: Results Window anchor/drag controls, Advanced
+-- Filters (REMA/Fav WS enable toggles), and Local Player REMA ownership.
+-- Returns a request table or nil.
+local function drawSettingsTab(contentWidth)
+    local request = nil;
+    local baseX  = imgui.GetCursorPosX();
+    local indent = 5;
+
+    SkillchainUI.drawGradientHeader('Results Window', contentWidth);
+    imgui.Spacing();
+
+    if cache and cache.settings and cache.settings.anchor then
+        local anchor = cache.settings.anchor;
+        local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
+
+        imgui.SetCursorPosX(baseX + indent);
+        local enableDrag = { partyGuiState.enableDrag };
+        if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
+            partyGuiState.enableDrag = enableDrag[1];
+            SkillchainRenderer.SetEnableDrag(enableDrag[1]);
+            request = request or {};
+            request.anchorChanged = true;
+        end
+
+        imgui.SetCursorPosX(baseX + indent);
+        local x = { anchor.x or 0 };
+        if imgui.SliderInt('X', x, limits.minX, limits.maxX) then
+            anchor.x = x[1];
+            request = request or {};
+            request.anchorChanged = true;
+        end
+
+        imgui.SetCursorPosX(baseX + indent);
+        local y = { anchor.y or 0 };
+        if imgui.SliderInt('Y', y, limits.minY, limits.maxY) then
+            anchor.y = y[1];
+            request = request or {};
+            request.anchorChanged = true;
+        end
+    else
+        imgui.TextDisabled('Settings not available.');
+    end
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Advanced Filters
+    -----------------------------------------------------------------------
+    SkillchainUI.drawGradientHeader('Advanced Filters', contentWidth);
+    imgui.Spacing();
+
+    imgui.SetCursorPosX(baseX + indent);
+    local showRema = { partyState.filters.showRema };
+    if imgui.Checkbox('Enable REMA', showRema) then
+        partyState.filters.showRema = showRema[1];
+        if not partyState.filters.showRema then partyState.filters.remaOpen = false; end
+        if cache and cache.settings and cache.settings.partyFilters then
+            cache.settings.partyFilters.showRema = showRema[1];
+        end
+        request = request or {};
+        request.settingsChanged = true;
+    end
+
+    imgui.SetCursorPosX(baseX + indent);
+    local showFavWs = { partyState.filters.showFavWs };
+    if imgui.Checkbox('Enable Fav WS', showFavWs) then
+        partyState.filters.showFavWs = showFavWs[1];
+        if not partyState.filters.showFavWs then partyState.filters.favWsOpen = false; end
+        if cache and cache.settings and cache.settings.partyFilters then
+            cache.settings.partyFilters.showFavWs = showFavWs[1];
+        end
+        request = request or {};
+        request.settingsChanged = true;
+    end
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    -----------------------------------------------------------------------
+    -- Local Player
+    -----------------------------------------------------------------------
+    SkillchainUI.drawGradientHeader('Local Player', contentWidth);
+    imgui.Spacing();
+
+    do
+        local remaSettings = (cache and cache.settings and cache.settings.localPlayer and
+                              cache.settings.localPlayer.remaWeapons) or {};
+
+        local remaToggleLabel = partyState.filters.localRemaOpen
+            and '\xe2\x96\xb2 REMA Weapons'
+            or  '\xe2\x96\xbc REMA Weapons';
+        local remaToggleW = contentWidth * 0.80;
+        imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaToggleW) * 0.5);
+        if SkillchainUI.styledButton(remaToggleLabel, { remaToggleW, 0 }, false) then
+            partyState.filters.localRemaOpen = not partyState.filters.localRemaOpen;
+        end
+        if imgui.IsItemHovered() then
+            imgui.BeginTooltip();
+            imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
+            imgui.TextUnformatted('Select weapon types you own a REMA (Relic/Empyrean/Mythic/Aeonic) weapon for. When loaded into the party list, your REMA status will be set automatically based on your equipped weapon.');
+            imgui.PopTextWrapPos();
+            imgui.EndTooltip();
+        end
+
+        if partyState.filters.localRemaOpen then
+            imgui.Indent(contentWidth * 0.08);
+            imgui.Columns(2, 'localrema_cols', false);
+            for _, weaponKey in ipairs(remaWeaponTypes) do
+                local owned = { remaSettings[weaponKey] == true };
+                if imgui.Checkbox(weaponDisplayNames[weaponKey] or weaponKey, owned) then
+                    if cache and cache.settings and cache.settings.localPlayer then
+                        if owned[1] then
+                            cache.settings.localPlayer.remaWeapons[weaponKey] = true;
+                        else
+                            cache.settings.localPlayer.remaWeapons[weaponKey] = nil;
+                        end
+                    end
+                    request = request or {};
+                    request.settingsChanged = true;
+                end
+                imgui.NextColumn();
+            end
+            imgui.Columns(1);
+            imgui.Unindent(contentWidth * 0.08);
+        end
+    end
+
+    return request;
+end
+
 -----------------------------------------------------------------------
 -- Public API
 -----------------------------------------------------------------------
@@ -373,319 +691,24 @@ function SkillchainParty.DrawWindow()
     local contentWidth = imgui.GetContentRegionAvail();
 
     if imgui.BeginTabBar('##ptTabs') then
-        -------------------------------------------------------------------
         -- Party tab
-        -------------------------------------------------------------------
         if imgui.BeginTabItem('Party') then
-            -- Update Party | Clear Party (no category header, top of tab)
-            do
-                local btnW   = (contentWidth - 8) * 0.5;
-                local startX = imgui.GetCursorPosX() + (contentWidth - btnW * 2 - 8) * 0.5;
-                imgui.SetCursorPosX(startX);
-                if SkillchainUI.styledButton('Update Party', { btnW, 0 }, false) then
-                    loadParty();
-                end
-                imgui.SameLine(0, 8);
-                if SkillchainUI.styledButton('Clear Party', { btnW, 0 }, false) then
-                    partyState.loaded  = false;
-                    partyState.members = {};
-                end
+            local r = drawPartyTab(contentWidth);
+            if r then
+                request = r;
             end
-
-            imgui.Spacing();
-
-            -----------------------------------------------------------------------
-            -- Party section
-            -----------------------------------------------------------------------
-            SkillchainUI.drawGradientHeader('Party', contentWidth);
-
-            if (not partyState.loaded) or (#partyState.members == 0) then
-                local hint  = 'No party loaded — press Update Party';
-                local textW = imgui.CalcTextSize(hint);
-                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - textW) * 0.5);
-                imgui.TextDisabled(hint);
-            else
-                for i, member in ipairs(partyState.members) do
-                    drawMemberRow(member, i, contentWidth);
-                end
-
-                imgui.Spacing();
-
-                -----------------------------------------------------------------------
-                -- Filters section
-                -----------------------------------------------------------------------
-                SkillchainUI.drawGradientHeader('Filter', contentWidth);
-
-                do
-                    local fidx    = partyState.filters.scFilterIndex;
-                    local fLabel  = partyScFilters[fidx] and partyScFilters[fidx].label or 'All';
-                    local scLabel  = 'Skillchain:';
-                    local scLabelW = imgui.CalcTextSize(scLabel);
-                    local comboW   = contentWidth * 0.65;
-                    local startX   = imgui.GetCursorPosX() + (contentWidth - scLabelW - 6 - comboW) * 0.5;
-                    local baseY    = imgui.GetCursorPosY();
-                    imgui.SetCursorPosX(startX);
-                    imgui.SetCursorPosY(baseY + 4);
-                    imgui.Text(scLabel);
-                    imgui.SameLine(0, 6);
-                    imgui.SetCursorPosY(baseY);
-                    imgui.PushItemWidth(comboW);
-                    if imgui.BeginCombo('##ptScFilter', fLabel) then
-                        for i = 1, #partyScFilters do
-                            local selected = (i == fidx);
-                            if imgui.Selectable(partyScFilters[i].label, selected) then
-                                partyState.filters.scFilterIndex = i;
-                            end
-                            if selected then imgui.SetItemDefaultFocus(); end
-                        end
-                        imgui.EndCombo();
-                    end
-                    imgui.PopItemWidth();
-                end
-
-                if partyState.filters.showRema then
-                    imgui.Spacing();
-
-                    do
-                        local remaLabel = partyState.filters.remaOpen and '\xe2\x96\xb2 REMA' or '\xe2\x96\xbc REMA';
-                        local remaW     = contentWidth * 0.80;
-                        imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaW) * 0.5);
-                        if SkillchainUI.styledButton(remaLabel, { remaW, 0 }, false) then
-                            partyState.filters.remaOpen = not partyState.filters.remaOpen;
-                            if partyState.filters.remaOpen then partyState.filters.favWsOpen = false; end
-                        end
-                        if imgui.IsItemHovered() then
-                            imgui.BeginTooltip();
-                            imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                            imgui.TextUnformatted('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (' .. SkillchainCore.REMA_SUFFIX .. ') in the calculation.');
-                            imgui.PopTextWrapPos();
-                            imgui.EndTooltip();
-                        end
-                    end
-                    if partyState.filters.remaOpen then
-                        imgui.Indent(contentWidth * 0.15);
-                        for i, member in ipairs(partyState.members) do
-                            local hr = { member.hasRema or false };
-                            if imgui.Checkbox(member.name .. '##rema' .. i, hr) then
-                                member.hasRema = hr[1];
-                            end
-                        end
-                        imgui.Unindent(contentWidth * 0.15);
-                    end
-                end
-
-                if partyState.filters.showFavWs then
-                    imgui.Spacing();
-
-                    do
-                        local favWsLabel = partyState.filters.favWsOpen and '\xe2\x96\xb2 Fav WS' or '\xe2\x96\xbc Fav WS';
-                        local favWsW     = contentWidth * 0.80;
-                        imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - favWsW) * 0.5);
-                        if SkillchainUI.styledButton(favWsLabel, { favWsW, 0 }, false) then
-                            partyState.filters.favWsOpen = not partyState.filters.favWsOpen;
-                            if partyState.filters.favWsOpen then partyState.filters.remaOpen = false; end
-                        end
-                        if imgui.IsItemHovered() then
-                            imgui.BeginTooltip();
-                            imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                            imgui.TextUnformatted('Fav WS: Choose a preferred weapon skill per member. Only skillchains that include at least one member\'s favored WS will be shown.');
-                            imgui.PopTextWrapPos();
-                            imgui.EndTooltip();
-                        end
-                    end
-                    if partyState.filters.favWsOpen then
-                        imgui.Indent(contentWidth * 0.12);
-                        for i, member in ipairs(partyState.members) do
-                            imgui.Text(member.name);
-                            imgui.SameLine();
-                            imgui.SetCursorPosX(contentWidth * 0.50);
-                            imgui.PushItemWidth(contentWidth * 0.40);
-
-                            local curLabel = member.favWs or '(Any)';
-                            if not member.weapon then
-                                imgui.TextDisabled('(no weapon)');
-                            elseif imgui.BeginCombo('##favws' .. i, curLabel) then
-                                -- Only resolve the skill list while the combo is actually
-                                -- open, not every frame the Fav WS panel is expanded.
-                                local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
-                                local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
-
-                                if imgui.Selectable('(Any)', member.favWs == nil) then
-                                    member.favWs = nil;
-                                end
-                                if member.favWs == nil then imgui.SetItemDefaultFocus(); end
-                                if wsList then
-                                    for _, ws in ipairs(wsList) do
-                                        local isRema = ws.rema == true;
-                                        if not isRema or member.hasRema then
-                                            local selected = (member.favWs == ws.en);
-                                            if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
-                                                member.favWs = ws.en;
-                                            end
-                                            if selected then imgui.SetItemDefaultFocus(); end
-                                        end
-                                    end
-                                end
-                                imgui.EndCombo();
-                            end
-
-                            imgui.PopItemWidth();
-                        end
-                        imgui.Unindent(contentWidth * 0.12);
-                    end
-                end
-
-                imgui.Spacing();
-                imgui.Separator();
-                imgui.Spacing();
-
-                if drawCenteredButton('Calculate Skillchains', true, contentWidth) then
-                    partyState.filters.remaOpen   = false;
-                    partyState.filters.favWsOpen  = false;
-                    local fidx = partyState.filters.scFilterIndex;
-                    request = {
-                        mode         = 'party',
-                        members      = partyState.members,
-                        partyFilters = {
-                            chains = partyScFilters[fidx] and partyScFilters[fidx].chains or nil,
-                        },
-                        warnings = getPartyWarnings(),
-                    };
-                end
-            end
-
             imgui.EndTabItem();
         end
 
-        -------------------------------------------------------------------
         -- Settings tab
-        -------------------------------------------------------------------
         if imgui.BeginTabItem('Settings') then
-            local baseX  = imgui.GetCursorPosX();
-            local indent = 5;
-
-            SkillchainUI.drawGradientHeader('Results Window', contentWidth);
-            imgui.Spacing();
-
-            if cache and cache.settings and cache.settings.anchor then
-                local anchor = cache.settings.anchor;
-                local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
-
-                imgui.SetCursorPosX(baseX + indent);
-                local enableDrag = { partyGuiState.enableDrag };
-                if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
-                    partyGuiState.enableDrag = enableDrag[1];
-                    SkillchainRenderer.SetEnableDrag(enableDrag[1]);
-                    request = request or {};
-                    request.anchorChanged = true;
-                end
-
-                imgui.SetCursorPosX(baseX + indent);
-                local x = { anchor.x or 0 };
-                if imgui.SliderInt('X', x, limits.minX, limits.maxX) then
-                    anchor.x = x[1];
-                    request = request or {};
-                    request.anchorChanged = true;
-                end
-
-                imgui.SetCursorPosX(baseX + indent);
-                local y = { anchor.y or 0 };
-                if imgui.SliderInt('Y', y, limits.minY, limits.maxY) then
-                    anchor.y = y[1];
-                    request = request or {};
-                    request.anchorChanged = true;
-                end
-            else
-                imgui.TextDisabled('Settings not available.');
-            end
-
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Spacing();
-
-            -----------------------------------------------------------------------
-            -- Advanced Filters
-            -----------------------------------------------------------------------
-            SkillchainUI.drawGradientHeader('Advanced Filters', contentWidth);
-            imgui.Spacing();
-
-            imgui.SetCursorPosX(baseX + indent);
-            local showRema = { partyState.filters.showRema };
-            if imgui.Checkbox('Enable REMA', showRema) then
-                partyState.filters.showRema = showRema[1];
-                if not partyState.filters.showRema then partyState.filters.remaOpen = false; end
-                if cache and cache.settings and cache.settings.partyFilters then
-                    cache.settings.partyFilters.showRema = showRema[1];
-                end
+            local r = drawSettingsTab(contentWidth);
+            if r then
                 request = request or {};
-                request.settingsChanged = true;
-            end
-
-            imgui.SetCursorPosX(baseX + indent);
-            local showFavWs = { partyState.filters.showFavWs };
-            if imgui.Checkbox('Enable Fav WS', showFavWs) then
-                partyState.filters.showFavWs = showFavWs[1];
-                if not partyState.filters.showFavWs then partyState.filters.favWsOpen = false; end
-                if cache and cache.settings and cache.settings.partyFilters then
-                    cache.settings.partyFilters.showFavWs = showFavWs[1];
-                end
-                request = request or {};
-                request.settingsChanged = true;
-            end
-
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Spacing();
-
-            -----------------------------------------------------------------------
-            -- Local Player
-            -----------------------------------------------------------------------
-            SkillchainUI.drawGradientHeader('Local Player', contentWidth);
-            imgui.Spacing();
-
-            do
-                local remaSettings = (cache and cache.settings and cache.settings.localPlayer and
-                                      cache.settings.localPlayer.remaWeapons) or {};
-
-                local remaToggleLabel = partyState.filters.localRemaOpen
-                    and '\xe2\x96\xb2 REMA Weapons'
-                    or  '\xe2\x96\xbc REMA Weapons';
-                local remaToggleW = contentWidth * 0.80;
-                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaToggleW) * 0.5);
-                if SkillchainUI.styledButton(remaToggleLabel, { remaToggleW, 0 }, false) then
-                    partyState.filters.localRemaOpen = not partyState.filters.localRemaOpen;
-                end
-                if imgui.IsItemHovered() then
-                    imgui.BeginTooltip();
-                    imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                    imgui.TextUnformatted('Select weapon types you own a REMA (Relic/Empyrean/Mythic/Aeonic) weapon for. When loaded into the party list, your REMA status will be set automatically based on your equipped weapon.');
-                    imgui.PopTextWrapPos();
-                    imgui.EndTooltip();
-                end
-
-                if partyState.filters.localRemaOpen then
-                    imgui.Indent(contentWidth * 0.08);
-                    imgui.Columns(2, 'localrema_cols', false);
-                    for _, weaponKey in ipairs(remaWeaponTypes) do
-                        local owned = { remaSettings[weaponKey] == true };
-                        if imgui.Checkbox(weaponDisplayNames[weaponKey] or weaponKey, owned) then
-                            if cache and cache.settings and cache.settings.localPlayer then
-                                if owned[1] then
-                                    cache.settings.localPlayer.remaWeapons[weaponKey] = true;
-                                else
-                                    cache.settings.localPlayer.remaWeapons[weaponKey] = nil;
-                                end
-                            end
-                            request = request or {};
-                            request.settingsChanged = true;
-                        end
-                        imgui.NextColumn();
-                    end
-                    imgui.Columns(1);
-                    imgui.Unindent(contentWidth * 0.08);
+                for k, v in pairs(r) do
+                    request[k] = v;
                 end
             end
-
             imgui.EndTabItem();
         end
 
