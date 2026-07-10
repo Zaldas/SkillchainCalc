@@ -352,7 +352,11 @@ function Autotranslate.NormalizeName(name)
     if not name then return nil; end
 
     -- Remove tier markers: ¹ (quested), ² (relic), ᵇ (blu), ᶠ (frame)
-    local normalized = name:gsub('[¹²]', '');
+    -- ¹/² are matched as explicit UTF-8 byte sequences, not a [¹²] character
+    -- class -- Lua patterns match classes byte-by-byte, which would otherwise
+    -- split each multi-byte character into individual bytes and match any of
+    -- them individually rather than the intended 2-byte sequence.
+    local normalized = name:gsub('\xC2\xB9', ''):gsub('\xC2\xB2', '');
     normalized = normalized:gsub('ᵇ', '');
     normalized = normalized:gsub('ᶠ', '');
 

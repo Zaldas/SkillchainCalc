@@ -184,13 +184,13 @@ local function getPartyWarnings()
             table.insert(warnings, m.name .. ' is no longer in the party');
         else
             if cur.jobId ~= m.jobId then
-                table.insert(warnings, m.name .. ': job changed (' .. (m.jobId or '?') .. ' -> ' .. (cur.jobId or '?') .. ')');
+                table.insert(warnings, string.format('%s: job changed (%s -> %s)', m.name, tostring(m.jobId or '?'), tostring(cur.jobId or '?')));
             end
             if cur.subJobId ~= m.subJobId then
-                table.insert(warnings, m.name .. ': subjob changed (' .. (m.subJobId or '?') .. ' -> ' .. (cur.subJobId or '?') .. ')');
+                table.insert(warnings, string.format('%s: subjob changed (%s -> %s)', m.name, tostring(m.subJobId or '?'), tostring(cur.subJobId or '?')));
             end
             if cur.level ~= m.level then
-                table.insert(warnings, m.name .. ': level changed (' .. (m.level or '?') .. ' -> ' .. (cur.level or '?') .. ')');
+                table.insert(warnings, string.format('%s: level changed (%s -> %s)', m.name, tostring(m.level or '?'), tostring(cur.level or '?')));
             end
             live[m.name] = nil;
         end
@@ -287,7 +287,14 @@ local function drawMemberRow(member, index, contentWidth)
     imgui.SetCursorPosX(contentWidth - comboWidth);
     imgui.PushItemWidth(comboWidth);
 
-    local weaponOptions = buildWeaponOptions(member.jobId, member.subJobId);
+    -- jobId/subJobId are fixed once loadParty() seeds this member row, so the
+    -- option list never changes for this member -- cache it on the member
+    -- instead of rebuilding two tables + a closure every frame.
+    local weaponOptions = member.weaponOptions;
+    if not weaponOptions then
+        weaponOptions = buildWeaponOptions(member.jobId, member.subJobId);
+        member.weaponOptions = weaponOptions;
+    end
     if #weaponOptions == 0 then
         imgui.TextDisabled('(no WS)');
     else
@@ -330,7 +337,7 @@ local partyGuiState = { enableDrag = false };
 -- The caller (SkillchainCalc.lua:d3d_present_cb) inspects the table and acts on set fields.
 -- Fields not listed below are never set; nil / absent means "not requested this frame".
 --
--- anchorChanged        (bool)          Results window was dragged; call SkillchainRenderer.updateAnchor + settings.save
+-- anchorChanged        (bool)          Results window was dragged; call SkillchainRenderer.UpdateAnchor + settings.save
 -- partyPositionChanged (bool)          Party window was dragged; call settings.save
 -- settingsChanged      (bool)          REMA/FavWs/localPlayer settings changed; call settings.save
 -- mode                 (string)        'party' — triggers party skillchain calculation in the caller
@@ -346,7 +353,7 @@ function SkillchainParty.DrawWindow()
             -- Calculator window shares this same renderer-level drag flag, so
             -- clobbering it every frame here would kill drag while the Calculator
             -- (not this window) is the one open.
-            SkillchainRenderer.setEnableDrag(false);
+            SkillchainRenderer.SetEnableDrag(false);
             partyGuiState.enableDrag = false;
         end
         wasVisible = false;
@@ -562,13 +569,13 @@ function SkillchainParty.DrawWindow()
 
             if cache and cache.settings and cache.settings.anchor then
                 local anchor = cache.settings.anchor;
-                local limits = SkillchainRenderer.calculateAnchorLimits(cache.settings);
+                local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
 
                 imgui.SetCursorPosX(baseX + indent);
                 local enableDrag = { partyGuiState.enableDrag };
                 if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
                     partyGuiState.enableDrag = enableDrag[1];
-                    SkillchainRenderer.setEnableDrag(enableDrag[1]);
+                    SkillchainRenderer.SetEnableDrag(enableDrag[1]);
                     request = request or {};
                     request.anchorChanged = true;
                 end
@@ -702,10 +709,6 @@ function SkillchainParty.SetCache(cacheRef)
         partyState.filters.showRema  = pf.showRema  or false;
         partyState.filters.showFavWs = pf.showFavWs or false;
     end
-end
-
-function SkillchainParty.Toggle()
-    showWindow[1] = not showWindow[1];
 end
 
 function SkillchainParty.SetVisible(v)

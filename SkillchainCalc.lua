@@ -24,6 +24,17 @@ local settings           = require('settings');
 
 local debugMode = false; -- Debug mode flag
 
+-- Each block below grew with a different feature and is owned by a different
+-- window; the naming isn't fully consistent across them (e.g. `default.enableFavWs`
+-- vs `partyFilters.showFavWs` for the same concept on each window's side), but
+-- keys are not renamed for consistency -- that would break existing users'
+-- settings.json for no functional gain. Owner reference:
+--   font/title_font/bg/layout -- GDI results window rendering (shared)
+--   anchor                    -- results window position (shared)
+--   guiPosition               -- input window position (shared, mutually exclusive windows)
+--   default                   -- Calculator tab defaults/filters
+--   partyFilters              -- Party tab REMA/Fav WS toggles
+--   localPlayer               -- Party tab "Local Player" REMA weapon ownership
 local sccSettings = T{
     font = {
         font_family = 'Arial',
@@ -134,11 +145,32 @@ local function resetCacheFull()
     applyDefaultsToCache();
 end
 
+-- Window mutual-exclusion policy: only one of the two input windows is ever
+-- open at a time. These three helpers are the single place that enforces it,
+-- instead of each command-handler branch hand-rolling its own
+-- SetVisible/clear/resetCacheFull combination.
+local function closeAllWindows()
+    if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+    SkillchainParty.SetVisible(false);
+    SkillchainRenderer.Clear();
+    resetCacheFull();
+end
+
+local function showCalculator()
+    SkillchainParty.SetVisible(false);
+    if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(true); end
+end
+
+local function showParty()
+    if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+    SkillchainParty.SetVisible(true);
+end
+
 local function renderResults(skillchains)
     local resultsTable = SkillchainCore.BuildSkillchainTable(skillchains);
     local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable, debugMode);
 
-    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, cache.filters.both);
+    SkillchainRenderer.Render(sortedResults, orderedResults, cache.settings, cache.filters.both);
 end
 
 -- Event handler for addon loading
@@ -147,21 +179,21 @@ ashita.events.register('load', 'load_cb', function()
     applyDefaultsToCache();
     SkillchainGUI.SetCache(cache);
     SkillchainParty.SetCache(cache);
-    SkillchainRenderer.initialize(gdi, cache.settings);
+    SkillchainRenderer.Initialize(gdi, cache.settings);
 
     settings.register('settings', 'settings_update', function(s)
         if (s ~= nil) then
-            SkillchainRenderer.destroy();
+            SkillchainRenderer.Destroy();
             cache.settings = s;
             applyDefaultsToCache();
-            SkillchainRenderer.initialize(gdi, cache.settings);
+            SkillchainRenderer.Initialize(gdi, cache.settings);
         end
     end)
 end);
 
 local function displaySkillchainResults(combinations, label)
     if not combinations then
-        SkillchainRenderer.clear();
+        SkillchainRenderer.Clear();
         return;
     end
 
@@ -176,12 +208,12 @@ local function displaySkillchainResults(combinations, label)
     });
 
     if (#filteredCombinations > 0) then
-        SkillchainRenderer.clear();
+        SkillchainRenderer.Clear();
         renderResults(filteredCombinations);
     else
         local suffix = label and (' ' .. label) or '';
         msg(('No%s skillchain combinations found for filter level %d.'):format(suffix, cache.filters.scLevel));
-        SkillchainRenderer.clear();
+        SkillchainRenderer.Clear();
     end
 end
 
@@ -194,7 +226,7 @@ local function parseSkillchains(isStep)
         local wsList = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, nil, cache.filters.charLevel);
         if (not wsList) then
             err('Invalid weapon/job token for step mode: ' .. tostring(cache.jobs.token1));
-            SkillchainRenderer.clear();
+            SkillchainRenderer.Clear();
             return;
         end
 
@@ -204,7 +236,7 @@ local function parseSkillchains(isStep)
         if cache.step.filterType == 'property' and #combinations == 0 then
             err('Invalid property name "' .. tostring(cache.step.filter) .. '".');
             msg('Valid properties: Compression, Detonation, Distortion, Fragmentation, Fusion, Gravitation, Impaction, Induration, Liquefaction, Reverberation, Scission, Transfixion, Light, Darkness');
-            SkillchainRenderer.clear();
+            SkillchainRenderer.Clear();
             return;
         end
 
@@ -222,9 +254,8 @@ local function parseSkillchains(isStep)
     local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, nil, cache.filters.charLevel);
 
     if (not skills1 or not skills2) then
-        err('Invalid weapon/job token(s): ' ..
-            tostring(cache.jobs.token1) .. ', ' .. tostring(cache.jobs.token2));
-        SkillchainRenderer.clear();
+        err(('Invalid weapon/job token(s): %s, %s'):format(tostring(cache.jobs.token1), tostring(cache.jobs.token2)));
+        SkillchainRenderer.Clear();
         return;
     end
 
@@ -248,18 +279,18 @@ local function parsePartySkillchains(members, partyFilters)
 
     if #filtered == 0 then
         msg('No party skillchain combinations found for the selected filter.');
-        SkillchainRenderer.clear();
+        SkillchainRenderer.Clear();
         return;
     end
 
     local sortedResults, orderedResults = SkillchainCore.BuildPartySkillchainTable(filtered);
-    SkillchainRenderer.clear();
-    SkillchainRenderer.render(sortedResults, orderedResults, cache.settings, true);
+    SkillchainRenderer.Clear();
+    SkillchainRenderer.Render(sortedResults, orderedResults, cache.settings, true);
 end
 
 -- Mouse event handler for drag functionality and combo clicks
 ashita.events.register('mouse', 'mouse_cb', function(e)
-    local result = SkillchainRenderer.handleMouse(e, cache.settings);
+    local result = SkillchainRenderer.HandleMouse(e, cache.settings);
     -- Check if a combo was clicked
     if result and result.opener and result.closer and result.chainName then
         local message;
@@ -278,7 +309,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     local partyReq = SkillchainParty.DrawWindow();
     if partyReq then
         if partyReq.anchorChanged then
-            SkillchainRenderer.updateAnchor(cache.settings);
+            SkillchainRenderer.UpdateAnchor(cache.settings);
             settings.save();
         end
         if partyReq.settingsChanged then
@@ -304,7 +335,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
         local req = SkillchainGUI.DrawWindow();
         if req ~= nil then
             if req.anchorChanged then
-                SkillchainRenderer.updateAnchor(cache.settings);
+                SkillchainRenderer.UpdateAnchor(cache.settings);
                 settings.save();
                 -- No need to re-parse skillchains - anchor is visual only
             end
@@ -318,13 +349,13 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 settings.save();
                 -- Only re-parse if results are currently visible and defaults affect calculation
                 -- (scLevel, both, includeSubjob, charLevel, enableFavWs)
-                if SkillchainRenderer.isVisible() then
+                if SkillchainRenderer.IsVisible() then
                     parseSkillchains(cache.step.enabled);
                 end
             end
 
             if req.clear then
-                SkillchainRenderer.clear();
+                SkillchainRenderer.Clear();
                 resetCacheFull();
                 return;
             end
@@ -357,8 +388,10 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     elseif not SkillchainParty.IsVisible() then
         -- Only clear renderer if results are not set to stay open
         -- (Party window manages its own results; don't clear while it's visible)
-        if not cache.keepResultsOpen then
-            SkillchainRenderer.clear();
+        -- isVisible() guard avoids a needless clear() every idle frame once
+        -- results are already hidden -- clear() is idempotent but not free.
+        if not cache.keepResultsOpen and SkillchainRenderer.IsVisible() then
+            SkillchainRenderer.Clear();
         end
     end
 end);
@@ -390,12 +423,9 @@ ashita.events.register('command', 'command_cb', function(e)
         if (args[2] == 'calc') then
             if SkillchainGUI ~= nil then
                 if SkillchainGUI.IsVisible() then
-                    SkillchainGUI.SetVisible(false);
-                    SkillchainRenderer.clear();
-                    resetCacheFull();
+                    closeAllWindows();
                 else
-                    SkillchainParty.SetVisible(false);
-                    SkillchainGUI.SetVisible(true);
+                    showCalculator();
                     msg('/scc calc - Generic skillchain calculator');
                     msg('/scc (or /scc party) - Party skillchain calculator for your current party');
                 end
@@ -403,19 +433,16 @@ ashita.events.register('command', 'command_cb', function(e)
             return;
         elseif (args[2] == 'party') then
             if SkillchainParty.IsVisible() then
-                SkillchainParty.SetVisible(false);
-                SkillchainRenderer.clear();
-                resetCacheFull();
+                closeAllWindows();
             else
-                if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
-                SkillchainParty.SetVisible(true);
+                showParty();
                 msg('/scc (or /scc party) - Party skillchain calculator for your current party');
                 msg('/scc calc - Generic skillchain calculator');
             end
             return;
         elseif (args[2] == 'debug') then
             debugMode = not debugMode;
-            msg('Debug mode ' .. (debugMode and 'enabled' or 'disabled') .. '.');
+            msg(('Debug mode %s.'):format(debugMode and 'enabled' or 'disabled'));
             return;
         elseif (args[2] == 'help') then
             msg('Commands:');
@@ -459,12 +486,9 @@ ashita.events.register('command', 'command_cb', function(e)
         if (#args == 1) then
             local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
             if anyOpen then
-                SkillchainParty.SetVisible(false);
-                if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
-                SkillchainRenderer.clear();
-                resetCacheFull();
+                closeAllWindows();
             else
-                SkillchainParty.SetVisible(true);
+                showParty();
                 msg('/scc (or /scc party) - Party skillchain calculator for your current party');
                 msg('/scc calc - Generic skillchain calculator');
             end
@@ -587,6 +611,6 @@ ashita.events.register('unload', 'unload_cb', function()
     ashita.events.unregister('unload', 'unload_cb');
 
     -- Disable drag on shutdown
-    SkillchainRenderer.setEnableDrag(false);
-    SkillchainRenderer.destroy();
+    SkillchainRenderer.SetEnableDrag(false);
+    SkillchainRenderer.Destroy();
 end);

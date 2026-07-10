@@ -36,6 +36,15 @@ do
 end
 
 -----------------------------------------------------------------------
+-- Character level dropdown items (1 to MAX_LEVEL, descending never changes
+-- at runtime) -- built once instead of every frame the dropdown is shown.
+-----------------------------------------------------------------------
+local levelItems = {};
+for i = 1, jobsData.MAX_LEVEL do
+    table.insert(levelItems, tostring(i));
+end
+
+-----------------------------------------------------------------------
 -- Dynamic element list from skills.ChainInfo using display order.
 -- Only properties with a single burst element are considered.
 -- Elements appear in the order of the first property that uses them.
@@ -511,7 +520,8 @@ local function buildCalculationRequest()
     local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
 
     -- Disable drag when Calculate is pressed
-    SkillchainRenderer.setEnableDrag(false);
+    SkillchainRenderer.SetEnableDrag(false);
+    state.enableDrag = false;
 
     return {
         mode      = 'pair',
@@ -583,12 +593,6 @@ local function drawCalculatorTab()
         imgui.Text('Level:');
         imgui.SameLine();
         imgui.SetCursorPosY(imgui.GetCursorPosY() - LABEL_PADDING);
-
-        -- Build character level dropdown (MAX_LEVEL to 1, descending)
-        local levelItems = {};
-        for i = 1, jobsData.MAX_LEVEL do
-            table.insert(levelItems, tostring(i));
-        end
 
         imgui.PushItemWidth(100);
         state.customLevel.value = drawCombo('##charlevel', levelItems, state.customLevel.value);
@@ -983,7 +987,7 @@ local function drawSettingsTab()
     -----------------------------------------------------------------------
     local anchor = cache.settings.anchor;
 
-    local limits = SkillchainRenderer.calculateAnchorLimits(cache.settings);
+    local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
     local pad = limits.minX;
     local maxX = limits.maxX;
     local maxY = limits.maxY;
@@ -999,7 +1003,7 @@ local function drawSettingsTab()
     local enableDrag = { state.enableDrag };
     if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
         state.enableDrag = enableDrag[1];
-        SkillchainRenderer.setEnableDrag(enableDrag[1]);
+        SkillchainRenderer.SetEnableDrag(enableDrag[1]);
         request = request or {};
         request.anchorChanged = true;
     end
@@ -1110,18 +1114,6 @@ function SkillchainGUI.OpenFromCli()
     showWindow[1] = true;
 end
 
-function SkillchainGUI.Toggle()
-    showWindow[1] = not showWindow[1];
-    if showWindow[1] then
-        state.initialized = false;
-        state.openedFromCli = false;
-    else
-        -- Reset drag state when closing
-        SkillchainRenderer.setEnableDrag(false);
-        state.enableDrag = false;
-    end
-end
-
 function SkillchainGUI.SetVisible(v)
     showWindow[1] = v;
     if showWindow[1] then
@@ -1129,7 +1121,7 @@ function SkillchainGUI.SetVisible(v)
         state.openedFromCli = false;
     else
         -- Reset drag state when closing
-        SkillchainRenderer.setEnableDrag(false);
+        SkillchainRenderer.SetEnableDrag(false);
         state.enableDrag = false;
     end
 end
@@ -1146,10 +1138,10 @@ end
 -- The caller (SkillchainCalc.lua:d3d_present_cb) inspects the table and acts on set fields.
 -- Fields not listed below are never set; nil / absent means "not requested this frame".
 --
--- anchorChanged        (bool)        Results window was dragged; call SkillchainRenderer.updateAnchor + settings.save
+-- anchorChanged        (bool)        Results window was dragged; call SkillchainRenderer.UpdateAnchor + settings.save
 -- guiPositionChanged   (bool)        GUI window was dragged; call settings.save
 -- updateDefaults       (bool)        User saved new defaults; call applyDefaultsToCache + settings.save, re-parse if visible
--- clear                (bool)        User clicked Clear; call SkillchainRenderer.clear + resetCacheFull
+-- clear                (bool)        User clicked Clear; call SkillchainRenderer.Clear + resetCacheFull
 -- token1               (string)      Opener job token; presence triggers full skillchain recalculation
 -- token2               (string)      Closer job token (always paired with token1)
 -- scLevel              (number 1-3)  Skillchain level filter override
@@ -1162,7 +1154,7 @@ end
 function SkillchainGUI.DrawWindow()
     if not showWindow[1] then
         -- Disable drag and reset checkbox state when GUI is closed
-        SkillchainRenderer.setEnableDrag(false);
+        SkillchainRenderer.SetEnableDrag(false);
         state.enableDrag = false;
         return nil;
     end
@@ -1188,7 +1180,7 @@ function SkillchainGUI.DrawWindow()
         state.openedFromCli = false;
     end
 
-    local guiPos = cache.settings.guiPosition;
+    local guiPos = cache and cache.settings and cache.settings.guiPosition;
     local flags = SkillchainUI.setupWindow(guiPos, nil);
 
     if not imgui.Begin('SkillchainCalc.' .. addon.version, showWindow, flags) then
@@ -1245,7 +1237,7 @@ function SkillchainGUI.DrawWindow()
 
     -- Check if window was just closed via 'X' button
     if not showWindow[1] then
-        SkillchainRenderer.setEnableDrag(false);
+        SkillchainRenderer.SetEnableDrag(false);
         state.enableDrag = false;
     end
 

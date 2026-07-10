@@ -101,7 +101,7 @@ local function setTitleAndBgPosition(settings)
     end
 end
 
-function SkillchainRenderer.initialize(gdiLib, settings)
+function SkillchainRenderer.Initialize(gdiLib, settings)
     gdi = gdiLib;
 
     gdiObjects.title = gdi:create_object(settings.title_font);
@@ -115,10 +115,10 @@ function SkillchainRenderer.initialize(gdiLib, settings)
     addObjectsToPool(gdiObjects.minPoolSize, settings);
 
     -- Initially hidden
-    SkillchainRenderer.clear();
+    SkillchainRenderer.Clear();
 end
 
-function SkillchainRenderer.destroy()
+function SkillchainRenderer.Destroy()
     if gdiObjects.title then
         gdi:destroy_object(gdiObjects.title);
         gdiObjects.title = nil;
@@ -134,7 +134,7 @@ function SkillchainRenderer.destroy()
     gdiObjects.lastUsedCount = 0;
 end
 
-function SkillchainRenderer.clear()
+function SkillchainRenderer.Clear()
     isVisible = false;
     if gdiObjects.background then
         gdiObjects.background:set_visible(false);
@@ -149,22 +149,15 @@ function SkillchainRenderer.clear()
     gdiObjects.comboMap = {};
 end
 
-function SkillchainRenderer.isVisible()
+function SkillchainRenderer.IsVisible()
     return isVisible;
-end
-
-function SkillchainRenderer.getPoolInfo()
-    return {
-        poolSize = gdiObjects.poolSize,
-        lastUsedCount = gdiObjects.lastUsedCount
-    };
 end
 
 -- ============================================================================
 -- Anchor Management
 -- ============================================================================
 
-function SkillchainRenderer.updateAnchor(settings)
+function SkillchainRenderer.UpdateAnchor(settings)
     setTitleAndBgPosition(settings);
 
     -- Update all visible text objects to match new anchor position
@@ -188,8 +181,17 @@ function SkillchainRenderer.updateAnchor(settings)
                         textObj:set_position_x(settings.anchor.x + 5);
                         textObj:set_position_y(math.max(0, settings.anchor.y - 20));
                     else
-                        textObj:set_position_x(settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset);
-                        textObj:set_position_y(settings.anchor.y + y_offset);
+                        local posX = settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset;
+                        local posY = settings.anchor.y + y_offset;
+                        textObj:set_position_x(posX);
+                        textObj:set_position_y(posY);
+
+                        -- Keep the cached hit-box in comboMap in sync with the new position.
+                        local combo = gdiObjects.comboMap[textIndex];
+                        if combo then
+                            combo.x = posX;
+                            combo.y = posY;
+                        end
                     end
                     textObj:set_visible(true);
                 end
@@ -206,7 +208,7 @@ end
 -- ============================================================================
 
 -- Calculate anchor position limits based on screen size and layout
-function SkillchainRenderer.calculateAnchorLimits(settings)
+function SkillchainRenderer.CalculateAnchorLimits(settings)
     local pad = 20;
     local layoutSettings = settings.layout;
     local colW = (layoutSettings and layoutSettings.columnWidth) or pad;
@@ -242,29 +244,20 @@ local function comboClickTest(mouseX, mouseY)
         return nil;
     end
 
-    -- Check each combo in the map
-    for textIndex, comboData in pairs(gdiObjects.comboMap) do
-        local textObj = gdiObjects.textPool[textIndex];
-        if textObj and textObj.settings.visible then
-            local s = textObj.settings;
-            local _, rect = textObj:get_texture();
-            if rect then
-                local x = s.position_x;
-                local y = s.position_y;
-                local w = rect.right;
-                local h = rect.bottom;
-
-                if mouseX >= x and mouseX <= x + w and mouseY >= y and mouseY <= y + h then
-                    return comboData;
-                end
-            end
+    -- Hit-test against each combo's cached {x, y, w, h} (set at render/updateAnchor
+    -- time) instead of reading gdifonts' internal .settings fields or calling
+    -- get_texture() here -- keeps this addon decoupled from the lib's internals.
+    for _, comboData in pairs(gdiObjects.comboMap) do
+        if mouseX >= comboData.x and mouseX <= comboData.x + comboData.w
+            and mouseY >= comboData.y and mouseY <= comboData.y + comboData.h then
+            return comboData;
         end
     end
 
     return nil;
 end
 
-function SkillchainRenderer.handleMouse(e, settings)
+function SkillchainRenderer.HandleMouse(e, settings)
     -- Check for a result-line click on mouse down (513), before drag handling,
     -- so clicks work even when drag is disabled. Block both 513 and 514 so the
     -- click can't also land on the game world underneath the overlay.
@@ -321,7 +314,7 @@ function SkillchainRenderer.handleMouse(e, settings)
             dragState.objectsHidden = false;
             dragState.limits = nil;
             -- Update ALL positions and show text when drag completes
-            SkillchainRenderer.updateAnchor(settings);
+            SkillchainRenderer.UpdateAnchor(settings);
         end
     -- Start dragging on left mouse button down (message 513)
     elseif (e.message == 513) then
@@ -331,7 +324,7 @@ function SkillchainRenderer.handleMouse(e, settings)
             dragState.dragPosition[1] = e.x;
             dragState.dragPosition[2] = e.y;
             dragState.mouseBlocked = true;
-            dragState.limits = SkillchainRenderer.calculateAnchorLimits(settings);  -- Cache limits once
+            dragState.limits = SkillchainRenderer.CalculateAnchorLimits(settings);  -- Cache limits once
             e.blocked = true;
             return;
         end
@@ -473,7 +466,7 @@ end
 -- Rendering (Pass 2: Draw the calculated layout)
 -- ============================================================================
 
-function SkillchainRenderer.render(sortedResults, orderedResults, settings, both)
+function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both)
     isVisible = true;
 
     gdiObjects.background:set_visible(true);
@@ -514,21 +507,32 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
                 break;
             end
 
+            local posX = settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset;
+            local posY = settings.anchor.y + y_offset;
+
             local textObj = gdiObjects.textPool[textIndex];
             textObj:set_text(item.text);
-            textObj:set_position_x(settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset);
-            textObj:set_position_y(settings.anchor.y + y_offset);
+            textObj:set_position_x(posX);
+            textObj:set_position_y(posY);
             textObj:set_font_color(item.color or settings.font.font_color);
             textObj:set_visible(true);
 
-            -- Store combo data for click detection
+            -- Store combo data + a cached hit-box for click detection. Caching
+            -- {x, y, w, h} here (mirroring the bgRect pattern) means comboClickTest
+            -- doesn't need to read gdifonts' internal .settings fields or call
+            -- get_texture() on every mouse click.
             if item.type == 'combo' then
+                local _, rect = textObj:get_texture();
                 gdiObjects.comboMap[textIndex] = {
                     opener = item.opener,
                     closer = item.closer,
                     chainName = item.chainName,
                     openerNames = item.openerNames,   -- nil in normal mode
                     closerNames = item.closerNames,   -- nil in normal mode
+                    x = posX,
+                    y = posY,
+                    w = rect and rect.right or 0,
+                    h = rect and rect.bottom or 0,
                 };
             end
 
@@ -586,7 +590,7 @@ end
 -- Drag State Accessor (not persisted)
 -- ============================================================================
 
-function SkillchainRenderer.setEnableDrag(value)
+function SkillchainRenderer.SetEnableDrag(value)
     enableDrag = value;
 end
 

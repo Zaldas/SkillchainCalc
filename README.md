@@ -167,9 +167,12 @@ job[/subjob][:weapon,weapon,...]
 | `SkillchainCalc.lua` | Main addon, command handling, event wiring |
 | `SkillchainParty.lua` | Party window UI and party data logic |
 | `SkillchainGui.lua` | Calculator window UI |
+| `SkillchainUI.lua` | Shared ImGui helpers (styled buttons, gradient headers, window scaffolding) |
 | `SkillchainCore.lua` | Filtering, skillchain calculation, party pair logic |
 | `SkillchainRenderer.lua` | GDI results window rendering |
 | `Skills.lua` | Weapon skill data, properties, and colors |
 | `Jobs.lua` | Job skill caps and primary weapon lists |
+| `JobIds.lua` | Numeric Ashita job ID -> job key map, shared by both the Horizon and retail builds |
 | `SkillRanks.lua` | Skill rank progression tables (A+, A−, B+, etc.) |
-| `AutoTranslate.lua` | Auto-translate formatting for chat output |
+| `Autotranslate.lua` | Auto-translate formatting for chat output |
+| `retail/` | Data variants (`Jobs.lua`, `Skills.lua`) swapped in for the retail release build |
