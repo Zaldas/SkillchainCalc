@@ -4,6 +4,7 @@
 require('common');
 local imgui    = require('imgui');
 local jobsData = require('Jobs');
+local jobIds   = require('JobIds');
 local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainUI = require('SkillchainUI');
@@ -167,8 +168,8 @@ local function getPartyWarnings()
             local name = party:GetMemberName(i);
             if name and name ~= '' then
                 live[name] = {
-                    jobId    = jobsData.IdMap[party:GetMemberMainJob(i)],
-                    subJobId = jobsData.IdMap[party:GetMemberSubJob(i)],
+                    jobId    = jobIds[party:GetMemberMainJob(i)],
+                    subJobId = jobIds[party:GetMemberSubJob(i)],
                     level    = party:GetMemberMainJobLevel(i),
                     subLevel = party:GetMemberSubJobLevel(i),
                 };
@@ -212,8 +213,8 @@ local function loadParty()
         if party:GetMemberIsActive(i) ~= 0 then
             local jobNum = party:GetMemberMainJob(i);
             local subNum = party:GetMemberSubJob(i);
-            local jobId  = jobsData.IdMap[jobNum];
-            local subId  = jobsData.IdMap[subNum];
+            local jobId  = jobIds[jobNum];
+            local subId  = jobIds[subNum];
 
             if jobId and jobsData[jobId] and jobsData[jobId].weapons then
                 local job           = jobsData[jobId];
