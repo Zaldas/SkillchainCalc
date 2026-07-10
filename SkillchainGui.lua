@@ -655,7 +655,11 @@ local function drawCalculatorTab()
         local newJob1Index = drawCombo('##fromfavws', job1FavWsItems, job1Index);
         if newJob1Index ~= job1Index then
             -- Selection changed, update the stored name
-            state.jobs[1].favWsName = (newJob1Index == 1) and nil or job1FavWsItems[newJob1Index];
+            if newJob1Index == 1 then
+                state.jobs[1].favWsName = nil;
+            else
+                state.jobs[1].favWsName = job1FavWsItems[newJob1Index];
+            end
         end
         imgui.PopItemWidth();
 
@@ -675,7 +679,11 @@ local function drawCalculatorTab()
         local newJob2Index = drawCombo('##tofavws', job2FavWsItems, job2Index);
         if newJob2Index ~= job2Index then
             -- Selection changed, update the stored name
-            state.jobs[2].favWsName = (newJob2Index == 1) and nil or job2FavWsItems[newJob2Index];
+            if newJob2Index == 1 then
+                state.jobs[2].favWsName = nil;
+            else
+                state.jobs[2].favWsName = job2FavWsItems[newJob2Index];
+            end
         end
         imgui.PopItemWidth();
     end

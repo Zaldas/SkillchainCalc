@@ -318,6 +318,7 @@ end
 -- Window visibility state
 -----------------------------------------------------------------------
 local showWindow = { false };
+local wasVisible  = false;  -- Tracks prior-frame visibility to detect the open->closed edge
 
 local partyGuiState = { enableDrag = false };
 
@@ -339,11 +340,19 @@ local partyGuiState = { enableDrag = false };
 -- warnings             (array)         Stale-party warnings (strings) to print to chat; present when mode == 'party'
 function SkillchainParty.DrawWindow()
     if not showWindow[1] then
-        -- Disable drag and reset checkbox state when window is closed
-        SkillchainRenderer.setEnableDrag(false);
-        partyGuiState.enableDrag = false;
+        if wasVisible then
+            -- Just transitioned from open to closed (X button or SetVisible(false)) --
+            -- disable drag and reset checkbox state once, not every idle frame. The
+            -- Calculator window shares this same renderer-level drag flag, so
+            -- clobbering it every frame here would kill drag while the Calculator
+            -- (not this window) is the one open.
+            SkillchainRenderer.setEnableDrag(false);
+            partyGuiState.enableDrag = false;
+        end
+        wasVisible = false;
         return nil;
     end
+    wasVisible = true;
 
     imgui.SetNextWindowSizeConstraints({ 380, 0 }, { 380, 9999 });
     local guiPos = cache and cache.settings and cache.settings.guiPosition;

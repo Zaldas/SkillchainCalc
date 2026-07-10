@@ -21,6 +21,7 @@ local gdiObjects = {
     lastUsedCount = 0,      -- Track last frame usage
     layoutData = nil,       -- Store layout data for anchor updates
     comboMap = {},          -- Maps text pool index to combo data {opener, closer, chainName}
+    noticeIndex = nil,      -- Pool index currently showing the truncation notice, if any
 };
 
 local isVisible = false;
@@ -176,8 +177,15 @@ function SkillchainRenderer.updateAnchor(settings)
 
                 local textObj = gdiObjects.textPool[textIndex];
                 if textObj then
-                    textObj:set_position_x(settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset);
-                    textObj:set_position_y(settings.anchor.y + y_offset);
+                    if textIndex == gdiObjects.noticeIndex then
+                        -- This slot is showing the truncation notice, not its original
+                        -- grid item -- reposition it like the notice, not like the grid.
+                        textObj:set_position_x(settings.anchor.x + 5);
+                        textObj:set_position_y(math.max(0, settings.anchor.y - 20));
+                    else
+                        textObj:set_position_x(settings.anchor.x + (item.type == 'header' and 10 or 20) + columnOffset);
+                        textObj:set_position_y(settings.anchor.y + y_offset);
+                    end
                     textObj:set_visible(true);
                 end
 
@@ -476,9 +484,12 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     local textIndex = 1;
     local maxColumnHeight = 0;
     local hitLimit = false;
+    local renderedColumnCount = 0;
     gdiObjects.comboMap = {};  -- Reset combo map
+    gdiObjects.noticeIndex = nil;
 
     for colIdx, column in ipairs(columns) do
+        renderedColumnCount = colIdx;
         local columnOffset = (colIdx - 1) * settings.layout.columnWidth;
         local y_offset = 40;
 
@@ -523,6 +534,12 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     if hitLimit and gdiObjects.poolSize > 0 then
         local errorString = ' !!! Results trimmed. Try: higher skillchain level or set element, fewer weapons, or favorite weaponskill';
 
+        -- The notice reuses the last pool slot, which may have just rendered a real
+        -- combo above -- clear its click-map entry so clicking the notice can't send
+        -- that stale combo to chat.
+        gdiObjects.comboMap[gdiObjects.poolSize] = nil;
+        gdiObjects.noticeIndex = gdiObjects.poolSize;
+
         local notice = gdiObjects.textPool[gdiObjects.poolSize];
         notice:set_text(errorString);
         notice:set_font_color(0xFFFF5555);
@@ -535,7 +552,10 @@ function SkillchainRenderer.render(sortedResults, orderedResults, settings, both
     end
 
     -- Adjust background dimensions
-    local totalWidth = #columns * settings.layout.columnWidth;
+    -- Use renderedColumnCount, not #columns: calculateLayout plans columns for the
+    -- full untruncated result set, but hitLimit can stop rendering before the last
+    -- one, leaving a phantom empty column's worth of background otherwise.
+    local totalWidth = renderedColumnCount * settings.layout.columnWidth;
     local totalHeight = maxColumnHeight + 5;
     gdiObjects.background:set_height(totalHeight);
     gdiObjects.background:set_width(totalWidth);
