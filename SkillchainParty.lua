@@ -161,6 +161,8 @@ local function getPartyWarnings()
     local party = AshitaCore:GetMemoryManager():GetParty();
     if party == nil then return warnings; end
 
+    local localZone = party:GetMemberZone(0);
+
     -- Build live snapshot keyed by name
     local live = {};
     for i = 0, 5 do
@@ -168,10 +170,14 @@ local function getPartyWarnings()
             local name = party:GetMemberName(i);
             if name and name ~= '' then
                 live[name] = {
-                    jobId    = jobIds[party:GetMemberMainJob(i)],
-                    subJobId = jobIds[party:GetMemberSubJob(i)],
-                    level    = party:GetMemberMainJobLevel(i),
-                    subLevel = party:GetMemberSubJobLevel(i),
+                    jobId     = jobIds[party:GetMemberMainJob(i)],
+                    subJobId  = jobIds[party:GetMemberSubJob(i)],
+                    level     = party:GetMemberMainJobLevel(i),
+                    subLevel  = party:GetMemberSubJobLevel(i),
+                    -- Out-of-zone members' job/level reads come back zero/stale,
+                    -- which would otherwise look like a job change or a fresh
+                    -- join -- track zone status so we can report it accurately.
+                    outOfZone = party:GetMemberZone(i) ~= localZone,
                 };
             end
         end
@@ -182,6 +188,9 @@ local function getPartyWarnings()
         local cur = live[m.name];
         if not cur then
             table.insert(warnings, m.name .. ' is no longer in the party');
+        elseif cur.outOfZone then
+            table.insert(warnings, m.name .. ' is out of zone (data may be stale)');
+            live[m.name] = nil;
         else
             if cur.jobId ~= m.jobId then
                 table.insert(warnings, string.format('%s: job changed (%s -> %s)', m.name, tostring(m.jobId or '?'), tostring(cur.jobId or '?')));
@@ -197,8 +206,12 @@ local function getPartyWarnings()
     end
 
     -- Any remaining live members weren't in the seed
-    for name in pairs(live) do
-        table.insert(warnings, name .. ' joined the party after loading');
+    for name, info in pairs(live) do
+        if info.outOfZone then
+            table.insert(warnings, name .. ' is out of zone and was not loaded');
+        else
+            table.insert(warnings, name .. ' joined the party after loading');
+        end
     end
 
     return warnings;
@@ -209,8 +222,15 @@ local function loadParty()
     if party == nil then return; end
     partyState.members = {};
 
+    local localZone = party:GetMemberZone(0);
+
     for i = 0, 5 do
-        if party:GetMemberIsActive(i) ~= 0 then
+        -- Out-of-zone members' job/subjob/level reads come back zero/stale, so
+        -- they can't be seeded with usable data for calculation -- skip them
+        -- explicitly here (rather than relying on jobId resolving to nil) so
+        -- the exclusion reason is clear and getPartyWarnings() can report it
+        -- accurately instead of calling them a "new join."
+        if party:GetMemberIsActive(i) ~= 0 and party:GetMemberZone(i) == localZone then
             local jobNum = party:GetMemberMainJob(i);
             local subNum = party:GetMemberSubJob(i);
             local jobId  = jobIds[jobNum];
@@ -472,9 +492,12 @@ local function drawPartyTab(contentWidth)
                         end
                         if member.favWs == nil then imgui.SetItemDefaultFocus(); end
                         if wsList then
+                            -- Real REMA weapons can't be wielded below level 75,
+                            -- regardless of the member's REMA-ownership checkbox.
+                            local memberRemaAllowed = member.hasRema and (member.level or 0) >= 75;
                             for _, ws in ipairs(wsList) do
                                 local isRema = ws.rema == true;
-                                if not isRema or member.hasRema then
+                                if not isRema or memberRemaAllowed then
                                     local selected = (member.favWs == ws.en);
                                     if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
                                         member.favWs = ws.en;

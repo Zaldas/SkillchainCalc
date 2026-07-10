@@ -709,10 +709,16 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
             pass = elementMatch;
         end
 
-        -- Filter 3: REMA weapon skills
-        if pass and not filters.showRema then
-            local isRema = SkillchainCore.IsRemaWsName(combo.skill1) or SkillchainCore.IsRemaWsName(combo.skill2);
-            pass = not isRema;
+        -- Filter 3: REMA weapon skills -- real REMA (Relic/Empyrean/Mythic/Aeonic)
+        -- weapons can't be wielded below level 75, regardless of the "Show REMA"
+        -- toggle, so a custom character level below 75 forces them off too.
+        if pass then
+            local effectiveLevel = filters.charLevel or jobs.MAX_LEVEL;
+            local remaAllowed = filters.showRema and effectiveLevel >= 75;
+            if not remaAllowed then
+                local isRema = SkillchainCore.IsRemaWsName(combo.skill1) or SkillchainCore.IsRemaWsName(combo.skill2);
+                pass = not isRema;
+            end
         end
 
         -- Filter 4: Weaponskill names
@@ -848,7 +854,10 @@ function SkillchainCore.CalculatePartySkillchains(members)
             local token = SkillchainCore.BuildTokenFromSelection(m.jobId, { [m.weapon] = true }, m.subJobId);
             local skillList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
             if skillList then
-                if not m.hasRema then
+                -- Real REMA weapons can't be wielded below level 75, regardless
+                -- of the member's REMA-ownership flag.
+                local memberRemaAllowed = m.hasRema and (m.level or 0) >= 75;
+                if not memberRemaAllowed then
                     local noRema = {};
                     for _, ws in ipairs(skillList) do
                         if not ws.rema then

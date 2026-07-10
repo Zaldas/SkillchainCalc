@@ -204,6 +204,7 @@ local function displaySkillchainResults(combinations, label)
         favWs1 = cache.jobs.favWs1,
         favWs2 = cache.jobs.favWs2,
         showRema = cache.filters.showRema,
+        charLevel = cache.filters.charLevel,
         both = cache.filters.both,
     });
 

@@ -465,9 +465,12 @@ local function buildFavWsItems(jobState, side)
 
                         local maxSkill = SkillchainCore.GetSkillCapFromRank(skillRank, charLevel);
 
-                        -- Check job restrictions and REMA filter
+                        -- Check job restrictions and REMA filter -- real REMA
+                        -- weapons can't be wielded below level 75, regardless
+                        -- of the "Show REMA" toggle.
+                        local remaAllowed = state.filters.showRema and (charLevel or jobsData.MAX_LEVEL) >= 75;
                         if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
-                            and (state.filters.showRema or not SkillchainCore.IsRemaWsName(ws.en)) then
+                            and (remaAllowed or not SkillchainCore.IsRemaWsName(ws.en)) then
                             table.insert(wsForWeapon, {
                                 name = ws.en,
                                 index = index
