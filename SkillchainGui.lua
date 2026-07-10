@@ -12,21 +12,6 @@ local SkillchainUI = require('SkillchainUI');
 local SkillchainGUI = {};
 local showWindow    = { false };
 
--- Precomputed set of REMA weapon skill names for O(1) lookup in hot paths.
--- Built once at load time by scanning all skills for the ² suffix.
-local remaWsNames = {};
-do
-    for weaponType, weaponSkills in pairs(skills) do
-        if type(weaponSkills) == 'table' and weaponType ~= 'aliases' and weaponType ~= 'ChainInfo' then
-            for _, ws in pairs(weaponSkills) do
-                if type(ws) == 'table' and ws.en and ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) then
-                    remaWsNames[ws.en] = true;
-                end
-            end
-        end
-    end
-end
-
 -- Constants
 local JOB_COLUMN_WIDTH = 160; -- Shared width for each job column
 
@@ -473,7 +458,7 @@ local function buildFavWsItems(jobState, side)
 
                         -- Check job restrictions and REMA filter
                         if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
-                            and (state.filters.showRema or not remaWsNames[ws.en]) then
+                            and (state.filters.showRema or not SkillchainCore.IsRemaWsName(ws.en)) then
                             table.insert(wsForWeapon, {
                                 name = ws.en,
                                 index = index
@@ -551,6 +536,34 @@ local function ensureJobsAreDifferent(mainIdx, subIdx, prevMainIdx, prevSubIdx)
         end
     end
     return mainIdx, subIdx;
+end
+
+-- Draws the favorite-WS combo for one side (1 = opener/"from", 2 = closer/"to").
+-- Handles index<->name conversion and the "stored WS no longer valid" reset.
+-- Both sides previously duplicated this logic verbatim, which is exactly how
+-- the ternary-with-nil favWsName reset bug shipped in two places at once.
+local function drawFavWsCombo(side, comboId)
+    local jobState = state.jobs[side];
+    local items = buildFavWsItems(jobState, side);
+
+    imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
+    local index = findFavWsIndex(items, jobState.favWsName);
+
+    -- If we have a stored WS but it's not in the list (index = 1/"Any"), clear it permanently
+    if jobState.favWsName and index == 1 then
+        jobState.favWsName = nil;
+    end
+
+    local newIndex = drawCombo(comboId, items, index);
+    if newIndex ~= index then
+        -- Selection changed, update the stored name
+        if newIndex == 1 then
+            jobState.favWsName = nil;
+        else
+            jobState.favWsName = items[newIndex];
+        end
+    end
+    imgui.PopItemWidth();
 end
 
 local function drawCalculatorTab()
@@ -661,53 +674,14 @@ local function drawCalculatorTab()
 
     -- Row 1.75: favorite WS combos (if enabled)
     if state.filters.enableFavWs then
-        local job1FavWsItems = buildFavWsItems(state.jobs[1], 1);
-        local job2FavWsItems = buildFavWsItems(state.jobs[2], 2);
-
         imgui.NextColumn();
-        imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-        -- Convert name to index for dropdown, then convert back to name
-        local job1Index = findFavWsIndex(job1FavWsItems, state.jobs[1].favWsName);
-
-        -- If we have a stored WS but it's not in the list (index = 1/"Any"), clear it permanently
-        if state.jobs[1].favWsName and job1Index == 1 then
-            state.jobs[1].favWsName = nil;
-        end
-
-        local newJob1Index = drawCombo('##fromfavws', job1FavWsItems, job1Index);
-        if newJob1Index ~= job1Index then
-            -- Selection changed, update the stored name
-            if newJob1Index == 1 then
-                state.jobs[1].favWsName = nil;
-            else
-                state.jobs[1].favWsName = job1FavWsItems[newJob1Index];
-            end
-        end
-        imgui.PopItemWidth();
+        drawFavWsCombo(1, '##fromfavws');
 
         imgui.NextColumn();
         -- Empty center column for favorite WS
 
         imgui.NextColumn();
-        imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
-        -- Convert name to index for dropdown, then convert back to name
-        local job2Index = findFavWsIndex(job2FavWsItems, state.jobs[2].favWsName);
-
-        -- If we have a stored WS but it's not in the list (index = 1/"Any"), clear it permanently
-        if state.jobs[2].favWsName and job2Index == 1 then
-            state.jobs[2].favWsName = nil;
-        end
-
-        local newJob2Index = drawCombo('##tofavws', job2FavWsItems, job2Index);
-        if newJob2Index ~= job2Index then
-            -- Selection changed, update the stored name
-            if newJob2Index == 1 then
-                state.jobs[2].favWsName = nil;
-            else
-                state.jobs[2].favWsName = job2FavWsItems[newJob2Index];
-            end
-        end
-        imgui.PopItemWidth();
+        drawFavWsCombo(2, '##tofavws');
     end
 
     -- Row 2: weapons under each job
@@ -913,7 +887,7 @@ local function drawFiltersTab()
         -- Reset favorite WS if it was a REMA WS that is now hidden
         if not state.filters.showRema then
             local function clearRemaFavWs(jobState)
-                if remaWsNames[jobState.favWsName] then
+                if SkillchainCore.IsRemaWsName(jobState.favWsName) then
                     jobState.favWsName = nil;
                 end
             end
@@ -1214,19 +1188,8 @@ function SkillchainGUI.DrawWindow()
         state.openedFromCli = false;
     end
 
-    imgui.SetNextWindowSizeConstraints({ 380, 0 }, { 380, 9999 });
-
-    -- Restore saved GUI position
     local guiPos = cache.settings.guiPosition;
-    if guiPos then
-        imgui.SetNextWindowPos({ guiPos.x, guiPos.y }, ImGuiCond_Once);
-    end
-
-    local flags = bit.bor(
-        ImGuiWindowFlags_NoSavedSettings,
-        ImGuiWindowFlags_NoDocking or 0,
-        ImGuiWindowFlags_AlwaysAutoResize
-    );
+    local flags = SkillchainUI.setupWindow(guiPos, nil);
 
     if not imgui.Begin('SkillchainCalc.' .. addon.version, showWindow, flags) then
         imgui.End();
@@ -1273,16 +1236,9 @@ function SkillchainGUI.DrawWindow()
     end
 
     -- Track window position changes for saving
-    local curPosX, curPosY = imgui.GetWindowPos();
-    if guiPos and curPosX then
-        local cx = curPosX - (curPosX % 1);
-        local cy = curPosY - (curPosY % 1);
-        if cx ~= guiPos.x or cy ~= guiPos.y then
-            guiPos.x = cx;
-            guiPos.y = cy;
-            request = request or {};
-            request.guiPositionChanged = true;
-        end
+    if SkillchainUI.trackWindowPosition(guiPos) then
+        request = request or {};
+        request.guiPositionChanged = true;
     end
 
     imgui.End();

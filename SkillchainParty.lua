@@ -73,7 +73,7 @@ do
         local weaponSkills = skills[weaponKey];
         if type(weaponSkills) == 'table' then
             for _, ws in pairs(weaponSkills) do
-                if type(ws) == 'table' and ws.en and ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) then
+                if type(ws) == 'table' and ws.rema then
                     table.insert(remaWeaponTypes, weaponKey);
                     break;
                 end
@@ -354,19 +354,8 @@ function SkillchainParty.DrawWindow()
     end
     wasVisible = true;
 
-    imgui.SetNextWindowSizeConstraints({ 380, 0 }, { 380, 9999 });
     local guiPos = cache and cache.settings and cache.settings.guiPosition;
-    if guiPos then
-        imgui.SetNextWindowPos({ guiPos.x, guiPos.y }, ImGuiCond_Once);
-    else
-        imgui.SetNextWindowPos({ 50, 50 }, ImGuiCond_Once);
-    end
-
-    local flags = bit.bor(
-        ImGuiWindowFlags_NoSavedSettings,
-        ImGuiWindowFlags_NoDocking or 0,
-        ImGuiWindowFlags_AlwaysAutoResize
-    );
+    local flags = SkillchainUI.setupWindow(guiPos, { 50, 50 });
 
     if not imgui.Begin('SkillchainCalc.' .. addon.version .. ' - Party', showWindow, flags) then
         imgui.End();
@@ -520,7 +509,7 @@ function SkillchainParty.DrawWindow()
                                 if member.favWs == nil then imgui.SetItemDefaultFocus(); end
                                 if wsList then
                                     for _, ws in ipairs(wsList) do
-                                        local isRema = ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) ~= nil;
+                                        local isRema = ws.rema == true;
                                         if not isRema or member.hasRema then
                                             local selected = (member.favWs == ws.en);
                                             if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
@@ -580,6 +569,8 @@ function SkillchainParty.DrawWindow()
                 if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
                     partyGuiState.enableDrag = enableDrag[1];
                     SkillchainRenderer.setEnableDrag(enableDrag[1]);
+                    request = request or {};
+                    request.anchorChanged = true;
                 end
 
                 imgui.SetCursorPosX(baseX + indent);
@@ -695,18 +686,9 @@ function SkillchainParty.DrawWindow()
     end
 
     -- Track position changes (shared with calc window — they're mutually exclusive)
-    if guiPos then
-        local curPosX, curPosY = imgui.GetWindowPos();
-        if curPosX then
-            local cx = curPosX - (curPosX % 1);
-            local cy = curPosY - (curPosY % 1);
-            if cx ~= guiPos.x or cy ~= guiPos.y then
-                guiPos.x = cx;
-                guiPos.y = cy;
-                request = request or {};
-                request.partyPositionChanged = true;
-            end
-        end
+    if SkillchainUI.trackWindowPosition(guiPos) then
+        request = request or {};
+        request.partyPositionChanged = true;
     end
 
     imgui.End();

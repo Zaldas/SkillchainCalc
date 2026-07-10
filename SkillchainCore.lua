@@ -9,7 +9,29 @@ local chat           = require('chat');
 
 local SkillchainCore = {};
 
-SkillchainCore.REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
+SkillchainCore.REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills, display only
+
+-- Canonical WS-name -> is-REMA lookup, built once from Skills.lua's rema=true
+-- field (the ² suffix in `en` is purely cosmetic; this is the source of truth
+-- for filtering). Exported so callers that only have a WS name string (not
+-- the ws table itself, e.g. resolved combo results) don't have to re-scan
+-- Skills.lua or sniff the display suffix themselves.
+local remaWsNameSet = {};
+do
+    for weaponType, weaponSkills in pairs(skills) do
+        if type(weaponSkills) == 'table' and weaponType ~= 'aliases' and weaponType ~= 'ChainInfo' then
+            for _, ws in pairs(weaponSkills) do
+                if type(ws) == 'table' and ws.en and ws.rema then
+                    remaWsNameSet[ws.en] = true;
+                end
+            end
+        end
+    end
+end
+
+function SkillchainCore.IsRemaWsName(wsName)
+    return wsName ~= nil and remaWsNameSet[wsName] == true;
+end
 
 -- Get skill cap from rank and level. Exported so other modules (e.g. the
 -- Calculator's Fav WS dropdown) don't reimplement this against SkillRanks
@@ -687,9 +709,9 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
             pass = elementMatch;
         end
 
-        -- Filter 3: REMA weapon skills (² suffix)
+        -- Filter 3: REMA weapon skills
         if pass and not filters.showRema then
-            local isRema = combo.skill1:find(SkillchainCore.REMA_SUFFIX, 1, true) or combo.skill2:find(SkillchainCore.REMA_SUFFIX, 1, true);
+            local isRema = SkillchainCore.IsRemaWsName(combo.skill1) or SkillchainCore.IsRemaWsName(combo.skill2);
             pass = not isRema;
         end
 
@@ -829,7 +851,7 @@ function SkillchainCore.CalculatePartySkillchains(members)
                 if not m.hasRema then
                     local noRema = {};
                     for _, ws in ipairs(skillList) do
-                        if not ws.en:find(SkillchainCore.REMA_SUFFIX, 1, true) then
+                        if not ws.rema then
                             table.insert(noRema, ws);
                         end
                     end

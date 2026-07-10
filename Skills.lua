@@ -59,7 +59,7 @@ skills.h2h = { -- Hand-to-Hand
     [9]  = {en='Asuran Fists¹',     skillchain={'Gravitation','Liquefaction'},  skill=250,
                 JobRestrictions={'MNK','PUP'}},
     -- Relic WS treat as high end
-    [10] = {en='Final Heaven²',     skillchain={'Light','Fusion'},              skill=250,
+    [10] = {en='Final Heaven²', rema=true,     skillchain={'Light','Fusion'},              skill=250,
                 JobRestrictions={'MNK','PUP'}},
 };
 
@@ -79,7 +79,7 @@ skills.dagger = { -- Dagger
     [25] = {en='Evisceration¹',   skillchain={'Gravitation','Transfixion'},      skill=230,
                 JobRestrictions={'WAR','THF','RDM','BST','BRD','RNG','NIN','COR','DNC'}},
     -- Relic WS treat as high end
-    [26] = {en='Mercy Stroke²',   skillchain={'Darkness','Gravitation'},         skill=230,
+    [26] = {en='Mercy Stroke²', rema=true,   skillchain={'Darkness','Gravitation'},         skill=230,
                 JobRestrictions={'THF','RDM','BRD'}},
 };
 
@@ -103,7 +103,7 @@ skills.sword = { -- Sword
     [42] = {en='Savage Blade¹',    skillchain={'Fragmentation','Scission'},      skill=240,
                 JobRestrictions={'WAR','RDM','PLD','DRK','BLU'}},
     -- Relic WS treat as high end
-    [43] = {en='Knights of Round²',skillchain={'Light','Fusion'},                skill=240,
+    [43] = {en='Knights of Round²', rema=true,skillchain={'Light','Fusion'},                skill=240,
                 JobRestrictions={'PLD','RDM'}},
 };
 
@@ -120,7 +120,7 @@ skills.gs = { -- Great Sword
                 JobRestrictions={'PLD','DRK'}},
     [56] = {en='Ground Strike¹',  skillchain={'Fragmentation','Distortion'},     skill=250},
     -- Relic WS treat as high end
-    [57] = {en='Scourge²',        skillchain={'Light','Fusion'},                 skill=250,
+    [57] = {en='Scourge²', rema=true,        skillchain={'Light','Fusion'},                 skill=250,
                 JobRestrictions={'PLD','DRK'}},
 };
 
@@ -140,7 +140,7 @@ skills.axe = { -- Axe
     [72] = {en='Decimation¹',     skillchain={'Fusion','Detonation'},            skill=240, -- HorizonXI
                 JobRestrictions={'WAR','DRK','BST','RNG'}},
     -- Relic WS treat as high end
-    [73] = {en='Onslaught²',      skillchain={'Darkness','Gravitation'},         skill=240,
+    [73] = {en='Onslaught²', rema=true,      skillchain={'Darkness','Gravitation'},         skill=240,
                 JobRestrictions={'BST'}},
 };
 
@@ -160,7 +160,7 @@ skills.ga = { -- Great Axe
     [88] = {en='Steel Cyclone¹',  skillchain={'Distortion','Detonation'},        skill=240,
                 JobRestrictions={'WAR','DRK'}},
     -- Relic WS treat as high end
-    [89] = {en='Metatron Torment²',skillchain={'Light','Fusion'},                skill=240,
+    [89] = {en='Metatron Torment²', rema=true,skillchain={'Light','Fusion'},                skill=240,
                 JobRestrictions={'WAR'}},
 };
 
@@ -180,7 +180,7 @@ skills.scythe = { -- Scythe
     [104]= {en='Spiral Hell¹',      skillchain={'Gravitation','Compression'},   skill=240, -- HorizonXI
                 JobRestrictions={'WAR','DRK','BST'}},
     -- Relic WS treat as high end
-    [105]= {en='Catastrophe²',      skillchain={'Darkness','Gravitation'},      skill=240,  -- HorizonXI
+    [105]= {en='Catastrophe²', rema=true,      skillchain={'Darkness','Gravitation'},      skill=240,  -- HorizonXI
                 JobRestrictions={'DRK'}},
 };
 
@@ -200,7 +200,7 @@ skills.polearm = { -- Polearm
     [120] = {en='Impulse Drive¹',  skillchain={'Gravitation','Induration'},     skill=240,
                 JobRestrictions={'WAR','SAM','DRG'}},
     -- Relic WS treat as high end
-    [121] = {en='Geirskogul²',     skillchain={'Light','Distortion'},           skill=240,
+    [121] = {en='Geirskogul²', rema=true,     skillchain={'Light','Distortion'},           skill=240,
                 JobRestrictions={'DRG'}},
 };
 
@@ -215,7 +215,7 @@ skills.katana = { -- Katana; only NIN has skill
     [135] = {en='Blade: Ten',   skillchain={'Gravitation'},                     skill=225},
     [136] = {en='Blade: Ku¹',    skillchain={'Gravitation','Transfixion'},      skill=250},
     -- Relic WS treat as high end
-    [137] = {en='Blade: Metsu²', skillchain={'Darkness','Fragmentation'},       skill=250},
+    [137] = {en='Blade: Metsu²', rema=true, skillchain={'Darkness','Fragmentation'},       skill=250},
 };
 
 skills.gkt = { -- Great Katana
@@ -232,7 +232,7 @@ skills.gkt = { -- Great Katana
     [152] = {en='Tachi: Kasha',   skillchain={'Fusion','Compression'},          skill=250,
                 JobRestrictions={'SAM'}},
     -- Relic WS treat as high end
-    [153] = {en='Tachi: Kaiten²', skillchain={'Light','Fragmentation'},         skill=250,
+    [153] = {en='Tachi: Kaiten²', rema=true, skillchain={'Light','Fragmentation'},         skill=250,
                 JobRestrictions={'SAM'}},
 };
 
@@ -250,7 +250,7 @@ skills.club = { -- Club
     [169] = {en='Black Halo¹',    skillchain={'Fragmentation','Compression'},   skill=230,
                 JobRestrictions={'WAR','MNK','WHM','BLM','PLD','SMN'}},
     -- Relic WS treat as high end
-    [170] = {en='Randgrith²',     skillchain={'Light','Fragmentation'},         skill=230,
+    [170] = {en='Randgrith²', rema=true,     skillchain={'Light','Fragmentation'},         skill=230,
                 JobRestrictions={'WHM'}},
 };
 
@@ -266,7 +266,7 @@ skills.staff = { -- Staff
     [182] = {en='Full Swing',      skillchain={'Liquefaction','Impaction'},     skill=200},
     [184] = {en='Retribution¹',    skillchain={'Gravitation','Reverberation'},  skill=230},
     -- Relic WS treat as high end
-    [185] = {en='Gate of Tartarus²',skillchain={'Darkness','Distortion'},       skill=230,
+    [185] = {en='Gate of Tartarus²', rema=true,skillchain={'Darkness','Distortion'},       skill=230,
                 JobRestrictions={'BLM','SMN'}},
 };
 
@@ -290,7 +290,7 @@ skills.archery = { -- Archery
     [199] = {en='Empyreal Arrow¹', skillchain={'Fusion','Transfixion'},         skill=250,
                 JobRestrictions={'RNG'}},
     -- Relic WS treat as high end
-    [200] = {en='Namas Arrow²',    skillchain={'Light','Distortion'},           skill=250,
+    [200] = {en='Namas Arrow²', rema=true,    skillchain={'Light','Distortion'},           skill=250,
                 JobRestrictions={'RNG','SAM'}},
 };
 
@@ -314,7 +314,7 @@ skills.mm = { -- Marksmanship
     [215] = {en='Detonator¹',      skillchain={'Fusion','Transfixion'},         skill=250,
                 JobRestrictions={'RNG','COR'}},
     -- Relic WS treat as high end
-    [216] = {en='Coronach²',       skillchain={'Darkness','Fragmentation'},     skill=250,
+    [216] = {en='Coronach²', rema=true,       skillchain={'Darkness','Fragmentation'},     skill=250,
                 JobRestrictions={'RNG'}},
 };
 
