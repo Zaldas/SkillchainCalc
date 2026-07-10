@@ -36,6 +36,11 @@ local dragState = {
     objectsHidden = false,  -- Track if we've hidden objects
 };
 
+-- Combo data captured on the mouse-down (513) that started a result-line click,
+-- resolved on the matching mouse-up (514). Lets us block both events so the
+-- click doesn't pass through to the game world underneath the overlay.
+local resultClickData = nil;
+
 -- ============================================================================
 -- Pool Management Helpers
 -- ============================================================================
@@ -260,13 +265,22 @@ local function comboClickTest(mouseX, mouseY)
 end
 
 function SkillchainRenderer.handleMouse(e, settings)
-    -- Check for combo click on left mouse button up (message 514)
-    -- Do this before drag handling so clicks work even when drag is disabled
-    if e.message == 514 and not dragState.dragActive then
-        local comboData = comboClickTest(e.x, e.y);
-        if comboData then
-            return comboData;  -- Return clicked combo to main file
+    -- Check for a result-line click on mouse down (513), before drag handling,
+    -- so clicks work even when drag is disabled. Block both 513 and 514 so the
+    -- click can't also land on the game world underneath the overlay.
+    if e.message == 513 and not dragState.dragActive then
+        resultClickData = comboClickTest(e.x, e.y);
+        if resultClickData then
+            e.blocked = true;
+            return;
         end
+    end
+
+    if e.message == 514 and resultClickData then
+        local comboData = resultClickData;
+        resultClickData = nil;
+        e.blocked = true;
+        return comboData;  -- Return clicked combo to main file
     end
 
     -- Early exit if drag is disabled and not currently dragging

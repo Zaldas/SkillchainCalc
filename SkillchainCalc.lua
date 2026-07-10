@@ -580,6 +580,12 @@ end);
 
 -- Event handler for addon unloading
 ashita.events.register('unload', 'unload_cb', function()
+    ashita.events.unregister('load', 'load_cb');
+    ashita.events.unregister('mouse', 'mouse_cb');
+    ashita.events.unregister('d3d_present', 'scc_present_cb');
+    ashita.events.unregister('command', 'command_cb');
+    ashita.events.unregister('unload', 'unload_cb');
+
     -- Disable drag on shutdown
     SkillchainRenderer.setEnableDrag(false);
     SkillchainRenderer.destroy();

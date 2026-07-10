@@ -11,8 +11,10 @@ local SkillchainCore = {};
 
 SkillchainCore.REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills
 
--- Helper function to get skill cap from rank and level
-local function getSkillCapFromRank(skillRank, level)
+-- Get skill cap from rank and level. Exported so other modules (e.g. the
+-- Calculator's Fav WS dropdown) don't reimplement this against SkillRanks
+-- directly and risk drifting from the calculation's own eligibility rules.
+function SkillchainCore.GetSkillCapFromRank(skillRank, level)
     if not skillRank or not SkillRanks.Cap[skillRank] then
         return 999;
     end
@@ -20,9 +22,18 @@ local function getSkillCapFromRank(skillRank, level)
     local levelToUse = level or jobs.MAX_LEVEL;
     return SkillRanks.Cap[skillRank][levelToUse] or 999;
 end
+local getSkillCapFromRank = SkillchainCore.GetSkillCapFromRank;
 
 -----------------------------------------------------------------------
 -- TOAU – PUP Frame Support Functions
+--
+-- This "frames" design (job.frames + JobRestrictions naming a frame) is the
+-- live, currently-dormant path -- its data is commented out in Jobs.lua/
+-- Skills.lua until TOAU releases on HorizonXI. retail/Jobs.lua and
+-- retail/Skills.lua instead model PUP as a plain weapon-bucket job (an
+-- 'automaton' weapon type on jobs.PUP.weapons, no frames) and never call
+-- into these functions. The two designs are unreconciled: whoever activates
+-- TOAU support here needs to pick one, not just uncomment this block.
 -----------------------------------------------------------------------
 
 local function isFrameAllowed(ws, frameName)
@@ -812,9 +823,7 @@ function SkillchainCore.CalculatePartySkillchains(members)
     local active = {};
     for _, m in ipairs(members) do
         if m.enabled and m.weapon then
-            local token = m.jobId:lower()
-                .. (m.subJobId and ('/' .. m.subJobId:lower()) or '')
-                .. ':' .. m.weapon;
+            local token = SkillchainCore.BuildTokenFromSelection(m.jobId, { [m.weapon] = true }, m.subJobId);
             local skillList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
             if skillList then
                 if not m.hasRema then

@@ -505,18 +505,15 @@ function SkillchainParty.DrawWindow()
                             imgui.SetCursorPosX(contentWidth * 0.50);
                             imgui.PushItemWidth(contentWidth * 0.40);
 
-                            local wsList = nil;
-                            if member.weapon then
-                                local token = member.jobId:lower()
-                                    .. (member.subJobId and ('/' .. member.subJobId:lower()) or '')
-                                    .. ':' .. member.weapon;
-                                wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
-                            end
-
                             local curLabel = member.favWs or '(Any)';
                             if not member.weapon then
                                 imgui.TextDisabled('(no weapon)');
                             elseif imgui.BeginCombo('##favws' .. i, curLabel) then
+                                -- Only resolve the skill list while the combo is actually
+                                -- open, not every frame the Fav WS panel is expanded.
+                                local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
+                                local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
+
                                 if imgui.Selectable('(Any)', member.favWs == nil) then
                                     member.favWs = nil;
                                 end

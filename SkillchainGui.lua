@@ -5,7 +5,6 @@ require('common');
 local imgui    = require('imgui');
 local jobsData = require('Jobs');
 local skills   = require('Skills');
-local SkillRanks = require('SkillRanks');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainUI = require('SkillchainUI');
@@ -95,6 +94,25 @@ do
     end
 end
 
+-- Resolves an element filter token (e.g. cache.filters.scElement, lowercase)
+-- to its dropdown index, or 1 ("Any") if absent/unrecognized.
+-- Shared by OpenFromCli and DrawWindow's one-time init -- previously
+-- duplicated byte-for-byte in both places.
+local function resolveElementIndex(elementToken)
+    if not elementToken then
+        return 1;
+    end
+
+    local lower = elementToken:lower();
+    for i, tok in ipairs(elementTokens) do
+        if tok == lower then
+            return i;
+        end
+    end
+
+    return 1;
+end
+
 -----------------------------------------------------------------------
 -- State and Cache
 -----------------------------------------------------------------------
@@ -147,6 +165,14 @@ local state = {
 
 -- Module-level cache reference (set externally via SetCache)
 local cache = nil;
+
+-- Syncs the two GUI-only filter fields (never mirrored into cache.filters)
+-- from stored defaults. Shared by Reset Filters, OpenFromCli, and DrawWindow's
+-- one-time init -- all three read these two fields from `def` identically.
+local function syncGuiOnlyDefaults(def)
+    state.filters.enableFavWs = def.enableFavWs or false;
+    state.customLevel.enabled = def.useCharLevel or false;
+end
 
 -----------------------------------------------------------------------
 -- Helpers
@@ -443,11 +469,7 @@ local function buildFavWsItems(jobState, side)
                         local weaponCfg = job.weapons[weaponKey];
                         local skillRank = weaponCfg and weaponCfg.skillRank;
 
-                        local maxSkill = 999;
-                        if skillRank and SkillRanks and SkillRanks.Cap and SkillRanks.Cap[skillRank] then
-                            local levelToUse = charLevel or jobsData.MAX_LEVEL;
-                            maxSkill = SkillRanks.Cap[skillRank][levelToUse] or 999;
-                        end
+                        local maxSkill = SkillchainCore.GetSkillCapFromRank(skillRank, charLevel);
 
                         -- Check job restrictions and REMA filter
                         if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
@@ -943,9 +965,8 @@ local function drawFiltersTab()
         state.filters.scLevel = def.scLevel or 1;
         state.filters.both  = def.both  or false;
         state.filters.includeSubjob = def.includeSubjob or false;
-        state.customLevel.enabled = def.useCharLevel or false;
-        state.filters.enableFavWs = def.enableFavWs or false;
         state.filters.showRema = def.showRema or false;
+        syncGuiOnlyDefaults(def);
         state.filters.elementIndex = 1;
     end
 
@@ -1082,16 +1103,7 @@ function SkillchainGUI.OpenFromCli()
     state.filters.includeSubjob = def.includeSubjob or false;
 
     -- Element from cache.filters.scElement
-    state.filters.elementIndex = 1;
-    if cache.filters.scElement then
-        local lower = cache.filters.scElement:lower();
-        for i, tok in ipairs(elementTokens) do
-            if tok == lower then
-                state.filters.elementIndex = i;
-                break;
-            end
-        end
-    end
+    state.filters.elementIndex = resolveElementIndex(cache.filters.scElement);
 
     -- Jobs + weapons from token1 / token2
     -- These may set state.filters.includeSubjob = true if tokens contain explicit subjobs
@@ -1107,16 +1119,14 @@ function SkillchainGUI.OpenFromCli()
         state.filters.includeSubjob = cache.filters.includeSubjob;
     end
 
-    -- Custom level from CLI
+    -- Custom level from CLI, falling back to defaults (also syncs enableFavWs)
+    syncGuiOnlyDefaults(def);
     if cache.filters.charLevel then
         state.customLevel.enabled = true;
         state.customLevel.value = cache.filters.charLevel;
-    else
-        state.customLevel.enabled = def.useCharLevel or false;
     end
 
-    -- Favorite WS / REMA filter from defaults (CLI doesn't support setting these directly)
-    state.filters.enableFavWs = def.enableFavWs or false;
+    -- REMA filter from defaults (CLI doesn't support setting this directly)
     state.filters.showRema = def.showRema or false;
 
     -- Tell DrawWindow "don't re-init from defaults"
@@ -1195,20 +1205,10 @@ function SkillchainGUI.DrawWindow()
             state.filters.both          = cache.filters.both;
             state.filters.includeSubjob = cache.filters.includeSubjob;
             state.filters.showRema      = cache.filters.showRema;
-            state.filters.enableFavWs   = def.enableFavWs or false;
-            state.customLevel.enabled   = def.useCharLevel or false;
+            syncGuiOnlyDefaults(def);
         end
 
-        state.filters.elementIndex = 1;
-        if cache.filters.scElement then
-            local lower = cache.filters.scElement:lower();
-            for i, tok in ipairs(elementTokens) do
-                if tok == lower then
-                    state.filters.elementIndex = i;
-                    break;
-                end
-            end
-        end
+        state.filters.elementIndex = resolveElementIndex(cache.filters.scElement);
 
         state.initialized   = true;
         state.openedFromCli = false;
