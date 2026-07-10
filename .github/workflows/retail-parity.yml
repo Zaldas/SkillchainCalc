@@ -1,0 +1,32 @@
+name: Retail Parity Check
+
+on:
+  push:
+    paths:
+      - 'Jobs.lua'
+      - 'Skills.lua'
+      - 'retail/Jobs.lua'
+      - 'retail/Skills.lua'
+      - 'ci/check-retail-parity.lua'
+  pull_request:
+    paths:
+      - 'Jobs.lua'
+      - 'Skills.lua'
+      - 'retail/Jobs.lua'
+      - 'retail/Skills.lua'
+      - 'ci/check-retail-parity.lua'
+  workflow_dispatch:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.3
+
+      - name: Check retail/main data parity
+        run: lua5.3 ci/check-retail-parity.lua
