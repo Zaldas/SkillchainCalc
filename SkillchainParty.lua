@@ -368,7 +368,7 @@ function SkillchainParty.DrawWindow()
         ImGuiWindowFlags_AlwaysAutoResize
     );
 
-    if not imgui.Begin('SkillchainCalc - Party', showWindow, flags) then
+    if not imgui.Begin('SkillchainCalc.' .. addon.version .. ' - Party', showWindow, flags) then
         imgui.End();
         return nil;
     end
