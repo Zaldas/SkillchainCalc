@@ -838,7 +838,9 @@ local function appendNameUnique(list, name)
     table.insert(list, name);
 end
 
--- Calculate all skillchains between every ordered pair of active party members.
+-- Calculate all skillchains between every ordered pair of active members. This
+-- is one flat pool regardless of alliance sub-party -- partyIndex (if present)
+-- is a display-grouping detail only and plays no role in the calculation.
 -- members: array of {name, jobId, subJobId, level, subLevel, enabled, weapon}
 -- Returns a flat array of:
 --   {opener, closer, chain, chainLevel, openerNames, closerNames}

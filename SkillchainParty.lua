@@ -163,9 +163,9 @@ local function getPartyWarnings()
 
     local localZone = party:GetMemberZone(0);
 
-    -- Build live snapshot keyed by name
+    -- Build live snapshot keyed by name (0-17 covers the full alliance)
     local live = {};
-    for i = 0, 5 do
+    for i = 0, 17 do
         if party:GetMemberIsActive(i) ~= 0 then
             local name = party:GetMemberName(i);
             if name and name ~= '' then
@@ -224,7 +224,10 @@ local function loadParty()
 
     local localZone = party:GetMemberZone(0);
 
-    for i = 0, 5 do
+    -- Indices 0-5 = your party, 6-11 = alliance party 2, 12-17 = alliance
+    -- party 3. Everyone is one flat pool for calculation purposes -- partyIndex
+    -- is only used to group the member list display.
+    for i = 0, 17 do
         -- Out-of-zone members' job/subjob/level reads come back zero/stale, so
         -- they can't be seeded with usable data for calculation -- skip them
         -- explicitly here (rather than relying on jobId resolving to nil) so
@@ -256,16 +259,17 @@ local function loadParty()
                 end
 
                 table.insert(partyState.members, {
-                    name     = party:GetMemberName(i) or ('Member ' .. i),
-                    jobId    = jobId,
-                    subJobId = subId,
-                    level    = party:GetMemberMainJobLevel(i),
-                    subLevel = party:GetMemberSubJobLevel(i),
-                    enabled  = not defaultDisabledJobs[jobId],
-                    weapon   = defaultWeapon,
-                    isLocal  = isLocal,
-                    hasRema  = isRema,
-                    favWs    = nil,
+                    name       = party:GetMemberName(i) or ('Member ' .. i),
+                    jobId      = jobId,
+                    subJobId   = subId,
+                    level      = party:GetMemberMainJobLevel(i),
+                    subLevel   = party:GetMemberSubJobLevel(i),
+                    enabled    = not defaultDisabledJobs[jobId],
+                    weapon     = defaultWeapon,
+                    isLocal    = isLocal,
+                    hasRema    = isRema,
+                    favWs      = nil,
+                    partyIndex = math.ceil((i + 1) / 6),  -- 1, 2, or 3
                 });
             end
         end
@@ -374,7 +378,24 @@ local function drawPartyTab(contentWidth)
     -----------------------------------------------------------------------
     -- Party section
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Party', contentWidth);
+    -- Only group into "Party N" sections when more than one alliance
+    -- sub-party is actually present; a normal (non-alliance) party renders
+    -- exactly as before, with a single plain "Party" header.
+    local multipleParties = false;
+    if partyState.loaded and #partyState.members > 0 then
+        for _, member in ipairs(partyState.members) do
+            if member.partyIndex ~= partyState.members[1].partyIndex then
+                multipleParties = true;
+                break;
+            end
+        end
+    end
+
+    -- When grouping, the per-group "Party N" header below already labels the
+    -- first group -- skip this one to avoid a redundant "Party" / "Party 1" pair.
+    if not multipleParties then
+        SkillchainUI.drawGradientHeader('Party', contentWidth);
+    end
 
     if (not partyState.loaded) or (#partyState.members == 0) then
         local hint  = 'No party loaded — press Update Party';
@@ -382,7 +403,16 @@ local function drawPartyTab(contentWidth)
         imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - textW) * 0.5);
         imgui.TextDisabled(hint);
     else
+        -- Members are already in partyIndex order (loadParty() seeds them
+        -- 0-17 sequentially), so a single pass detecting group boundaries is
+        -- enough -- no re-sort needed.
+        local lastPartyIndex = nil;
         for i, member in ipairs(partyState.members) do
+            if multipleParties and member.partyIndex ~= lastPartyIndex then
+                if lastPartyIndex then imgui.Spacing(); end
+                SkillchainUI.drawGradientHeader('Party ' .. member.partyIndex, contentWidth);
+                lastPartyIndex = member.partyIndex;
+            end
             drawMemberRow(member, i, contentWidth);
         end
 
@@ -682,8 +712,9 @@ end
 -- partyPositionChanged (bool)          Party window was dragged; call settings.save
 -- settingsChanged      (bool)          REMA/FavWs/localPlayer settings changed; call settings.save
 -- mode                 (string)        'party' — triggers party skillchain calculation in the caller
--- members              (array)         Party member snapshot; present when mode == 'party';
---                                      each entry: { name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs }
+-- members              (array)         Party/alliance member snapshot (up to 18, alliance-wide);
+--                                      present when mode == 'party'; each entry:
+--                                      { name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs, partyIndex }
 -- partyFilters         (table)         { chains: table|nil } — set of SC family names or nil for Any
 -- warnings             (array)         Stale-party warnings (strings) to print to chat; present when mode == 'party'
 function SkillchainParty.DrawWindow()
