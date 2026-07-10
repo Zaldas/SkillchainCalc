@@ -240,7 +240,7 @@ jobs.BLU = {
     weapons = {
         sword = { skillRank = 'A+' },
         club  = { skillRank = 'B-' },
-        blu   = { skillRank = 'Level' },
+        blu   = { skillRank = 'A+' },  -- Blue Magic Skill follows the A+ weapon-rank curve (verified vs bg-wiki: 150@lv49, 424@lv99)
     },
 }
 
@@ -261,7 +261,7 @@ jobs.PUP = {
         h2h       = { skillRank = 'A+' },
         dagger    = { skillRank = 'C-' },
         club      = { skillRank = 'D' },
-        automaton = { skillRank = 'Level' },
+        automaton = { skillRank = 'A-' },  -- Automaton combat skill follows weapon-rank curves per frame (Valoredge/Sharpshot melee/ranged = A-, Harlequin = B-); this flat bucket covers all frames, so A- is the highest common ceiling that doesn't exclude any frame's WS below its own cap
     },
 }
 

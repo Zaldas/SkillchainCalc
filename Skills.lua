@@ -358,11 +358,11 @@ skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
     [527] = {en='Smite of Rage',     skillchain={'Detonation'},                  skill=34},
     [596] = {en='Pinecone Bomb',     skillchain={'Liquefaction'},                skill=36},
     [569] = {en='Jet Stream',        skillchain={'Impaction'},                   skill=38},
-    [594] = {en='Uppercut',          skillchain={'Liquefaction'},                skill=38},
+    [594] = {en='Uppercut',          skillchain={'Liquefaction','Impaction'},   skill=38},
     [539] = {en='Terror Touch',      skillchain={'Compression','Reverberation'}, skill=40},
     [543] = {en='Mandibular Bite',   skillchain={'Induration'},                  skill=44},
     [545] = {en='Sickle Slash',      skillchain={'Compression'},                 skill=48},
-    [589] = {en='Dimensional Death', skillchain={'Impaction'},                   skill=60},
+    [589] = {en='Dimensional Death', skillchain={'Transfixion','Impaction'},    skill=60},
     [652] = {en='Spiral Spin',       skillchain={'Transfixion'},                 skill=60},
     [554] = {en='Death Scissors',    skillchain={'Compression','Reverberation'}, skill=60},
     [650] = {en='Seedspray',         skillchain={'Induration','Detonation'},     skill=61},
@@ -398,11 +398,11 @@ skills.frameMelee = {
               JobRestrictions = {'valoredge'}},
 
     -- harlequin & stormwaker shared (hybrid/mage frames)
-    [1943] = {en = 'Slapstick',       skill = 0,   skillchain = {'Impaction'},
+    [1943] = {en = 'Slapstick',       skill = 0,   skillchain = {'Reverberation', 'Impaction'},
               JobRestrictions = {'harlequin', 'stormwaker'}},
     [2067] = {en = 'Knockout',        skill = 145, skillchain = {'Scission', 'Detonation'},
               JobRestrictions = {'harlequin', 'stormwaker'}},
-    [2301] = {en = 'Magic Mortar',    skill = 225, skillchain = {'Fusion', 'Liquefaction'},
+    [2301] = {en = 'Magic Mortar',    skill = 225, skillchain = {'Fusion'},
               JobRestrictions = {'harlequin', 'stormwaker'}},
 };
 

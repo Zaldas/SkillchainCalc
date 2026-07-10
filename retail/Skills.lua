@@ -569,21 +569,21 @@ skills.avatar = {
 -- Frame types: Harlequin (default), Valoredge (melee), Sharpshot (ranged)
 -----------------------------------------------------------------------
 skills.automaton = {
-    -- Harlequin Frame
+    -- Harlequin Frame (shared with Stormwaker -- no unique Stormwaker weaponskills)
     [401] = {en='Slapstick',        skillchain={'Reverberation','Impaction'},     skill=0},
     [402] = {en='Knockout',         skillchain={'Scission','Detonation'},         skill=145},
     [403] = {en='Magic Mortar',     skillchain={'Fusion'},                        skill=225},
     -- Valoredge Frame
     [404] = {en='String Clipper',   skillchain={'Scission'},                      skill=0},
-    [405] = {en='Chimera Ripper',   skillchain={'Detonation','Induration'},       skill=145},
-    [406] = {en='Cannibal Blade',   skillchain={'Compression','Reverberation'},   skill=175},
+    [405] = {en='Chimera Ripper',   skillchain={'Detonation','Induration'},       skill=0},
+    [406] = {en='Cannibal Blade',   skillchain={'Compression','Reverberation'},   skill=150},
     [407] = {en='Bone Crusher',     skillchain={'Fragmentation'},                 skill=245},
+    [412] = {en='String Shredder',  skillchain={'Distortion','Scission'},         skill=324},
     -- Sharpshot Frame
     [408] = {en='Arcuballista',     skillchain={'Liquefaction','Transfixion'},    skill=0},
-    [409] = {en='Daze',             skillchain={'Impaction','Transfixion'},       skill=145},
-    [410] = {en='Armor Piercer',    skillchain={'Gravitation'},                   skill=175},
-    [411] = {en='Armor Shatterer',  skillchain={'Fusion','Impaction'},            skill=205},
-    [412] = {en='String Shredder',  skillchain={'Distortion','Scission'},         skill=245},
+    [409] = {en='Daze',             skillchain={'Impaction','Transfixion'},       skill=150},
+    [410] = {en='Armor Piercer',    skillchain={'Gravitation'},                   skill=245},
+    [411] = {en='Armor Shatterer',  skillchain={'Fusion','Impaction'},            skill=324},
 };
 
 -----------------------------------------------------------------------
@@ -593,42 +593,48 @@ skills.automaton = {
 skills.blu = {
     -- Level 1-20 spells
     [501] = {en='Wild Oats',        skillchain={'Transfixion'},                   skill=0},
+    [535] = {en='Foot Kick',        skillchain={'Detonation'},                    skill=6},   -- learn lv1
     [502] = {en='Battle Dance',     skillchain={'Impaction'},                     skill=8},
     [503] = {en='Head Butt',        skillchain={'Impaction'},                     skill=8},
+    [536] = {en='Sprout Smack',     skillchain={'Reverberation'},                 skill=15},  -- learn lv4
     [504] = {en='Helldive',         skillchain={'Transfixion'},                   skill=20},
     [505] = {en='Bludgeon',         skillchain={'Liquefaction'},                  skill=26},
     [506] = {en='Claw Cyclone',     skillchain={'Scission'},                      skill=32},
     -- Level 21-50 spells
+    [537] = {en='Grand Slam',       skillchain={'Induration'},                    skill=93},  -- learn lv30
     [507] = {en='Screwdriver',      skillchain={'Transfixion','Scission'},        skill=50},
-    [508] = {en='Smite of Rage',    skillchain={'Impaction'},                     skill=76},
-    [509] = {en='Jet Stream',       skillchain={'Scission','Detonation'},         skill=92},
+    [538] = {en='Uppercut',         skillchain={'Liquefaction','Impaction'},      skill=117}, -- learn lv38
+    [508] = {en='Smite of Rage',    skillchain={'Detonation'},                    skill=76},
+    [509] = {en='Jet Stream',       skillchain={'Impaction'},                     skill=92},
     -- Level 51-75 spells
     [510] = {en='Sickle Slash',     skillchain={'Compression'},                   skill=116},
     [511] = {en='Mandibular Bite',  skillchain={'Induration'},                    skill=128},
-    [512] = {en='Death Scissors',   skillchain={'Scission'},                      skill=156},
-    [513] = {en='Dimensional Death', skillchain={'Distortion'},                   skill=170},
+    [512] = {en='Death Scissors',   skillchain={'Compression','Reverberation'},   skill=156},
+    [513] = {en='Dimensional Death', skillchain={'Transfixion','Impaction'},      skill=170},
     [514] = {en='Frenetic Rip',     skillchain={'Induration'},                    skill=186},
     [515] = {en='Spinal Cleave',    skillchain={'Scission','Detonation'},         skill=186},
     [516] = {en='Hysteric Barrage', skillchain={'Detonation'},                    skill=215},
     [517] = {en='Tail Slap',        skillchain={'Reverberation'},                 skill=215},
     [518] = {en='Cannonball',       skillchain={'Fusion'},                        skill=220},
     [519] = {en='Disseverment',     skillchain={'Distortion'},                    skill=230},
-    [520] = {en='Ram Charge',       skillchain={'Fragmentation','Scission'},      skill=235},
+    [520] = {en='Ram Charge',       skillchain={'Fragmentation'},                 skill=235},
     [521] = {en='Vertical Cleave',  skillchain={'Gravitation'},                   skill=245},
+    [539] = {en='Sub-zero Smash',   skillchain={'Fragmentation'},                 skill=261}, -- learn lv72
     -- Level 76-99 spells
     [522] = {en='Goblin Rush',      skillchain={'Fusion','Impaction'},            skill=276},
-    [523] = {en='Vanity Dive',      skillchain={'Fragmentation'},                 skill=276},
+    [523] = {en='Vanity Dive',      skillchain={'Scission'},                      skill=276},
     [524] = {en='Benthic Typhoon',  skillchain={'Gravitation','Transfixion'},     skill=288},
     [525] = {en='Quad. Continuum',  skillchain={'Distortion','Scission'},         skill=300},
     [526] = {en='Empty Thrash',     skillchain={'Compression','Scission'},        skill=312},
     [527] = {en='Delta Thrust',     skillchain={'Liquefaction','Detonation'},     skill=324},
     [528] = {en='Heavy Strike',     skillchain={'Fragmentation','Transfixion'},   skill=344},
     [529] = {en='Sudden Lunge',     skillchain={'Detonation'},                    skill=365},
-    [530] = {en='Whirl of Rage',    skillchain={'Scission'},                      skill=379},
+    [530] = {en='Whirl of Rage',    skillchain={'Scission','Detonation'},         skill=379},
     [531] = {en='Amorphic Spikes',  skillchain={'Gravitation','Transfixion'},     skill=386},
     [532] = {en='Thrashing Assault', skillchain={'Fusion','Impaction'},           skill=393},
     [533] = {en='Sinker Drill',     skillchain={'Gravitation','Reverberation'},   skill=393},
     [534] = {en='Bloodrake',        skillchain={'Darkness','Distortion'},         skill=393},
+    [540] = {en='Quadrastrike',     skillchain={'Liquefaction','Scission'},       skill=403}, -- learn lv96
 };
 
 -----------------------------------------------------------------------
