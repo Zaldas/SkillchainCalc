@@ -22,8 +22,8 @@ The Party window reads your live party from memory and lets you calculate skillc
 
 - Press **Update Party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown.
 - Casters and support jobs (BLM, WHM, SMN, BRD, RDM) default to disabled — toggle the checkbox next to any member's name to include or exclude them.
-- Change any member's weapon type via the dropdown to explore different skillchain options for that combination.
 - The local player's weapon is auto-detected from their currently equipped main-hand weapon when loading.
+- Other party members default to their job's primary weapon.
 - Press **Clear Party** to reset.
 
 **Filter section**
