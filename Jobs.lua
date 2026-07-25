@@ -28,10 +28,12 @@ jobs.aliases = {
     drg = 'DRG', dragoon     = 'DRG',
     smn = 'SMN', summoner    = 'SMN',
 
-    -- ToAU+ jobs – uncomment when TOAU releases
-    -- blu = 'BLU', bluemage    = 'BLU',
-    -- cor = 'COR', corsair     = 'COR',
-    -- pup = 'PUP', puppetmaster = 'PUP',
+    -- ToAU jobs
+    blu = 'BLU', bluemage    = 'BLU',
+    cor = 'COR', corsair     = 'COR',
+    pup = 'PUP', puppetmaster = 'PUP',
+
+    -- WotG jobs – uncomment when WotG releases on HorizonXI
     -- dnc = 'DNC', dancer      = 'DNC',
     -- sch = 'SCH', scholar     = 'SCH',
 }
@@ -226,9 +228,9 @@ jobs.SMN = {
 }
 
 -----------------------------------------------------------------------
--- TOAU jobs – uncomment when TOAU releases on HorizonXI
+-- TOAU jobs
 -----------------------------------------------------------------------
---[[
+
 jobs.BLU = {
     defaultSubjob = 'NIN',
     primaryWeapons = { 'sword', 'blu' },
@@ -264,7 +266,6 @@ jobs.PUP = {
         harlequin  = { melee = 'B-', ranged = 'B-' },  -- hybrid frame
     },
 }
-]]
 
 -----------------------------------------------------------------------
 -- WotG jobs – uncomment when WotG releases on HorizonXI

@@ -30,15 +30,15 @@ skills.aliases = {
     gun          = 'mm',
     -- Pet skills bucket
     avatar = 'avatar',
-    -- TOAU – uncomment when released
-    -- blu = 'blu', bluemagic = 'blu',
+    -- TOAU
+    blu = 'blu', bluemagic = 'blu',
 
-    -- PUP Automaton Frames – uncomment when TOAU releases
-    -- framemelee = 'frameMelee', frameranged = 'frameRanged',
-    -- valoredge = 'valoredge', ve = 'valoredge', val = 'valoredge',         -- tank frame
-    -- sharpshot = 'sharpshot', ss = 'sharpshot', sharp = 'sharpshot',       -- ranged DPS frame
-    -- stormwaker = 'stormwaker', sw = 'stormwaker', storm = 'stormwaker',   -- mage frame
-    -- harlequin = 'harlequin', hq = 'harlequin', harley = 'harlequin',      -- hybrid frame
+    -- PUP Automaton Frames
+    framemelee = 'frameMelee', frameranged = 'frameRanged',
+    valoredge = 'valoredge', ve = 'valoredge', val = 'valoredge',         -- tank frame
+    sharpshot = 'sharpshot', ss = 'sharpshot', sharp = 'sharpshot',       -- ranged DPS frame
+    stormwaker = 'stormwaker', sw = 'stormwaker', storm = 'stormwaker',   -- mage frame
+    harlequin = 'harlequin', hq = 'harlequin', harley = 'harlequin',      -- hybrid frame
 }
 
 skills.h2h = { -- Hand-to-Hand
@@ -338,9 +338,9 @@ skills.avatar = { -- SMN Player Pet Skills; skill is based on level
 };
 
 -----------------------------------------------------------------------
--- TOAU – Blue Mage physical spells (uncomment when TOAU releases)
+-- TOAU – Blue Mage physical spells
 -----------------------------------------------------------------------
---[[
+
 skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
     [577] = {en='Foot Kick',         skillchain={'Detonation'},                  skill=1},
     [597] = {en='Sprout Smack',      skillchain={'Reverberation'},               skill=4},
@@ -380,12 +380,11 @@ skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
     [585] = {en='Ram Charge',        skillchain={'Fragmentation'},               skill=73},
     [617] = {en='Vertical Cleave',   skillchain={'Gravitation'},                 skill=75},
 };
-]]
 
 -----------------------------------------------------------------------
--- TOAU – PUP Automaton Frame Weaponskills (uncomment when TOAU releases)
+-- TOAU – PUP Automaton Frame Weaponskills
 -----------------------------------------------------------------------
---[[
+
 skills.frameMelee = {
     -- valoredge exclusive (tank frame)
     [1940] = {en = 'Chimera Ripper',  skill = 0,   skillchain = {'Induration', 'Detonation'},
@@ -416,7 +415,6 @@ skills.frameRanged = {
               JobRestrictions = {'sharpshot'}},
     -- [2744] = Armor Shatterer (skill 324) - excluded, beyond level 75 cap
 };
-]]
 
 -- static information on skillchains
 skills.ChainInfo = T{

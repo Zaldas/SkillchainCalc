@@ -6,12 +6,19 @@
 --
 -- This only checks key existence, not values -- retail data is expected to
 -- diverge in skill ranks/levels, and retail is expected to have *extra*
--- top-level keys (BLU/COR/PUP/DNC/SCH/GEO/RUN, automaton, blu) for jobs not
--- yet active on HorizonXI. It is not expected to be missing anything the
--- shared code relies on. This is exactly the class of bug that shipped a
--- broken retail build for two release cycles: jobs.IdMap was added to the
--- shared Jobs.lua but never backported to retail/Jobs.lua, and the retail
--- release zip overwrites Jobs.lua wholesale rather than merging.
+-- top-level keys (DNC/SCH/GEO/RUN) for jobs not yet active on HorizonXI.
+-- It is not expected to be missing anything the shared code relies on. This
+-- is exactly the class of bug that shipped a broken retail build for two
+-- release cycles: jobs.IdMap was added to the shared Jobs.lua but never
+-- backported to retail/Jobs.lua, and the retail release zip overwrites
+-- Jobs.lua wholesale rather than merging.
+--
+-- Skills.lua: main models PUP automaton weapon skills per-frame
+-- (skills.frameMelee/skills.frameRanged, keyed off jobs.PUP.frames), while
+-- retail models PUP as a flat 'automaton' weapon-skill bucket instead. This
+-- is an intentional, unreconciled design split (see SkillchainCore.lua's
+-- "TOAU – PUP Frame Support Functions" comment) -- frameMelee/frameRanged
+-- are expected to be main-only.
 
 -- Skills.lua/Jobs.lua expect the ambient T{} table constructor normally
 -- provided by common.lua inside the addon runtime. It's a plain table
@@ -28,11 +35,11 @@ local function loadDataFile(path)
     return chunk();
 end
 
--- Sorted list of keys present in `a` but missing from `b`.
-local function missingKeys(a, b)
+-- Sorted list of keys present in `a` but missing from `b`, excluding any key in `allowlist`.
+local function missingKeys(a, b, allowlist)
     local missing = {};
     for key in pairs(a) do
-        if b[key] == nil then
+        if b[key] == nil and not (allowlist and allowlist[key]) then
             table.insert(missing, tostring(key));
         end
     end
@@ -42,7 +49,9 @@ end
 
 local pairsToCheck = {
     { name = 'Jobs.lua',   main = 'Jobs.lua',   retail = 'retail/Jobs.lua' },
-    { name = 'Skills.lua', main = 'Skills.lua', retail = 'retail/Skills.lua' },
+    { name = 'Skills.lua', main = 'Skills.lua', retail = 'retail/Skills.lua',
+      -- PUP's per-frame automaton design (main) vs flat 'automaton' bucket (retail) -- see header comment.
+      mainOnlyAllowlist = { frameMelee = true, frameRanged = true } },
 };
 
 local failed = false;
@@ -51,7 +60,7 @@ for _, pair in ipairs(pairsToCheck) do
     local mainData   = loadDataFile(pair.main);
     local retailData = loadDataFile(pair.retail);
 
-    local missing = missingKeys(mainData, retailData);
+    local missing = missingKeys(mainData, retailData, pair.mainOnlyAllowlist);
     local extra   = missingKeys(retailData, mainData);
 
     if #missing > 0 then

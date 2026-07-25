@@ -64,6 +64,11 @@ local weaponDisplayNames = {
     archery = 'Archery',
     mm      = 'Marksmanship',
     avatar  = 'Avatar (Pet)',
+    blu     = 'Blue Magic',
+    valoredge  = 'Valoredge (Frame)',
+    sharpshot  = 'Sharpshot (Frame)',
+    stormwaker = 'Stormwaker (Frame)',
+    harlequin  = 'Harlequin (Frame)',
 };
 
 -- Weapon types that have at least one REMA weapon skill, sorted for stable display.
