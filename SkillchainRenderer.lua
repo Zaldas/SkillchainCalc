@@ -439,8 +439,9 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
                 end
 
                 -- Add combo item
-                local isReversible = (chainName == 'Light' or chainName == 'Darkness');
-                local arrow = (isReversible and both) and '↔' or '→';
+                -- Reversibility is per-pair, not per-chain: some Light/Darkness
+                -- pairs only chain one way (see buildCombinations in the core).
+                local arrow = (closerData.reversible and both) and '↔' or '→';
 
                 table.insert(currentCol.items, {
                     type = 'combo',

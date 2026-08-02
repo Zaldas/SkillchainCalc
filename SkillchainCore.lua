@@ -589,21 +589,40 @@ local function buildCombinations(list1, list2, opts)
         end
     end
 
-    -- L/D chains are always reversible in-game: if A→B and B→A both produce
-    -- Darkness/Light, deduplicate to one direction (the ↔ arrow covers both).
+    -- Most L/D pairs are bidirectional, but not all: first-match resolution can
+    -- intercept one direction with a lower-tier chain. Ground Strike
+    -- [Fragmentation, Distortion] → Evisceration [Gravitation, Transfixion] is
+    -- Darkness, but the reverse hits Fragmentation×Gravitation first and yields
+    -- Fragmentation. Merge into one ↔ row only when BOTH directions actually
+    -- resolve to the same chain; otherwise keep the direction that resolved.
+    -- `seen` holds every combo produced by both passes, so it answers this
+    -- directly -- the reverse pass has already run by this point.
     if both then
         local ldSeen    = {};
         local filtered  = {};
         for _, combo in ipairs(results) do
             if combo.chain == 'Light' or combo.chain == 'Darkness' then
-                local a, b = combo.skill1, combo.skill2;
-                if a > b then a, b = b, a; end
-                local key = a .. '|' .. b .. '|' .. combo.chain;
-                if not ldSeen[key] then
-                    ldSeen[key] = true;
-                    -- Always store in canonical (alphabetical) direction so the
-                    -- merger key is stable regardless of which member is list1/list2.
-                    table.insert(filtered, { skill1 = a, skill2 = b, chain = combo.chain });
+                local reverseKey = combo.skill2 .. '>' .. combo.skill1 .. '>' .. combo.chain;
+                if seen[reverseKey] then
+                    local a, b = combo.skill1, combo.skill2;
+                    if a > b then a, b = b, a; end
+                    local key = a .. '|' .. b .. '|' .. combo.chain;
+                    if not ldSeen[key] then
+                        ldSeen[key] = true;
+                        -- Always store in canonical (alphabetical) direction so the
+                        -- merger key is stable regardless of which member is list1/list2.
+                        table.insert(filtered, {
+                            skill1     = a,
+                            skill2     = b,
+                            chain      = combo.chain,
+                            reversible = true,
+                        });
+                    end
+                else
+                    -- One-way: keep the resolved opener→closer order. Canonicalizing
+                    -- here would print the pair backwards, and in party mode would
+                    -- attribute the opener to the wrong member.
+                    table.insert(filtered, combo);
                 end
             else
                 table.insert(filtered, combo);
@@ -753,7 +772,10 @@ function SkillchainCore.BuildSkillchainTable(skillchains)
 
         resultsTable[combo.chain]         = resultsTable[combo.chain] or {};
         resultsTable[combo.chain][opener] = resultsTable[combo.chain][opener] or {};
-        table.insert(resultsTable[combo.chain][opener], { closer = closer });
+        table.insert(resultsTable[combo.chain][opener], {
+            closer     = closer,
+            reversible = combo.reversible,
+        });
     end
 
     return resultsTable;
@@ -900,7 +922,8 @@ function SkillchainCore.CalculatePartySkillchains(members)
             for _, ws in ipairs(active[j].skills) do wsSetJ[ws.en] = true; end
 
             -- both=true: covers A→B and B→A in one call; buildCombinations
-            -- already deduplicates Light/Darkness to a single direction.
+            -- deduplicates Light/Darkness to a single direction only when the
+            -- pair chains both ways (combo.reversible marks those).
             local combos = SkillchainCore.CalculateSkillchains(active[i].skills, active[j].skills, true);
 
             for _, combo in ipairs(combos) do
@@ -918,6 +941,7 @@ function SkillchainCore.CalculatePartySkillchains(members)
                             closer      = combo.skill2,
                             chain       = combo.chain,
                             chainLevel  = findChainLevel(combo.chain),
+                            reversible  = combo.reversible,
                             openerNames = {},
                             closerNames = {},
                         };
@@ -1001,7 +1025,7 @@ function SkillchainCore.BuildPartySkillchainTable(partyResults)
         -- don't bleed into other closers sharing the same opener WS.
         local closerEntry = openerGroup.closers[entry.closer];
         if not closerEntry then
-            closerEntry = { openerNames = {}, closerNames = {} };
+            closerEntry = { openerNames = {}, closerNames = {}, reversible = entry.reversible };
             openerGroup.closers[entry.closer] = closerEntry;
             table.insert(openerGroup.closerOrder, entry.closer);
         end
@@ -1035,6 +1059,7 @@ function SkillchainCore.BuildPartySkillchainTable(partyResults)
                 local closerEntry = openerGroup.closers[closerName];
                 table.insert(closers, {
                     closer      = closerName,
+                    reversible  = closerEntry.reversible,
                     openerNames = closerEntry.openerNames,
                     closerNames = closerEntry.closerNames,
                 });
