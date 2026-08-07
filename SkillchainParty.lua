@@ -179,9 +179,9 @@ local function getPartyWarnings()
                     subJobId  = jobIds[party:GetMemberSubJob(i)],
                     level     = party:GetMemberMainJobLevel(i),
                     subLevel  = party:GetMemberSubJobLevel(i),
-                    -- Out-of-zone members' job/level reads come back zero/stale,
-                    -- which would otherwise look like a job change or a fresh
-                    -- join -- track zone status so we can report it accurately.
+                    -- Out-of-zone members' job/level reads are unreliable, so
+                    -- comparisons against the seeded snapshot are skipped for
+                    -- them -- a stale read would otherwise look like a job change.
                     outOfZone = party:GetMemberZone(i) ~= localZone,
                 };
             end
@@ -193,8 +193,24 @@ local function getPartyWarnings()
         local cur = live[m.name];
         if not cur then
             table.insert(warnings, m.name .. ' is no longer in the party');
+        elseif m.outOfZone then
+            -- Seeded as a display-only out-of-zone row. Still being out of zone
+            -- is the expected state and the greyed row already says so, so only
+            -- the arrival is worth reporting -- it's the one case where
+            -- reloading actually gains the user a member.
+            -- ASCII only: warnings are printed to FFXI chat, which is Shift-JIS.
+            -- A UTF-8 dash would be decoded as a lead byte and mangle the rest
+            -- of the line. The em dashes elsewhere in this file are all ImGui
+            -- strings, where UTF-8 is correct.
+            if not cur.outOfZone then
+                table.insert(warnings, m.name .. ' is now in zone - press Update Party to include them');
+            end
+            live[m.name] = nil;
         elseif cur.outOfZone then
-            table.insert(warnings, m.name .. ' is out of zone (data may be stale)');
+            -- Loaded with usable data, but has since zoned out. Their weapon
+            -- selection is still feeding the calculation, so this is worth
+            -- flagging even though nothing about the row changed.
+            table.insert(warnings, m.name .. ' has left the zone since loading');
             live[m.name] = nil;
         else
             if cur.jobId ~= m.jobId then
@@ -210,41 +226,80 @@ local function getPartyWarnings()
         end
     end
 
-    -- Any remaining live members weren't in the seed
-    for name, info in pairs(live) do
-        if info.outOfZone then
-            table.insert(warnings, name .. ' is out of zone and was not loaded');
-        else
-            table.insert(warnings, name .. ' joined the party after loading');
-        end
+    -- Any remaining live members weren't in the seed. Update Party now captures
+    -- out-of-zone members too (as greyed rows), so the zone doesn't change the
+    -- advice and one message covers both cases.
+    for name, _ in pairs(live) do
+        table.insert(warnings, name .. ' joined the party after loading');
     end
 
     return warnings;
 end
 
+-- Loads the party/alliance snapshot from game memory into partyState.
+-- Returns a summary for the caller to report in chat:
+--   { loaded = { name, ... }, notLoaded = { name, ... }, isAlliance = bool }
+-- Every active, named member lands in exactly one of the two lists, so together
+-- they always account for the whole party. The reason a member wasn't loaded
+-- (out of zone vs. job data not yet received) is deliberately not split out
+-- here -- the member list already marks out-of-zone rows individually.
+-- isAlliance lets the caller fall back to counts instead of naming up to 18
+-- people on one chat line.
+-- Returns nil if the party memory manager was unavailable.
 local function loadParty()
     local party = AshitaCore:GetMemoryManager():GetParty();
-    if party == nil then return; end
+    if party == nil then return nil; end
     partyState.members = {};
 
-    local localZone = party:GetMemberZone(0);
+    local localZone      = party:GetMemberZone(0);
+    local loadedNames    = {};
+    local notLoadedNames = {};
+    local hasAlliance    = false;
 
     -- Indices 0-5 = your party, 6-11 = alliance party 2, 12-17 = alliance
     -- party 3. Everyone is one flat pool for calculation purposes -- partyIndex
     -- is only used to group the member list display.
     for i = 0, 17 do
-        -- Out-of-zone members' job/subjob/level reads come back zero/stale, so
-        -- they can't be seeded with usable data for calculation -- skip them
-        -- explicitly here (rather than relying on jobId resolving to nil) so
-        -- the exclusion reason is clear and getPartyWarnings() can report it
-        -- accurately instead of calling them a "new join."
-        if party:GetMemberIsActive(i) ~= 0 and party:GetMemberZone(i) == localZone then
-            local jobNum = party:GetMemberMainJob(i);
-            local subNum = party:GetMemberSubJob(i);
-            local jobId  = jobIds[jobNum];
-            local subId  = jobIds[subNum];
+        local name = party:GetMemberName(i);
 
-            if jobId and jobsData[jobId] and jobsData[jobId].weapons then
+        -- A slot can read active before its name has been populated. Such a
+        -- member is skipped outright rather than given a synthetic name:
+        -- getPartyWarnings() filters empty names out of its live snapshot, so a
+        -- seeded row for one could never be matched and would report "is no
+        -- longer in the party" on every Calculate, unclearably.
+        if party:GetMemberIsActive(i) ~= 0 and name ~= nil and name ~= '' then
+            -- Indices 6+ are alliance parties 2 and 3; anyone there means this
+            -- is an alliance rather than a plain party.
+            if i > 5 then hasAlliance = true; end
+
+            local jobId  = jobIds[party:GetMemberMainJob(i)];
+            local subId  = jobIds[party:GetMemberSubJob(i)];
+
+            if party:GetMemberZone(i) ~= localZone then
+                -- Out-of-zone members' job/subjob/level reads are unreliable --
+                -- stale from before they zoned, or never sent at all -- so they
+                -- can't be seeded with data usable for calculation. Seed them as
+                -- display-only rows rather than dropping them silently: the
+                -- member list renders them greyed with an "(out of zone)" marker
+                -- so the exclusion is visible on the row itself. enabled=false
+                -- and weapon=nil each independently exclude the row from
+                -- SkillchainCore.CalculatePartySkillchains.
+                table.insert(notLoadedNames, name);
+                table.insert(partyState.members, {
+                    name       = name,
+                    jobId      = jobId,
+                    subJobId   = subId,
+                    level      = party:GetMemberMainJobLevel(i),
+                    subLevel   = party:GetMemberSubJobLevel(i),
+                    enabled    = false,
+                    weapon     = nil,
+                    isLocal    = false,
+                    hasRema    = false,
+                    favWs      = nil,
+                    outOfZone  = true,
+                    partyIndex = math.ceil((i + 1) / 6),  -- 1, 2, or 3
+                });
+            elseif jobId and jobsData[jobId] and jobsData[jobId].weapons then
                 local job           = jobsData[jobId];
                 local defaultWeapon = (job.primaryWeapons or {})[1];
 
@@ -263,8 +318,9 @@ local function loadParty()
                     isRema = defaultWeapon ~= nil and (remaOwned[defaultWeapon] == true);
                 end
 
+                table.insert(loadedNames, name);
                 table.insert(partyState.members, {
-                    name       = party:GetMemberName(i) or ('Member ' .. i),
+                    name       = name,
                     jobId      = jobId,
                     subJobId   = subId,
                     level      = party:GetMemberMainJobLevel(i),
@@ -274,13 +330,22 @@ local function loadParty()
                     isLocal    = isLocal,
                     hasRema    = isRema,
                     favWs      = nil,
+                    outOfZone  = false,
                     partyIndex = math.ceil((i + 1) / 6),  -- 1, 2, or 3
                 });
+            else
+                -- In zone, but the job didn't resolve -- their 0x00DD hasn't
+                -- landed yet, or it's a job this build has no data for. There's
+                -- nothing meaningful to put on a row, so unlike an out-of-zone
+                -- member they get no entry in the list at all -- but they are
+                -- still reported as not loaded rather than vanishing silently.
+                table.insert(notLoadedNames, name);
             end
         end
     end
 
     partyState.loaded = true;
+    return { loaded = loadedNames, notLoaded = notLoadedNames, isAlliance = hasAlliance };
 end
 
 local function drawCenteredButton(label, isPrimary, contentWidth)
@@ -291,6 +356,38 @@ local function drawCenteredButton(label, isPrimary, contentWidth)
 end
 
 local function drawMemberRow(member, index, contentWidth)
+    local comboWidth = 130;
+    local gap        = 6;
+
+    -- Display-only row: no checkbox, no weapon dropdown, since neither would
+    -- affect the calculation. See loadParty() for why these can't be loaded.
+    if member.outOfZone then
+        -- Offset by roughly one checkbox plus item spacing so the name lines up
+        -- with the checkbox-prefixed rows around it.
+        imgui.SetCursorPosX(imgui.GetCursorPosX() + imgui.GetFontSize() + 14);
+        imgui.TextDisabled(member.name);
+
+        -- Job data is opportunistic for these rows. Omit the label entirely
+        -- rather than render a misleading placeholder -- a populated job id with
+        -- zeroed levels would otherwise print as "SAM0/—0".
+        if member.jobId and (member.level or 0) > 0 then
+            local jobLabel  = string.format('%s%d/%s%d',
+                member.jobId,
+                member.level or 0,
+                member.subJobId or '—',
+                member.subLevel or 0);
+            local jobLabelW = imgui.CalcTextSize(jobLabel);
+            imgui.SameLine();
+            imgui.SetCursorPosX(contentWidth - comboWidth - gap - jobLabelW);
+            imgui.TextDisabled(jobLabel);
+        end
+
+        imgui.SameLine();
+        imgui.SetCursorPosX(contentWidth - comboWidth);
+        imgui.TextDisabled('(out of zone)');
+        return;
+    end
+
     local enabled = { member.enabled };
     if imgui.Checkbox('##en' .. index, enabled) then
         member.enabled = enabled[1];
@@ -299,8 +396,6 @@ local function drawMemberRow(member, index, contentWidth)
     imgui.Text(member.hasRema and (member.name .. SkillchainCore.REMA_SUFFIX) or member.name);
 
     -- Job/sub label: right-aligned flush against the weapon dropdown
-    local comboWidth = 130;
-    local gap        = 6;
     local jobLabel   = string.format('%s%d/%s%d',
         member.jobId,
         member.level or 0,
@@ -369,7 +464,11 @@ local function drawPartyTab(contentWidth)
         local startX = imgui.GetCursorPosX() + (contentWidth - btnW * 2 - 8) * 0.5;
         imgui.SetCursorPosX(startX);
         if SkillchainUI.styledButton('Update Party', { btnW, 0 }, false) then
-            loadParty();
+            local summary = loadParty();
+            if summary then
+                request = request or {};
+                request.partyLoaded = summary;
+            end
         end
         imgui.SameLine(0, 8);
         if SkillchainUI.styledButton('Clear Party', { btnW, 0 }, false) then
@@ -419,6 +518,24 @@ local function drawPartyTab(contentWidth)
                 lastPartyIndex = member.partyIndex;
             end
             drawMemberRow(member, i, contentWidth);
+        end
+
+        -- Standing reminder, not a live notification -- nothing in this window
+        -- reads game state between clicks, so it can't know when they arrive.
+        local outOfZoneCount = 0;
+        for _, member in ipairs(partyState.members) do
+            if member.outOfZone then
+                outOfZoneCount = outOfZoneCount + 1;
+            end
+        end
+        if outOfZoneCount > 0 then
+            imgui.Spacing();
+            imgui.PushTextWrapPos(contentWidth);
+            imgui.TextDisabled(string.format(
+                '! %d member%s out of zone — press Update Party once they arrive',
+                outOfZoneCount,
+                outOfZoneCount == 1 and '' or 's'));
+            imgui.PopTextWrapPos();
         end
 
         imgui.Spacing();
@@ -481,10 +598,12 @@ local function drawPartyTab(contentWidth)
             end
             if partyState.filters.remaOpen then
                 imgui.Indent(contentWidth * 0.15);
-                for i, member in ipairs(partyState.members) do
-                    local hr = { member.hasRema or false };
-                    if imgui.Checkbox(member.name .. '##rema' .. i, hr) then
-                        member.hasRema = hr[1];
+                for i, member in ipairs(partyState.members) do  -- display-only rows have no REMA state
+                    if not member.outOfZone then
+                        local hr = { member.hasRema or false };
+                        if imgui.Checkbox(member.name .. '##rema' .. i, hr) then
+                            member.hasRema = hr[1];
+                        end
                     end
                 end
                 imgui.Unindent(contentWidth * 0.15);
@@ -512,44 +631,46 @@ local function drawPartyTab(contentWidth)
             end
             if partyState.filters.favWsOpen then
                 imgui.Indent(contentWidth * 0.12);
-                for i, member in ipairs(partyState.members) do
-                    imgui.Text(member.name);
-                    imgui.SameLine();
-                    imgui.SetCursorPosX(contentWidth * 0.50);
-                    imgui.PushItemWidth(contentWidth * 0.40);
+                for i, member in ipairs(partyState.members) do  -- display-only rows have no WS to filter
+                    if not member.outOfZone then
+                        imgui.Text(member.name);
+                        imgui.SameLine();
+                        imgui.SetCursorPosX(contentWidth * 0.50);
+                        imgui.PushItemWidth(contentWidth * 0.40);
 
-                    local curLabel = member.favWs or '(Any)';
-                    if not member.weapon then
-                        imgui.TextDisabled('(no weapon)');
-                    elseif imgui.BeginCombo('##favws' .. i, curLabel) then
-                        -- Only resolve the skill list while the combo is actually
-                        -- open, not every frame the Fav WS panel is expanded.
-                        local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
-                        local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
+                        local curLabel = member.favWs or '(Any)';
+                        if not member.weapon then
+                            imgui.TextDisabled('(no weapon)');
+                        elseif imgui.BeginCombo('##favws' .. i, curLabel) then
+                            -- Only resolve the skill list while the combo is actually
+                            -- open, not every frame the Fav WS panel is expanded.
+                            local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
+                            local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
 
-                        if imgui.Selectable('(Any)', member.favWs == nil) then
-                            member.favWs = nil;
-                        end
-                        if member.favWs == nil then imgui.SetItemDefaultFocus(); end
-                        if wsList then
-                            -- Real REMA weapons can't be wielded below level 75,
-                            -- regardless of the member's REMA-ownership checkbox.
-                            local memberRemaAllowed = member.hasRema and (member.level or 0) >= 75;
-                            for _, ws in ipairs(wsList) do
-                                local isRema = ws.rema == true;
-                                if not isRema or memberRemaAllowed then
-                                    local selected = (member.favWs == ws.en);
-                                    if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
-                                        member.favWs = ws.en;
+                            if imgui.Selectable('(Any)', member.favWs == nil) then
+                                member.favWs = nil;
+                            end
+                            if member.favWs == nil then imgui.SetItemDefaultFocus(); end
+                            if wsList then
+                                -- Real REMA weapons can't be wielded below level 75,
+                                -- regardless of the member's REMA-ownership checkbox.
+                                local memberRemaAllowed = member.hasRema and (member.level or 0) >= 75;
+                                for _, ws in ipairs(wsList) do
+                                    local isRema = ws.rema == true;
+                                    if not isRema or memberRemaAllowed then
+                                        local selected = (member.favWs == ws.en);
+                                        if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
+                                            member.favWs = ws.en;
+                                        end
+                                        if selected then imgui.SetItemDefaultFocus(); end
                                     end
-                                    if selected then imgui.SetItemDefaultFocus(); end
                                 end
                             end
+                            imgui.EndCombo();
                         end
-                        imgui.EndCombo();
-                    end
 
-                    imgui.PopItemWidth();
+                        imgui.PopItemWidth();
+                    end
                 end
                 imgui.Unindent(contentWidth * 0.12);
             end
@@ -721,10 +842,16 @@ end
 -- anchorChanged        (bool)          Results window was dragged; call SkillchainRenderer.UpdateAnchor + settings.save
 -- partyPositionChanged (bool)          Party window was dragged; call settings.save
 -- settingsChanged      (bool)          REMA/FavWs/localPlayer settings changed; call settings.save
+-- partyLoaded          (table)         Update Party was pressed; summary to report in chat:
+--                                      { loaded = {name,...}, notLoaded = {name,...} }
+--                                      Every active, named member appears in exactly one list, so
+--                                      the two together always account for the whole party.
 -- mode                 (string)        'party' — triggers party skillchain calculation in the caller
 -- members              (array)         Party/alliance member snapshot (up to 18, alliance-wide);
 --                                      present when mode == 'party'; each entry:
---                                      { name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs, partyIndex }
+--                                      { name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs, outOfZone, partyIndex }
+--                                      outOfZone entries are display-only rows carrying enabled=false
+--                                      and weapon=nil, so CalculatePartySkillchains skips them.
 -- partyFilters         (table)         { chains: table|nil } — set of SC family names or nil for Any
 -- warnings             (array)         Stale-party warnings (strings) to print to chat; present when mode == 'party'
 function SkillchainParty.DrawWindow()

@@ -20,11 +20,26 @@ The Party window reads your live party from memory and lets you calculate skillc
 
 **Party section**
 
-- Press **Update Party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown.
+- Press **Update Party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown. A summary of what was loaded is printed to chat.
 - Casters and support jobs (BLM, WHM, SMN, BRD, RDM) default to disabled — toggle the checkbox next to any member's name to include or exclude them.
 - The local player's weapon is auto-detected from their currently equipped main-hand weapon when loading.
 - Other party members default to their job's primary weapon.
 - Press **Clear Party** to reset.
+
+**Members in another zone**
+
+The game only sends reliable job and level data for party members in your own zone, so members elsewhere cannot be used in the calculation. Rather than disappearing from the list, they appear as greyed rows marked `(out of zone)` — without a checkbox or weapon dropdown — so it is clear who is missing and why:
+
+```
+[x] Zalyx        SAM75/WAR37   [Great Katana v]
+[x] Fenrir       DRK75/SAM37   [Scythe       v]
+    Selh'teus                  (out of zone)
+    Prishe                     (out of zone)
+```
+
+Their job and level are usually blank, as shown above — the game only sends that data reliably for members in your zone. On the occasions it has been sent, the label appears. These members are excluded from the calculation and from the REMA and Fav WS panels. A note below the list counts them.
+
+The list does not refresh on its own — press **Update Party** again once they have arrived to pick them up.
 
 **Filter section**
 
@@ -36,7 +51,7 @@ The Party window reads your live party from memory and lets you calculate skillc
 
 REMA and Fav WS are collapsible panels that are mutually exclusive — opening one closes the other. Both are disabled by default and can be enabled in the **Settings** tab.
 
-Press **Calculate Skillchains** to run the calculation. If party data is stale (member joined, left, changed job, or leveled since the last Update Party), a warning is shown in chat.
+Press **Calculate Skillchains** to run the calculation. If the party has changed since the last Update Party — a member joined, left, changed job, leveled, zoned out, or arrived in your zone — a warning is shown in chat.
 
 ### Settings Tab
 

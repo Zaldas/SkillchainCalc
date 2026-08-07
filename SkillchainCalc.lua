@@ -3,7 +3,7 @@
 
 addon.name      = 'SkillchainCalc';
 addon.author    = 'Zaldas';
-addon.version   = '2.10.3';
+addon.version   = '2.11';
 addon.desc      = 'Skillchain combination calculator';
 addon.link      = 'https://github.com/Zaldas/SkillchainCalc';
 
@@ -12,6 +12,43 @@ local chat               = require('chat');
 
 local function msg(text) print(chat.header(addon.name):append(chat.message(text))); end
 local function err(text) print(chat.header(addon.name):append(chat.error(text))); end
+
+-- Reports the result of an Update Party press. summary comes from
+-- SkillchainParty's request.partyLoaded:
+--   { loaded = {name,...}, notLoaded = {name,...}, isAlliance = bool }
+-- Every member lands in exactly one list, so the counts always account for the
+-- whole party -- a total the user can't reconcile reads as a broken addon.
+--
+-- A party names everyone, since six names fit comfortably on two lines. An
+-- alliance reports counts only: naming up to 18 people would wrap across the
+-- whole chat window, and the member list already shows who is greyed out.
+-- Party names are never truncated mid-list -- hiding entries behind a "+N more"
+-- tail would reintroduce the silent exclusion this reporting exists to surface.
+local function reportPartyLoad(summary)
+    local loadedCount    = #summary.loaded;
+    local notLoadedCount = #summary.notLoaded;
+
+    if loadedCount == 0 and notLoadedCount == 0 then
+        msg('No party members found.');
+        return;
+    end
+
+    if summary.isAlliance then
+        msg(string.format('Alliance loaded: %d of %d members.',
+            loadedCount, loadedCount + notLoadedCount));
+        if notLoadedCount > 0 then
+            msg(string.format('%d not loaded - check the party list for who.', notLoadedCount));
+        end
+        return;
+    end
+
+    if loadedCount > 0 then
+        msg(string.format('Loaded (%d): %s', loadedCount, table.concat(summary.loaded, ', ')));
+    end
+    if notLoadedCount > 0 then
+        msg(string.format('Not loaded (%d): %s', notLoadedCount, table.concat(summary.notLoaded, ', ')));
+    end
+end
 
 local jobs               = require('Jobs');
 local SkillchainCore     = require('SkillchainCore');
@@ -320,9 +357,12 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
         if partyReq.partyPositionChanged then
             settings.save();
         end
+        if partyReq.partyLoaded then
+            reportPartyLoad(partyReq.partyLoaded);
+        end
         if partyReq.mode == 'party' then
             if partyReq.warnings and #partyReq.warnings > 0 then
-                msg('[Party] Warning: party data may be outdated:');
+                msg('Party data has changed since loading:');
                 for _, w in ipairs(partyReq.warnings) do
                     msg('  ' .. w);
                 end
