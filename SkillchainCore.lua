@@ -212,10 +212,34 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
 
     -- Build weapon list in proper order
     local selectedWeapons = {};
+    local seen             = {};
     local weaponList = SkillchainCore.GetWeaponsForJob(jobId);
 
     for _, w in ipairs(weaponList) do
         if weaponSelection and weaponSelection[w] then
+            table.insert(selectedWeapons, w);
+            seen[w] = true;
+        end
+    end
+
+    -- Anything the caller asked for that the main job has no skill in -- a
+    -- subjob weapon, or one the job simply can't weapon-skill with (a NIN
+    -- holding a staff to tank). These are passed through rather than dropped:
+    -- dropping them left the token unconstrained, which silently resolved to
+    -- EVERY weapon skill the main job has and credited the member with weapon
+    -- skills they cannot perform. The resolver already returns no skills for a
+    -- weapon the job can't use, which is the truth -- so let it decide.
+    if weaponSelection then
+        local extras = {};
+        for w in pairs(weaponSelection) do
+            if not seen[w] then
+                table.insert(extras, w);
+            end
+        end
+        -- pairs() order is unspecified; sort so the same selection always
+        -- produces the same token (callers use it as a cache/dedupe key).
+        table.sort(extras);
+        for _, w in ipairs(extras) do
             table.insert(selectedWeapons, w);
         end
     end
@@ -225,6 +249,7 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
         return jobPart .. ':' .. table.concat(selectedWeapons, ',');
     end
 
+    -- No weapon filter requested at all -- the whole job.
     return jobPart;
 end
 

@@ -106,26 +106,29 @@ local skillIdToWeapon = {
     [26] = 'mm',
 };
 
--- Returns all weapon keys the job+sub combo can wield that have actual WS entries,
--- primary weapons first (via GetWeaponsForJob ordering), then subjob additions.
-local function buildWeaponOptions(jobId, subJobId)
+-- Returns the weapon keys this job can wield that have actual WS entries,
+-- primary weapons first (via GetWeaponsForJob ordering).
+--
+-- Main job only. A subjob does not grant weapon access -- equipment job
+-- restrictions check the main job alone. What a subjob does grant is access to
+-- weapon skills on a weapon the character already has skill in, which
+-- BuildSkillListForJob already handles through IsJobAllowedForWs.
+--
+-- Known edge case, deliberately not modelled: LSB falls back to the SUBJOB's
+-- skill rank when the main job's rank is 0, capped at subjob level
+-- (charutils.cpp, BuildingCharSkillsTable). So a NIN/WAR holding an all-jobs
+-- axe really could perform the low-tier axe WS a level-37 sub can reach.
+-- Supporting it would mean offering weapons this job has no data for, and the
+-- payoff -- an off-main weapon nobody skillchains with in practice -- does not
+-- justify that. Offer only what the job data explicitly defines.
+local function buildWeaponOptions(jobId)
     local seen    = {};
     local options = {};
 
-    local function addWeapon(w)
+    for _, w in ipairs(SkillchainCore.GetWeaponsForJob(jobId)) do
         if not seen[w] and type(skills[w]) == 'table' and next(skills[w]) ~= nil then
             seen[w] = true;
             table.insert(options, w);
-        end
-    end
-
-    for _, w in ipairs(SkillchainCore.GetWeaponsForJob(jobId)) do
-        addWeapon(w);
-    end
-
-    if subJobId then
-        for _, w in ipairs(SkillchainCore.GetWeaponsForJob(subJobId)) do
-            addWeapon(w);
         end
     end
 
@@ -411,12 +414,12 @@ local function drawMemberRow(member, index, contentWidth)
     imgui.SetCursorPosX(contentWidth - comboWidth);
     imgui.PushItemWidth(comboWidth);
 
-    -- jobId/subJobId are fixed once loadParty() seeds this member row, so the
-    -- option list never changes for this member -- cache it on the member
-    -- instead of rebuilding two tables + a closure every frame.
+    -- jobId is fixed once loadParty() seeds this member row, so the option list
+    -- never changes for this member -- cache it on the member instead of
+    -- rebuilding a table every frame.
     local weaponOptions = member.weaponOptions;
     if not weaponOptions then
-        weaponOptions = buildWeaponOptions(member.jobId, member.subJobId);
+        weaponOptions = buildWeaponOptions(member.jobId);
         member.weaponOptions = weaponOptions;
     end
     if #weaponOptions == 0 then
