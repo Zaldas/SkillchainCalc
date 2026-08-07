@@ -137,6 +137,7 @@ jobs.DRK = {
         sword  = { skillRank = 'B-' },
         dagger = { skillRank = 'C' },
         club   = { skillRank = 'C-' },
+        mm     = { skillRank = 'E' },
     },
 }
 
