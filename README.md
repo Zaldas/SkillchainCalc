@@ -22,8 +22,8 @@ The Party window reads your live party from memory and lets you calculate skillc
 
 - Press **Update Party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown. A summary of what was loaded is printed to chat.
 - Casters and support jobs (BLM, WHM, SMN, BRD, RDM) default to disabled — toggle the checkbox next to any member's name to include or exclude them.
-- The local player's weapon is auto-detected from their currently equipped main-hand weapon when loading.
-- Other party members default to their job's primary weapon.
+- The local player's weapon is auto-detected from their equipped gear when loading — the main hand normally, or the ranged slot for jobs whose weapon skills come from a bow or gun (RNG, COR). A ranged job with nothing in the ranged slot falls back to the main hand.
+- Other party members default to their job's primary weapon. The game does not send equipment for other players, so their weapon cannot be detected — adjust the dropdown if it's wrong.
 - Press **Clear Party** to reset.
 
 **Members in another zone**

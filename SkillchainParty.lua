@@ -109,18 +109,14 @@ local skillIdToWeapon = {
 -- Returns the weapon keys this job can wield that have actual WS entries,
 -- primary weapons first (via GetWeaponsForJob ordering).
 --
--- Main job only. A subjob does not grant weapon access -- equipment job
--- restrictions check the main job alone. What a subjob does grant is access to
--- weapon skills on a weapon the character already has skill in, which
--- BuildSkillListForJob already handles through IsJobAllowedForWs.
+-- Main job only. A subjob grants no weapon access -- equipment restrictions
+-- check the main job alone -- only access to weapon skills on a weapon the
+-- character already has skill in, which IsJobAllowedForWs handles.
 --
--- Known edge case, deliberately not modelled: LSB falls back to the SUBJOB's
--- skill rank when the main job's rank is 0, capped at subjob level
--- (charutils.cpp, BuildingCharSkillsTable). So a NIN/WAR holding an all-jobs
--- axe really could perform the low-tier axe WS a level-37 sub can reach.
--- Supporting it would mean offering weapons this job has no data for, and the
--- payoff -- an off-main weapon nobody skillchains with in practice -- does not
--- justify that. Offer only what the job data explicitly defines.
+-- Not modelled: the game falls back to the subjob's skill rank when the main
+-- job's rank is 0, capped at subjob level (LSB charutils.cpp,
+-- BuildingCharSkillsTable), so a NIN/WAR with an all-jobs axe really can use
+-- low-tier axe WS. Offer only what the job data defines.
 local function buildWeaponOptions(jobId)
     local seen    = {};
     local options = {};
@@ -135,12 +131,19 @@ local function buildWeaponOptions(jobId)
     return options;
 end
 
--- Reads the local player's main-hand equipped weapon key from inventory.
--- Returns a weapon key string (e.g. 'gkt') or nil if unequipped/unrecognised.
-local function readLocalPlayerWeapon()
-    local inv   = AshitaCore:GetMemoryManager():GetInventory();
+-- Ashita::FFXI::EquipmentSlot values used here.
+local EQUIP_SLOT_MAIN  = 0;
+local EQUIP_SLOT_RANGE = 2;
+
+-- Weapon keys that live in the ranged equipment slot rather than the main hand.
+local rangedWeaponKeys = { archery = true, mm = true };
+
+-- Reads the equipped weapon key from one equipment slot.
+-- Returns a weapon key string (e.g. 'gkt') or nil if empty/unrecognised.
+local function readEquippedWeapon(slot)
+    local inv = AshitaCore:GetMemoryManager():GetInventory();
     if inv == nil then return nil; end
-    local eitem = inv:GetEquippedItem(0);  -- slot 0 = Main hand
+    local eitem = inv:GetEquippedItem(slot);
     if eitem == nil or eitem.Index == 0 then
         return nil;
     end
@@ -158,6 +161,26 @@ local function readLocalPlayerWeapon()
     end
 
     return skillIdToWeapon[itemInfo.Skill];
+end
+
+-- Reads the local player's weapon for skillchain purposes.
+--
+-- Jobs whose weapon skills come from a ranged weapon read the ranged slot
+-- first: a RNG holding a dagger still opens with Sidewinder. Falls back to the
+-- main hand when the ranged slot is empty or holds something unmapped (a
+-- boomerang is Throwing) -- a ranged job with no bow or gun is meleeing.
+local function readLocalPlayerWeapon(jobId)
+    local job = jobsData[jobId];
+    if job and job.primaryWeapons then
+        for _, w in ipairs(job.primaryWeapons) do
+            if rangedWeaponKeys[w] then
+                local ranged = readEquippedWeapon(EQUIP_SLOT_RANGE);
+                if ranged then return ranged; end
+                break;
+            end
+        end
+    end
+    return readEquippedWeapon(EQUIP_SLOT_MAIN);
 end
 
 local function getPartyWarnings()
@@ -197,10 +220,9 @@ local function getPartyWarnings()
         if not cur then
             table.insert(warnings, m.name .. ' is no longer in the party');
         elseif m.outOfZone then
-            -- Seeded as a display-only out-of-zone row. Still being out of zone
-            -- is the expected state and the greyed row already says so, so only
-            -- the arrival is worth reporting -- it's the one case where
-            -- reloading actually gains the user a member.
+            -- Display-only out-of-zone row. Still being out of zone is the
+            -- expected state and the row already says so; only the arrival is
+            -- worth reporting.
             -- ASCII only: warnings are printed to FFXI chat, which is Shift-JIS.
             -- A UTF-8 dash would be decoded as a lead byte and mangle the rest
             -- of the line. The em dashes elsewhere in this file are all ImGui
@@ -210,9 +232,8 @@ local function getPartyWarnings()
             end
             live[m.name] = nil;
         elseif cur.outOfZone then
-            -- Loaded with usable data, but has since zoned out. Their weapon
-            -- selection is still feeding the calculation, so this is worth
-            -- flagging even though nothing about the row changed.
+            -- Loaded with usable data, but has since zoned out -- their weapon
+            -- selection is still feeding the calculation.
             table.insert(warnings, m.name .. ' has left the zone since loading');
             live[m.name] = nil;
         else
@@ -229,9 +250,8 @@ local function getPartyWarnings()
         end
     end
 
-    -- Any remaining live members weren't in the seed. Update Party now captures
-    -- out-of-zone members too (as greyed rows), so the zone doesn't change the
-    -- advice and one message covers both cases.
+    -- Any remaining live members weren't in the seed. Update Party captures
+    -- out-of-zone members too, so the zone doesn't change the advice.
     for name, _ in pairs(live) do
         table.insert(warnings, name .. ' joined the party after loading');
     end
@@ -243,11 +263,8 @@ end
 -- Returns a summary for the caller to report in chat:
 --   { loaded = { name, ... }, notLoaded = { name, ... }, isAlliance = bool }
 -- Every active, named member lands in exactly one of the two lists, so together
--- they always account for the whole party. The reason a member wasn't loaded
--- (out of zone vs. job data not yet received) is deliberately not split out
--- here -- the member list already marks out-of-zone rows individually.
--- isAlliance lets the caller fall back to counts instead of naming up to 18
--- people on one chat line.
+-- they always account for the whole party. isAlliance lets the caller fall back
+-- to counts instead of naming up to 18 people on one chat line.
 -- Returns nil if the party memory manager was unavailable.
 local function loadParty()
     local party = AshitaCore:GetMemoryManager():GetParty();
@@ -265,11 +282,10 @@ local function loadParty()
     for i = 0, 17 do
         local name = party:GetMemberName(i);
 
-        -- A slot can read active before its name has been populated. Such a
-        -- member is skipped outright rather than given a synthetic name:
-        -- getPartyWarnings() filters empty names out of its live snapshot, so a
-        -- seeded row for one could never be matched and would report "is no
-        -- longer in the party" on every Calculate, unclearably.
+        -- A slot can read active before its name arrives. Skip it: names are the
+        -- key getPartyWarnings() matches on, and it filters empty ones out of
+        -- its live snapshot, so a nameless row would report "is no longer in the
+        -- party" on every Calculate, unclearably.
         if party:GetMemberIsActive(i) ~= 0 and name ~= nil and name ~= '' then
             -- Indices 6+ are alliance parties 2 and 3; anyone there means this
             -- is an alliance rather than a plain party.
@@ -279,13 +295,10 @@ local function loadParty()
             local subId  = jobIds[party:GetMemberSubJob(i)];
 
             if party:GetMemberZone(i) ~= localZone then
-                -- Out-of-zone members' job/subjob/level reads are unreliable --
-                -- stale from before they zoned, or never sent at all -- so they
-                -- can't be seeded with data usable for calculation. Seed them as
-                -- display-only rows rather than dropping them silently: the
-                -- member list renders them greyed with an "(out of zone)" marker
-                -- so the exclusion is visible on the row itself. enabled=false
-                -- and weapon=nil each independently exclude the row from
+                -- The server sends no job or level for out-of-zone members, so
+                -- they can't be calculated. They become display-only rows,
+                -- greyed with an "(out of zone)" marker. enabled=false and
+                -- weapon=nil each independently exclude them from
                 -- SkillchainCore.CalculatePartySkillchains.
                 table.insert(notLoadedNames, name);
                 table.insert(partyState.members, {
@@ -308,7 +321,7 @@ local function loadParty()
 
                 -- For the local player (slot 0), read their actual equipped weapon
                 if i == 0 then
-                    local equipped = readLocalPlayerWeapon();
+                    local equipped = readLocalPlayerWeapon(jobId);
                     if equipped then
                         defaultWeapon = equipped;
                     end
@@ -337,11 +350,10 @@ local function loadParty()
                     partyIndex = math.ceil((i + 1) / 6),  -- 1, 2, or 3
                 });
             else
-                -- In zone, but the job didn't resolve -- their 0x00DD hasn't
-                -- landed yet, or it's a job this build has no data for. There's
-                -- nothing meaningful to put on a row, so unlike an out-of-zone
-                -- member they get no entry in the list at all -- but they are
-                -- still reported as not loaded rather than vanishing silently.
+                -- In zone but the job didn't resolve: their 0x00DD hasn't landed
+                -- yet, they're /anon (the server omits job for anonymous
+                -- players), or it's a job this build has no data for. No row,
+                -- but still reported as not loaded.
                 table.insert(notLoadedNames, name);
             end
         end
@@ -846,9 +858,11 @@ end
 -- partyPositionChanged (bool)          Party window was dragged; call settings.save
 -- settingsChanged      (bool)          REMA/FavWs/localPlayer settings changed; call settings.save
 -- partyLoaded          (table)         Update Party was pressed; summary to report in chat:
---                                      { loaded = {name,...}, notLoaded = {name,...} }
+--                                      { loaded = {name,...}, notLoaded = {name,...}, isAlliance = bool }
 --                                      Every active, named member appears in exactly one list, so
 --                                      the two together always account for the whole party.
+--                                      isAlliance lets the caller fall back to counts instead of
+--                                      naming up to 18 people on one chat line.
 -- mode                 (string)        'party' — triggers party skillchain calculation in the caller
 -- members              (array)         Party/alliance member snapshot (up to 18, alliance-wide);
 --                                      present when mode == 'party'; each entry:

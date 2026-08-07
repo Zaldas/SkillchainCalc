@@ -16,14 +16,8 @@ local function err(text) print(chat.header(addon.name):append(chat.error(text)))
 -- Reports the result of an Update Party press. summary comes from
 -- SkillchainParty's request.partyLoaded:
 --   { loaded = {name,...}, notLoaded = {name,...}, isAlliance = bool }
--- Every member lands in exactly one list, so the counts always account for the
--- whole party -- a total the user can't reconcile reads as a broken addon.
---
--- A party names everyone, since six names fit comfortably on two lines. An
--- alliance reports counts only: naming up to 18 people would wrap across the
--- whole chat window, and the member list already shows who is greyed out.
--- Party names are never truncated mid-list -- hiding entries behind a "+N more"
--- tail would reintroduce the silent exclusion this reporting exists to surface.
+-- A party names everyone; an alliance reports counts only, since naming up to
+-- 18 people would wrap across the whole chat window.
 local function reportPartyLoad(summary)
     local loadedCount    = #summary.loaded;
     local notLoadedCount = #summary.notLoaded;
@@ -39,15 +33,18 @@ local function reportPartyLoad(summary)
         if notLoadedCount > 0 then
             msg(string.format('%d not loaded - check the party list for who.', notLoadedCount));
         end
-        return;
+    else
+        if loadedCount > 0 then
+            msg(string.format('Loaded (%d): %s', loadedCount, table.concat(summary.loaded, ', ')));
+        end
+        if notLoadedCount > 0 then
+            msg(string.format('Not loaded (%d): %s', notLoadedCount, table.concat(summary.notLoaded, ', ')));
+        end
     end
 
-    if loadedCount > 0 then
-        msg(string.format('Loaded (%d): %s', loadedCount, table.concat(summary.loaded, ', ')));
-    end
-    if notLoadedCount > 0 then
-        msg(string.format('Not loaded (%d): %s', notLoadedCount, table.concat(summary.notLoaded, ', ')));
-    end
+    -- The game sends no equipment for other players, so every member except the
+    -- local player gets a default weapon picked from their job.
+    msg('Note: other members use a default weapon for their job - check the list.');
 end
 
 local jobs               = require('Jobs');

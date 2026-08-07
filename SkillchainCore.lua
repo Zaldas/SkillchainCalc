@@ -222,13 +222,10 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
         end
     end
 
-    -- Anything the caller asked for that the main job has no skill in -- a
-    -- subjob weapon, or one the job simply can't weapon-skill with (a NIN
-    -- holding a staff to tank). These are passed through rather than dropped:
-    -- dropping them left the token unconstrained, which silently resolved to
-    -- EVERY weapon skill the main job has and credited the member with weapon
-    -- skills they cannot perform. The resolver already returns no skills for a
-    -- weapon the job can't use, which is the truth -- so let it decide.
+    -- Weapons the main job has no skill in (a NIN holding a staff to tank) are
+    -- passed through, not filtered out. Filtering leaves the token
+    -- unconstrained, which resolves to every weapon skill the job has; the
+    -- resolver correctly returns none for a weapon the job can't use.
     if weaponSelection then
         local extras = {};
         for w in pairs(weaponSelection) do
