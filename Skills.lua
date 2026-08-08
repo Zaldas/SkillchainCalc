@@ -338,10 +338,10 @@ skills.avatar = { -- SMN Player Pet Skills; skill is based on level
 };
 
 -----------------------------------------------------------------------
--- TOAU – Blue Mage physical spells
+-- TOAU – Blue Mage spells with skillchain properties
 -----------------------------------------------------------------------
 
-skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
+skills.blu = { -- Physical, ranged and magical; skill is minimum BLU level to cast
     [577] = {en='Foot Kick',         skillchain={'Detonation'},                  skill=1},
     [597] = {en='Sprout Smack',      skillchain={'Reverberation'},               skill=4},
     [603] = {en='Wild Oats',         skillchain={'Transfixion'},                 skill=4},
@@ -367,6 +367,7 @@ skills.blu = { -- BLU Physical Spells; skill is minimum BLU level to cast
     [554] = {en='Death Scissors',    skillchain={'Compression','Reverberation'}, skill=60},
     [650] = {en='Seedspray',         skillchain={'Induration','Detonation'},     skill=61},
     [564] = {en='Body Slam',         skillchain={'Impaction'},                   skill=62},
+    [595] = {en='1000 Needles',      skillchain={'Compression'},                 skill=62},
     [631] = {en='Hydro Shot',        skillchain={'Reverberation'},               skill=63},
     [628] = {en='Frypan',            skillchain={'Impaction'},                   skill=63},
     [560] = {en='Frenetic Rip',      skillchain={'Induration'},                  skill=63},
