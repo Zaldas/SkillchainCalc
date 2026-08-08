@@ -572,7 +572,7 @@ skills.automaton = {
     -- Harlequin Frame (shared with Stormwaker -- no unique Stormwaker weaponskills)
     [401] = {en='Slapstick',        skillchain={'Reverberation','Impaction'},     skill=0},
     [402] = {en='Knockout',         skillchain={'Scission','Detonation'},         skill=145},
-    [403] = {en='Magic Mortar',     skillchain={'Fusion'},                        skill=225},
+    [403] = {en='Magic Mortar',     skillchain={'Fusion','Liquefaction'},         skill=225},
     -- Valoredge Frame
     [404] = {en='String Clipper',   skillchain={'Scission'},                      skill=0},
     [405] = {en='Chimera Ripper',   skillchain={'Detonation','Induration'},       skill=0},

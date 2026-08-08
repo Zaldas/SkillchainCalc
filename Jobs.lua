@@ -256,13 +256,15 @@ jobs.PUP = {
     defaultSubjob = 'WAR',
     primaryWeapons = { 'h2h' },
     weapons = {
-        h2h    = { skillRank = 'B' },
+        h2h    = { skillRank = 'B' },   -- HorizonXI rank; retail is A+
         dagger = { skillRank = 'C-' },
         club   = { skillRank = 'D' },
     },
+    -- Ranks assume the frame's matching head, which grants -2 rank tiers to
+    -- that frame's signature skill (bare frames are B+ instead of A+).
     frames = {
-        valoredge  = { melee = 'A-' },                 -- tank frame
-        sharpshot  = { melee = 'C+', ranged = 'A-' },  -- ranged DPS frame
+        valoredge  = { melee = 'A+' },                 -- tank frame
+        sharpshot  = { melee = 'C+', ranged = 'A+' },  -- ranged DPS frame
         stormwaker = { melee = 'C+' },                 -- mage frame
         harlequin  = { melee = 'B-', ranged = 'B-' },  -- hybrid frame
     },

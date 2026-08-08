@@ -50,12 +50,11 @@ local getSkillCapFromRank = SkillchainCore.GetSkillCapFromRank;
 -- TOAU – PUP Frame Support Functions
 --
 -- This "frames" design (job.frames + JobRestrictions naming a frame) is the
--- live, currently-dormant path -- its data is commented out in Jobs.lua/
--- Skills.lua until TOAU releases on HorizonXI. retail/Jobs.lua and
--- retail/Skills.lua instead model PUP as a plain weapon-bucket job (an
--- 'automaton' weapon type on jobs.PUP.weapons, no frames) and never call
--- into these functions. The two designs are unreconciled: whoever activates
--- TOAU support here needs to pick one, not just uncomment this block.
+-- live path, driven by jobs.PUP.frames and skills.frameMelee/frameRanged.
+-- retail/Jobs.lua and retail/Skills.lua instead model PUP as a plain
+-- weapon-bucket job (an 'automaton' weapon type on jobs.PUP.weapons, no
+-- frames) and never call into these functions. The two designs are
+-- unreconciled: whoever unifies them needs to pick one.
 -----------------------------------------------------------------------
 
 local function isFrameAllowed(ws, frameName)
@@ -85,7 +84,9 @@ local function appendFramesToWeaponList(jobId, job, list, listed)
     return list;
 end
 
--- Build skill list for a single PUP automaton frame
+-- Build skill list for a single PUP automaton frame.
+-- Automaton TP moves require skill strictly above the listed requirement,
+-- unlike player weaponskills which unlock at exactly the requirement.
 local function buildFrameSkillList(frameName, frameConfig, charLevel)
     local result = {};
     local levelToUse = charLevel or jobs.MAX_LEVEL;
@@ -94,7 +95,7 @@ local function buildFrameSkillList(frameName, frameConfig, charLevel)
     if frameConfig.melee and skills.frameMelee then
         local meleeCap = getSkillCapFromRank(frameConfig.melee, levelToUse);
         for _, ws in pairs(skills.frameMelee) do
-            if ws.skill <= meleeCap and isFrameAllowed(ws, frameName) then
+            if ws.skill < meleeCap and isFrameAllowed(ws, frameName) then
                 table.insert(result, ws);
             end
         end
@@ -104,7 +105,7 @@ local function buildFrameSkillList(frameName, frameConfig, charLevel)
     if frameConfig.ranged and skills.frameRanged then
         local rangedCap = getSkillCapFromRank(frameConfig.ranged, levelToUse);
         for _, ws in pairs(skills.frameRanged) do
-            if ws.skill <= rangedCap and isFrameAllowed(ws, frameName) then
+            if ws.skill < rangedCap and isFrameAllowed(ws, frameName) then
                 table.insert(result, ws);
             end
         end

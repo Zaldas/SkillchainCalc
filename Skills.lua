@@ -388,7 +388,7 @@ skills.blu = { -- Physical, ranged and magical; skill is minimum BLU level to ca
 
 skills.frameMelee = {
     -- valoredge exclusive (tank frame)
-    [1940] = {en = 'Chimera Ripper',  skill = 0,   skillchain = {'Induration', 'Detonation'},
+    [1940] = {en = 'Chimera Ripper',  skill = 0,   skillchain = {'Detonation', 'Induration'},
               JobRestrictions = {'valoredge'}},
     [1941] = {en = 'String Clipper',  skill = 0,   skillchain = {'Scission'},
               JobRestrictions = {'valoredge'}},
@@ -396,13 +396,14 @@ skills.frameMelee = {
               JobRestrictions = {'valoredge'}},
     [2299] = {en = 'Bone Crusher',    skill = 245, skillchain = {'Fragmentation'},
               JobRestrictions = {'valoredge'}},
+    -- [2743] = String Shredder (skill 324) - excluded, beyond level 75 cap
 
     -- harlequin & stormwaker shared (hybrid/mage frames)
     [1943] = {en = 'Slapstick',       skill = 0,   skillchain = {'Reverberation', 'Impaction'},
               JobRestrictions = {'harlequin', 'stormwaker'}},
     [2067] = {en = 'Knockout',        skill = 145, skillchain = {'Scission', 'Detonation'},
               JobRestrictions = {'harlequin', 'stormwaker'}},
-    [2301] = {en = 'Magic Mortar',    skill = 225, skillchain = {'Fusion'},
+    [2301] = {en = 'Magic Mortar',    skill = 225, skillchain = {'Fusion', 'Liquefaction'},
               JobRestrictions = {'harlequin', 'stormwaker'}},
 };
 
@@ -410,7 +411,7 @@ skills.frameRanged = {
     -- sharpshot exclusive (ranged DPS frame)
     [1942] = {en = 'Arcuballista',    skill = 0,   skillchain = {'Liquefaction', 'Transfixion'},
               JobRestrictions = {'sharpshot'}},
-    [2066] = {en = 'Daze',            skill = 150, skillchain = {'Transfixion', 'Impaction'},
+    [2066] = {en = 'Daze',            skill = 150, skillchain = {'Impaction', 'Transfixion'},
               JobRestrictions = {'sharpshot'}},
     [2300] = {en = 'Armor Piercer',   skill = 245, skillchain = {'Gravitation'},
               JobRestrictions = {'sharpshot'}},
