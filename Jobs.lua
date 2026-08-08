@@ -256,7 +256,7 @@ jobs.PUP = {
     defaultSubjob = 'WAR',
     primaryWeapons = { 'h2h' },
     weapons = {
-        h2h    = { skillRank = 'A+' },
+        h2h    = { skillRank = 'B' },
         dagger = { skillRank = 'C-' },
         club   = { skillRank = 'D' },
     },
