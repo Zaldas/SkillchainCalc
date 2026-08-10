@@ -65,10 +65,6 @@ local weaponDisplayNames = {
     mm      = 'Marksmanship',
     avatar  = 'Avatar (Pet)',
     blu     = 'Blue Magic',
-    valoredge  = 'Valoredge (Frame)',
-    sharpshot  = 'Sharpshot (Frame)',
-    stormwaker = 'Stormwaker (Frame)',
-    harlequin  = 'Harlequin (Frame)',
 };
 
 -- Weapon types that have at least one REMA weapon skill, sorted for stable display.
@@ -121,6 +117,11 @@ local function buildWeaponOptions(jobId)
     local seen    = {};
     local options = {};
 
+    -- PUP automaton frames are excluded on purpose: their weapon skills fire on
+    -- the automaton's own schedule, so a party skillchain plan built around them
+    -- isn't actionable. GetWeaponsForJob appends the frame keys, and the
+    -- skills[w] lookup drops them (frame WS live in skills.frameMelee /
+    -- skills.frameRanged). The Calculator tab supports frames; this window does not.
     for _, w in ipairs(SkillchainCore.GetWeaponsForJob(jobId)) do
         if not seen[w] and type(skills[w]) == 'table' and next(skills[w]) ~= nil then
             seen[w] = true;

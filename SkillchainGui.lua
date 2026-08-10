@@ -447,7 +447,13 @@ local function buildFavWsItems(jobState, side)
 
     local weaponList = SkillchainCore.GetWeaponsForJob(jobId);
 
-    -- Collect weapon skills grouped by weapon type
+    -- Collect weapon skills grouped by weapon type.
+    --
+    -- PUP automaton frames are excluded on purpose: their weapon skills fire on
+    -- the automaton's own schedule, so pinning results to one of them isn't
+    -- actionable. The skills[weaponKey] lookup drops them (frame WS live in
+    -- skills.frameMelee / skills.frameRanged). Frames still participate in the
+    -- results themselves -- this filter only governs the dropdown.
     local weaponGroups = {};
 
     for _, weaponKey in ipairs(weaponList) do
