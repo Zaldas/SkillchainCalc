@@ -26,7 +26,7 @@ local gdiObjects = {
 
 local isVisible = false;
 
--- Drag state management (not persisted to settings)
+-- Drag state management (enableDrag mirrors settings.enableDrag; the rest is per-drag)
 local enableDrag = false;
 local dragState = {
     dragActive = false,
@@ -108,6 +108,8 @@ function SkillchainRenderer.Initialize(gdiLib, settings)
     gdiObjects.title:set_text('Skillchains');
 
     gdiObjects.background = gdi:create_rect(settings.bg);
+
+    enableDrag = settings.enableDrag == true;
 
     setTitleAndBgPosition(settings);
 
@@ -588,7 +590,7 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
 end
 
 -- ============================================================================
--- Drag State Accessor (not persisted)
+-- Drag State Accessor
 -- ============================================================================
 
 function SkillchainRenderer.SetEnableDrag(value)

@@ -465,9 +465,6 @@ end
 -- Window visibility state
 -----------------------------------------------------------------------
 local showWindow = { false };
-local wasVisible  = false;  -- Tracks prior-frame visibility to detect the open->closed edge
-
-local partyGuiState = { enableDrag = false };
 
 -- Draws the Party tab body: Update/Clear buttons, member list, SC/REMA/Fav WS
 -- filters, and the Calculate button. Returns a request table or nil.
@@ -730,9 +727,9 @@ local function drawSettingsTab(contentWidth)
         local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
 
         imgui.SetCursorPosX(baseX + indent);
-        local enableDrag = { partyGuiState.enableDrag };
+        local enableDrag = { cache.settings.enableDrag == true };
         if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
-            partyGuiState.enableDrag = enableDrag[1];
+            cache.settings.enableDrag = enableDrag[1];
             SkillchainRenderer.SetEnableDrag(enableDrag[1]);
             request = request or {};
             request.anchorChanged = true;
@@ -874,19 +871,8 @@ end
 -- warnings             (array)         Stale-party warnings (strings) to print to chat; present when mode == 'party'
 function SkillchainParty.DrawWindow()
     if not showWindow[1] then
-        if wasVisible then
-            -- Just transitioned from open to closed (X button or SetVisible(false)) --
-            -- disable drag and reset checkbox state once, not every idle frame. The
-            -- Calculator window shares this same renderer-level drag flag, so
-            -- clobbering it every frame here would kill drag while the Calculator
-            -- (not this window) is the one open.
-            SkillchainRenderer.SetEnableDrag(false);
-            partyGuiState.enableDrag = false;
-        end
-        wasVisible = false;
         return nil;
     end
-    wasVisible = true;
 
     local guiPos = cache and cache.settings and cache.settings.guiPosition;
     local flags = SkillchainUI.setupWindow(guiPos, { 50, 50 });

@@ -151,10 +151,6 @@ local state = {
         enabled = false,          -- Custom level checkbox
         value   = jobsData.MAX_LEVEL,  -- Level slider value
     },
-
-    -- Settings UI state
-    enableDrag = false,           -- Enable drag checkbox (not persisted)
-
 };
 
 -- Module-level cache reference (set externally via SetCache)
@@ -527,10 +523,6 @@ local function buildCalculationRequest()
     -- Get favorite WS names directly from state (much simpler now!)
     local favWs1 = state.filters.enableFavWs and state.jobs[1].favWsName or nil;
     local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
-
-    -- Disable drag when Calculate is pressed
-    SkillchainRenderer.SetEnableDrag(false);
-    state.enableDrag = false;
 
     return {
         mode      = 'pair',
@@ -1009,9 +1001,9 @@ local function drawSettingsTab()
     local indent = 5;
 
     imgui.SetCursorPosX(baseX + indent);
-    local enableDrag = { state.enableDrag };
+    local enableDrag = { cache.settings.enableDrag == true };
     if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
-        state.enableDrag = enableDrag[1];
+        cache.settings.enableDrag = enableDrag[1];
         SkillchainRenderer.SetEnableDrag(enableDrag[1]);
         request = request or {};
         request.anchorChanged = true;
@@ -1128,10 +1120,6 @@ function SkillchainGUI.SetVisible(v)
     if showWindow[1] then
         state.initialized = false;
         state.openedFromCli = false;
-    else
-        -- Reset drag state when closing
-        SkillchainRenderer.SetEnableDrag(false);
-        state.enableDrag = false;
     end
 end
 
@@ -1162,9 +1150,6 @@ end
 -- showRema             (bool)        Include REMA (²) weapon skills in results
 function SkillchainGUI.DrawWindow()
     if not showWindow[1] then
-        -- Disable drag and reset checkbox state when GUI is closed
-        SkillchainRenderer.SetEnableDrag(false);
-        state.enableDrag = false;
         return nil;
     end
 
@@ -1243,12 +1228,6 @@ function SkillchainGUI.DrawWindow()
     end
 
     imgui.End();
-
-    -- Check if window was just closed via 'X' button
-    if not showWindow[1] then
-        SkillchainRenderer.SetEnableDrag(false);
-        state.enableDrag = false;
-    end
 
     return request;
 end

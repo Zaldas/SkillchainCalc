@@ -65,6 +65,7 @@ local debugMode = false; -- Debug mode flag
 -- settings.json for no functional gain. Owner reference:
 --   font/title_font/bg/layout -- GDI results window rendering (shared)
 --   anchor                    -- results window position (shared)
+--   enableDrag                -- results window mouse drag toggle (shared)
 --   guiPosition               -- input window position (shared, mutually exclusive windows)
 --   default                   -- Calculator tab defaults/filters
 --   partyFilters              -- Party tab REMA/Fav WS toggles
@@ -96,6 +97,7 @@ local sccSettings = T{
         x = 200,
         y = 100,
     },
+    enableDrag = false,
     guiPosition = {
         x = 100,
         y = 100,
