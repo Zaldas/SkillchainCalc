@@ -8,6 +8,7 @@ local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainUI = require('SkillchainUI');
+local uiTheme = require('libs/uiTheme');
 
 local SkillchainGUI = {};
 local showWindow    = { false };
@@ -188,18 +189,6 @@ local function drawCombo(label, items, currentIndex)
     end
 
     return idx;
-end
-
-local function helpMarker(text)
-    imgui.SameLine();
-    imgui.TextDisabled('(?)');
-    if imgui.IsItemHovered() then
-        imgui.BeginTooltip();
-        imgui.PushTextWrapPos(imgui.GetFontSize() * 35.0);
-        imgui.TextUnformatted(text);
-        imgui.PopTextWrapPos();
-        imgui.EndTooltip();
-    end
 end
 
 -- Build default weapon selection for a job
@@ -584,32 +573,22 @@ local function drawCalculatorTab()
     -- Custom Level section (if enabled)
     -----------------------------------------------------------------------
     if state.customLevel.enabled then
-        SkillchainUI.drawGradientHeader('Character Level', imgui.GetContentRegionAvail());
+        uiTheme.header('Character Level');
 
-        local indent = 5;
-
-        imgui.SetCursorPosX(imgui.GetCursorPosX() + indent);
-        local LABEL_PADDING = 3
-        imgui.SetCursorPosY(imgui.GetCursorPosY() + LABEL_PADDING);
-        imgui.Text('Level:');
-        imgui.SameLine();
-        imgui.SetCursorPosY(imgui.GetCursorPosY() - LABEL_PADDING);
-
-        imgui.PushItemWidth(100);
-        state.customLevel.value = drawCombo('##charlevel', levelItems, state.customLevel.value);
-        imgui.PopItemWidth();
+        imgui.Indent(uiTheme.indent);
+        imgui.SetNextItemWidth(uiTheme.comboWidth());
+        state.customLevel.value = drawCombo('Level##charlevel', levelItems, state.customLevel.value);
+        imgui.Unindent(uiTheme.indent);
 
         -- No reset needed - if WS becomes unavailable, dropdown will auto-reset to "Any"
 
-        imgui.Spacing();
-        imgui.Separator();
         imgui.Spacing();
     end
 
     -----------------------------------------------------------------------
     -- Jobs + weapons section
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Jobs & Weapons', imgui.GetContentRegionAvail());
+    uiTheme.header('Jobs & Weapons');
 
     ensureJobWeaponSelection(state.jobs[1]);
     ensureJobWeaponSelection(state.jobs[2]);
@@ -751,14 +730,14 @@ local function drawCalculatorTab()
     end
 
     -- Primary action: Calculate
-    if SkillchainUI.styledButton('Calculate', { buttonWidth, 0 }, true) then
+    if uiTheme.button('Calculate', buttonWidth, 'primary') then
         request = buildCalculationRequest();
     end
 
     imgui.SameLine();
 
     -- Secondary action: Clear (ghost button style)
-    if SkillchainUI.styledButton('Clear', { buttonWidth, 0 }, false) then
+    if uiTheme.button('Clear', buttonWidth, 'ghost') then
         local curJob1Id = jobItems[state.jobs[1].index];
         local curJob2Id = jobItems[state.jobs[2].index];
 
@@ -774,33 +753,28 @@ end
 local function drawFiltersTab()
     local request = nil;
 
-    local baseX  = imgui.GetCursorPosX();
-    local indent = 5;
     local filterWidth = JOB_COLUMN_WIDTH * 2;
 
     -----------------------------------------------------------------------
     -- Element Filter
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Skillchain Element (sc:<element>)', imgui.GetContentRegionAvail());
+    uiTheme.header('Skillchain Element (sc:<element>)');
 
-    imgui.Text('Filter results by burst element:');
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.PushItemWidth(filterWidth - indent);
-    state.filters.elementIndex = drawCombo('##scelement', elementItems, state.filters.elementIndex);
-    imgui.PopItemWidth();
+    imgui.Indent(uiTheme.indent);
+    imgui.SetNextItemWidth(uiTheme.comboWidth());
+    state.filters.elementIndex = drawCombo('Burst element##scelement', elementItems, state.filters.elementIndex);
+    imgui.Unindent(uiTheme.indent);
 
-    imgui.Spacing();
-    imgui.Separator();
     imgui.Spacing();
 
     -----------------------------------------------------------------------
     -- Level Filter
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Skillchain Level (1, 2, 3)', imgui.GetContentRegionAvail());
+    uiTheme.header('Skillchain Level (1, 2, 3)');
 
+    imgui.Indent(uiTheme.indent);
     imgui.Text('Minimum skillchain tier:');
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.PushItemWidth(filterWidth - indent);
+    imgui.PushItemWidth(filterWidth - uiTheme.indent);
     local lvl = { state.filters.scLevel };
     if imgui.SliderInt('##sclevel', lvl, 1, 3) then
         state.filters.scLevel = lvl[1];
@@ -811,30 +785,28 @@ local function drawFiltersTab()
     imgui.Text('  1 = All skillchains');
     imgui.Text('  2 = Level 2+ only');
     imgui.Text('  3 = Level 3 only');
+    imgui.Unindent(uiTheme.indent);
 
-    imgui.Spacing();
-    imgui.Separator();
     imgui.Spacing();
 
     -----------------------------------------------------------------------
     -- Advanced Filters Section
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Advanced Filters', imgui.GetContentRegionAvail());
+    uiTheme.header('Advanced Filters');
+
+    imgui.Indent(uiTheme.indent);
 
     -- Custom Level Checkbox
-    imgui.SetCursorPosX(baseX + indent);
     local useCustomLevel = { state.customLevel.enabled };
     if imgui.Checkbox('Enable custom character level', useCustomLevel) then
         state.customLevel.enabled = useCustomLevel[1];
         -- No reset needed - dropdown will auto-reset to "Any" if WS becomes unavailable
     end
-    imgui.SameLine();
-    helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
+    uiTheme.helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
     -- Include Subjob Checkbox
-    imgui.SetCursorPosX(baseX + indent);
     local includeSubjob = { state.filters.includeSubjob };
-    if imgui.Checkbox('Enable SubJob in Calculator', includeSubjob) then
+    if imgui.Checkbox('Enable subjob in calculator', includeSubjob) then
         local wasEnabled = state.filters.includeSubjob;
         state.filters.includeSubjob = includeSubjob[1];
 
@@ -856,13 +828,11 @@ local function drawFiltersTab()
 
         -- No reset needed - dropdown will auto-reset to "Any" if WS becomes unavailable
     end
-    imgui.SameLine();
-    helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
+    uiTheme.helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
 
     -- Enable Favorite WS Checkbox
-    imgui.SetCursorPosX(baseX + indent);
     local enableFavWs = { state.filters.enableFavWs };
-    if imgui.Checkbox('Enable favorite WS in Calculator', enableFavWs) then
+    if imgui.Checkbox('Enable favorite WS in calculator', enableFavWs) then
         local wasEnabled = state.filters.enableFavWs;
         state.filters.enableFavWs = enableFavWs[1];
 
@@ -872,20 +842,16 @@ local function drawFiltersTab()
             state.jobs[2].favWsName = nil;
         end
     end
-    imgui.SameLine();
-    helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');
+    uiTheme.helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');
 
     -- Both Directions Checkbox
-    imgui.SetCursorPosX(baseX + indent);
     local both = { state.filters.both };
     if imgui.Checkbox('Calculate skillchains in both directions', both) then
         state.filters.both = both[1];
     end
-    imgui.SameLine();
-    helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
+    uiTheme.helpMarker('When enabled, calculates Job1->Job2 AND Job2->Job1');
 
     -- Show REMA WS Checkbox
-    imgui.SetCursorPosX(baseX + indent);
     local showRema = { state.filters.showRema };
     if imgui.Checkbox('Show REMA weapon skills (²)', showRema) then
         state.filters.showRema = showRema[1];
@@ -900,8 +866,8 @@ local function drawFiltersTab()
             clearRemaFavWs(state.jobs[2]);
         end
     end
-    imgui.SameLine();
-    helpMarker('When enabled, includes Relic/Empyrean/Mythic/Aeonic weapon skills\n(marked with ²) in results. Disabled by default.');
+    uiTheme.helpMarker('When enabled, includes Relic/Empyrean/Mythic/Aeonic weapon skills\n(marked with ²) in results. Disabled by default.');
+    imgui.Unindent(uiTheme.indent);
 
     imgui.Spacing();
     imgui.Separator();
@@ -921,7 +887,7 @@ local function drawFiltersTab()
     end
 
     -- Set Defaults button
-    if SkillchainUI.styledButton('Set as Defaults', { buttonWidth, 0 }, true) then
+    if uiTheme.button('Set as defaults', buttonWidth, 'primary') then
         local def = (cache and cache.settings and cache.settings.default) or {};
         def.scLevel = state.filters.scLevel;
         def.both  = state.filters.both;
@@ -938,7 +904,7 @@ local function drawFiltersTab()
     imgui.SameLine();
 
     -- Reset Filters button (ghost style)
-    if SkillchainUI.styledButton('Reset Filters', { buttonWidth, 0 }, false) then
+    if uiTheme.button('Reset filters', buttonWidth, 'ghost') then
         -- Reset to stored defaults
         local def = (cache and cache.settings and cache.settings.default) or {};
         state.filters.scLevel = def.scLevel or 1;
@@ -964,7 +930,7 @@ local function drawFiltersTab()
     end
 
     -- Calculate button (primary style)
-    if SkillchainUI.styledButton('Calculate', { calcButtonWidth, 0 }, true) then
+    if uiTheme.button('Calculate', calcButtonWidth, 'primary') then
         -- Ensure weapon selections exist for current jobs
         ensureJobWeaponSelection(state.jobs[1]);
         ensureJobWeaponSelection(state.jobs[2]);
@@ -993,68 +959,58 @@ local function drawSettingsTab()
     local maxX = limits.maxX;
     local maxY = limits.maxY;
 
-    SkillchainUI.drawGradientHeader('Results Window', imgui.GetContentRegionAvail());
+    uiTheme.header('Results Window');
     imgui.Spacing();
 
-    -- 5px indent
-    local baseX  = imgui.GetCursorPosX();
-    local indent = 5;
-
-    imgui.SetCursorPosX(baseX + indent);
+    imgui.Indent(uiTheme.indent);
     local enableDrag = { cache.settings.enableDrag == true };
-    if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
+    if imgui.Checkbox('Enable mouse drag', enableDrag) then
         cache.settings.enableDrag = enableDrag[1];
         SkillchainRenderer.SetEnableDrag(enableDrag[1]);
         request = request or {};
         request.anchorChanged = true;
     end
-    imgui.SameLine();
-    helpMarker('When enabled, click and drag the results window to move it.');
+    uiTheme.helpMarker('When enabled, click and drag the results window to move it.');
 
-    imgui.SetCursorPosX(baseX + indent);
     local x = { anchor.x or 0 };
     if imgui.SliderInt('X', x, pad, maxX) then
         anchor.x = x[1];
+        SkillchainRenderer.UpdateAnchor(cache.settings);
+    end
+    if imgui.IsItemDeactivatedAfterEdit() then
         request = request or {};
         request.anchorChanged = true;
     end
 
-    imgui.SetCursorPosX(baseX + indent);
     local y = { anchor.y or 0 };
     if imgui.SliderInt('Y', y, pad, maxY) then
         anchor.y = y[1];
+        SkillchainRenderer.UpdateAnchor(cache.settings);
+    end
+    if imgui.IsItemDeactivatedAfterEdit() then
         request = request or {};
         request.anchorChanged = true;
     end
+    imgui.Unindent(uiTheme.indent);
 
     -----------------------------------------------------------------------
     -- Stored Default Filter Status (read-only)
     -----------------------------------------------------------------------
-    imgui.Separator();
-    SkillchainUI.drawGradientHeader('Stored Defaults', imgui.GetContentRegionAvail());
+    imgui.Spacing();
+    uiTheme.header('Stored Defaults');
 
     local def = cache.settings.default or {};
 
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Max Level:        %d", jobsData.MAX_LEVEL));
+    imgui.Indent(uiTheme.indent);
 
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("SkillChain Level: %s", tostring(def.scLevel)));
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Enable Char Lvl:  %s", tostring(def.useCharLevel or false)));
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Enable Subjob:    %s", tostring(def.includeSubjob or false)));
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Enable Fav WS:    %s", tostring(def.enableFavWs or false)));
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Show REMA WS:     %s", tostring(def.showRema or false)));
-
-    imgui.SetCursorPosX(baseX + indent);
-    imgui.Text(string.format("Enable Both:      %s", tostring(def.both or false)));
+    imgui.Text(string.format("Max level:          %d", jobsData.MAX_LEVEL));
+    imgui.Text(string.format("Skillchain level:   %s", tostring(def.scLevel)));
+    imgui.Text(string.format("Enable char level:  %s", tostring(def.useCharLevel or false)));
+    imgui.Text(string.format("Enable subjob:      %s", tostring(def.includeSubjob or false)));
+    imgui.Text(string.format("Enable favorite WS: %s", tostring(def.enableFavWs or false)));
+    imgui.Text(string.format("Show REMA WS:       %s", tostring(def.showRema or false)));
+    imgui.Text(string.format("Enable both:        %s", tostring(def.both or false)));
+    imgui.Unindent(uiTheme.indent);
 
     return request;
 end
@@ -1175,61 +1131,67 @@ function SkillchainGUI.DrawWindow()
     end
 
     local guiPos = cache and cache.settings and cache.settings.guiPosition;
+
+    local function drawBody()
+        local request = nil;
+
+        if imgui.BeginTabBar('##scc_tabs', ImGuiTabBarFlags_None) then
+            -- Calculator tab
+            if imgui.BeginTabItem('Calculator') then
+                local r = drawCalculatorTab();
+                if r then
+                    request = r;
+                end
+                imgui.EndTabItem();
+            end
+
+            -- Filters tab
+            if imgui.BeginTabItem('Filters') then
+                local r = drawFiltersTab();
+                if r then
+                    request = request or {};
+                    for k, v in pairs(r) do
+                        request[k] = v;
+                    end
+                end
+                imgui.EndTabItem();
+            end
+
+            -- Settings tab
+            if imgui.BeginTabItem('Settings') then
+                local r = drawSettingsTab();
+                if r then
+                    request = request or {};
+                    for k, v in pairs(r) do
+                        request[k] = v;
+                    end
+                end
+                imgui.EndTabItem();
+            end
+
+            imgui.EndTabBar();
+        end
+
+        -- Track window position changes for saving
+        if SkillchainUI.trackWindowPosition(guiPos) then
+            request = request or {};
+            request.guiPositionChanged = true;
+        end
+
+        return request;
+    end
+
+    local n = uiTheme.push();
     local flags = SkillchainUI.setupWindow(guiPos, nil);
-
-    if not imgui.Begin('SkillchainCalc.' .. addon.version, showWindow, flags) then
-        imgui.End();
-        return nil;
+    local ok, result = true, nil;
+    if imgui.Begin('SkillchainCalc.' .. addon.version, showWindow, flags) then
+        ok, result = pcall(drawBody);
     end
-
-    local request = nil;
-
-    if imgui.BeginTabBar('##scc_tabs', ImGuiTabBarFlags_None) then
-        -- Calculator tab
-        if imgui.BeginTabItem('Calculator') then
-            local r = drawCalculatorTab();
-            if r then
-                request = r;
-            end
-            imgui.EndTabItem();
-        end
-
-        -- Filters tab
-        if imgui.BeginTabItem('Filters') then
-            local r = drawFiltersTab();
-            if r then
-                request = request or {};
-                for k, v in pairs(r) do
-                    request[k] = v;
-                end
-            end
-            imgui.EndTabItem();
-        end
-
-        -- Settings tab
-        if imgui.BeginTabItem('Settings') then
-            local r = drawSettingsTab();
-            if r then
-                request = request or {};
-                for k, v in pairs(r) do
-                    request[k] = v;
-                end
-            end
-            imgui.EndTabItem();
-        end
-
-        imgui.EndTabBar();
-    end
-
-    -- Track window position changes for saving
-    if SkillchainUI.trackWindowPosition(guiPos) then
-        request = request or {};
-        request.guiPositionChanged = true;
-    end
-
     imgui.End();
+    uiTheme.pop(n);
+    if not ok then error(result, 0); end
 
-    return request;
+    return result;
 end
 
 return SkillchainGUI;

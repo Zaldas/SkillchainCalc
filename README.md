@@ -20,11 +20,11 @@ The Party window reads your live party from memory and lets you calculate skillc
 
 **Party section**
 
-- Press **Update Party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown. A summary of what was loaded is printed to chat.
+- Press **Update party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown. A summary of what was loaded is printed to chat.
 - Casters and support jobs (BLM, WHM, SMN, BRD, RDM) default to disabled — toggle the checkbox next to any member's name to include or exclude them.
 - The local player's weapon is auto-detected from their equipped gear when loading — the main hand normally, or the ranged slot for jobs whose weapon skills come from a bow or gun (RNG, COR). A ranged job with nothing in the ranged slot falls back to the main hand.
 - Other party members default to their job's primary weapon. The game does not send equipment for other players, so their weapon cannot be detected — adjust the dropdown if it's wrong.
-- Press **Clear Party** to reset.
+- Press **Clear party** to reset.
 
 **Members in another zone**
 
@@ -39,7 +39,7 @@ The game only sends reliable job and level data for party members in your own zo
 
 Their job and level are usually blank, as shown above — the game only sends that data reliably for members in your zone. On the occasions it has been sent, the label appears. These members are excluded from the calculation and from the REMA and Fav WS panels. A note below the list counts them.
 
-The list does not refresh on its own — press **Update Party** again once they have arrived to pick them up.
+The list does not refresh on its own — press **Update party** again once they have arrived to pick them up.
 
 **Filter section**
 
@@ -51,7 +51,7 @@ The list does not refresh on its own — press **Update Party** again once they 
 
 REMA and Fav WS are collapsible panels that are mutually exclusive — opening one closes the other. Both are disabled by default and can be enabled in the **Settings** tab.
 
-Press **Calculate Skillchains** to run the calculation. If the party has changed since the last Update Party — a member joined, left, changed job, leveled, zoned out, or arrived in your zone — a warning is shown in chat.
+Press **Calculate skillchains** to run the calculation. If the party has changed since the last Update party — a member joined, left, changed job, leveled, zoned out, or arrived in your zone — a warning is shown in chat.
 
 ### Settings Tab
 
@@ -88,12 +88,12 @@ The Calculator window is for general-purpose planning — pick any two jobs (not
 | **Skillchain Element** | Show only skillchains whose burst element matches (e.g., Ice, Fire, Light). |
 | **Skillchain Level** | Minimum tier: 1 = all, 2 = Tier 2+, 3 = Tier 3 only. |
 | **Custom Character Level** | Enables the level selector in the Calculator tab. |
-| **Enable SubJob** | Enables subjob dropdowns in the Calculator tab. |
-| **Enable Favorite WS** | Enables the Fav WS dropdowns in the Calculator tab. |
+| **Enable subjob** | Enables subjob dropdowns in the Calculator tab. |
+| **Enable favorite WS** | Enables the Fav WS dropdowns in the Calculator tab. |
 | **Both Directions** | Calculates Job1→Job2 and Job2→Job1. |
 | **Show REMA WS (²)** | Includes Relic/Empyrean/Mythic/Aeonic weapon skills. Hidden by default. |
 
-**Set as Defaults** saves the current filter state as your startup defaults. **Reset Filters** reverts to those stored defaults.
+**Set as defaults** saves the current filter state as your startup defaults. **Reset filters** reverts to those stored defaults.
 
 ### Settings Tab
 
@@ -108,7 +108,7 @@ The results window appears after any calculation and displays all valid skillcha
 
 - Results are laid out in columns when there are many entries. If results exceed the display limit, a notice prompts you to narrow your filters.
 - **Click any result** to send it to your current chat channel with the skillchain name formatted using the game's auto-translate system.
-- The window is draggable when **Enable Mouse Drag** is checked in Settings. Drag is automatically disabled when a new calculation runs.
+- The window is draggable when **Enable mouse drag** is checked in Settings. Drag is automatically disabled when a new calculation runs.
 - Position is remembered between sessions.
 
 ### Weapon Skill Notation
@@ -152,7 +152,7 @@ job[/subjob][:weapon,weapon,...]
 /scc <token1> <token2> [options]
 ```
 
-> Options not specified in the command fall back to your saved filter defaults (set via **Set as Defaults** in the Calculator's Filters tab); any option specified overrides the default for that run.
+> Options not specified in the command fall back to your saved filter defaults (set via **Set as defaults** in the Calculator's Filters tab); any option specified overrides the default for that run.
 
 **Options:**
 

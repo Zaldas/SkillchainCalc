@@ -35,6 +35,7 @@ jobs:
           mkdir -p release/horizon/skillchaincalc
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/horizon/skillchaincalc/ \;
           cp -r gdifonts release/horizon/skillchaincalc/gdifonts
+          cp -r libs release/horizon/skillchaincalc/libs
           cd release/horizon
           zip -r ../SkillchainCalc-horizon.zip skillchaincalc
           cd ../..
@@ -43,6 +44,7 @@ jobs:
           mkdir -p release/retail/skillchaincalc
           find . -maxdepth 1 -name "*.lua" -exec cp {} release/retail/skillchaincalc/ \;
           cp -r gdifonts release/retail/skillchaincalc/gdifonts
+          cp -r libs release/retail/skillchaincalc/libs
           # Overwrite with retail versions
           cp retail/Skills.lua release/retail/skillchaincalc/
           cp retail/Jobs.lua release/retail/skillchaincalc/

@@ -8,6 +8,7 @@ local jobIds   = require('JobIds');
 local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainUI = require('SkillchainUI');
+local uiTheme = require('libs/uiTheme');
 local SkillchainRenderer = require('SkillchainRenderer');
 
 local SkillchainParty = {};
@@ -229,7 +230,7 @@ local function getPartyWarnings()
             -- of the line. The em dashes elsewhere in this file are all ImGui
             -- strings, where UTF-8 is correct.
             if not cur.outOfZone then
-                table.insert(warnings, m.name .. ' is now in zone - press Update Party to include them');
+                table.insert(warnings, m.name .. ' is now in zone - press Update party to include them');
             end
             live[m.name] = nil;
         elseif cur.outOfZone then
@@ -364,13 +365,6 @@ local function loadParty()
     return { loaded = loadedNames, notLoaded = notLoadedNames, isAlliance = hasAlliance };
 end
 
-local function drawCenteredButton(label, isPrimary, contentWidth)
-    local buttonWidth = contentWidth * 0.80;
-    local startX = imgui.GetCursorPosX() + ((contentWidth - buttonWidth) / 2);
-    imgui.SetCursorPosX(startX);
-    return SkillchainUI.styledButton(label, { buttonWidth, 0 }, isPrimary);
-end
-
 local function drawMemberRow(member, index, contentWidth)
     local comboWidth = 130;
     local gap        = 6;
@@ -476,7 +470,7 @@ local function drawPartyTab(contentWidth)
         local btnW   = (contentWidth - 8) * 0.5;
         local startX = imgui.GetCursorPosX() + (contentWidth - btnW * 2 - 8) * 0.5;
         imgui.SetCursorPosX(startX);
-        if SkillchainUI.styledButton('Update Party', { btnW, 0 }, false) then
+        if uiTheme.button('Update party', btnW, 'ghost') then
             local summary = loadParty();
             if summary then
                 request = request or {};
@@ -484,7 +478,7 @@ local function drawPartyTab(contentWidth)
             end
         end
         imgui.SameLine(0, 8);
-        if SkillchainUI.styledButton('Clear Party', { btnW, 0 }, false) then
+        if uiTheme.button('Clear party', btnW, 'ghost') then
             partyState.loaded  = false;
             partyState.members = {};
         end
@@ -511,11 +505,11 @@ local function drawPartyTab(contentWidth)
     -- When grouping, the per-group "Party N" header below already labels the
     -- first group -- skip this one to avoid a redundant "Party" / "Party 1" pair.
     if not multipleParties then
-        SkillchainUI.drawGradientHeader('Party', contentWidth);
+        uiTheme.header('Party');
     end
 
     if (not partyState.loaded) or (#partyState.members == 0) then
-        local hint  = 'No party loaded — press Update Party';
+        local hint  = 'No party loaded — press Update party';
         local textW = imgui.CalcTextSize(hint);
         imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - textW) * 0.5);
         imgui.TextDisabled(hint);
@@ -527,7 +521,7 @@ local function drawPartyTab(contentWidth)
         for i, member in ipairs(partyState.members) do
             if multipleParties and member.partyIndex ~= lastPartyIndex then
                 if lastPartyIndex then imgui.Spacing(); end
-                SkillchainUI.drawGradientHeader('Party ' .. member.partyIndex, contentWidth);
+                uiTheme.header('Party ' .. member.partyIndex);
                 lastPartyIndex = member.partyIndex;
             end
             drawMemberRow(member, i, contentWidth);
@@ -545,7 +539,7 @@ local function drawPartyTab(contentWidth)
             imgui.Spacing();
             imgui.PushTextWrapPos(contentWidth);
             imgui.TextDisabled(string.format(
-                '! %d member%s out of zone — press Update Party once they arrive',
+                '! %d member%s out of zone — press Update party once they arrive',
                 outOfZoneCount,
                 outOfZoneCount == 1 and '' or 's'));
             imgui.PopTextWrapPos();
@@ -556,23 +550,14 @@ local function drawPartyTab(contentWidth)
         -----------------------------------------------------------------------
         -- Filters section
         -----------------------------------------------------------------------
-        SkillchainUI.drawGradientHeader('Filter', contentWidth);
+        uiTheme.header('Filter');
 
         do
             local fidx    = partyState.filters.scFilterIndex;
             local fLabel  = partyScFilters[fidx] and partyScFilters[fidx].label or 'All';
-            local scLabel  = 'Skillchain:';
-            local scLabelW = imgui.CalcTextSize(scLabel);
-            local comboW   = contentWidth * 0.65;
-            local startX   = imgui.GetCursorPosX() + (contentWidth - scLabelW - 6 - comboW) * 0.5;
-            local baseY    = imgui.GetCursorPosY();
-            imgui.SetCursorPosX(startX);
-            imgui.SetCursorPosY(baseY + 4);
-            imgui.Text(scLabel);
-            imgui.SameLine(0, 6);
-            imgui.SetCursorPosY(baseY);
-            imgui.PushItemWidth(comboW);
-            if imgui.BeginCombo('##ptScFilter', fLabel) then
+            imgui.Indent(uiTheme.indent);
+            imgui.SetNextItemWidth(uiTheme.comboWidth());
+            if imgui.BeginCombo('Skillchain##ptScFilter', fLabel) then
                 for i = 1, #partyScFilters do
                     local selected = (i == fidx);
                     if imgui.Selectable(partyScFilters[i].label, selected) then
@@ -587,7 +572,7 @@ local function drawPartyTab(contentWidth)
                 end
                 imgui.EndCombo();
             end
-            imgui.PopItemWidth();
+            imgui.Unindent(uiTheme.indent);
         end
 
         if partyState.filters.showRema then
@@ -595,18 +580,16 @@ local function drawPartyTab(contentWidth)
 
             do
                 local remaLabel = partyState.filters.remaOpen and '\xe2\x96\xb2 REMA' or '\xe2\x96\xbc REMA';
-                local remaW     = contentWidth * 0.80;
-                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaW) * 0.5);
-                if SkillchainUI.styledButton(remaLabel, { remaW, 0 }, false) then
+                if uiTheme.centeredButton(remaLabel, 'ghost') then
                     partyState.filters.remaOpen = not partyState.filters.remaOpen;
                     if partyState.filters.remaOpen then partyState.filters.favWsOpen = false; end
                 end
                 if imgui.IsItemHovered() then
-                    imgui.BeginTooltip();
+                    uiTheme.tooltipBegin();
                     imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
                     imgui.TextUnformatted('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (' .. SkillchainCore.REMA_SUFFIX .. ') in the calculation.');
                     imgui.PopTextWrapPos();
-                    imgui.EndTooltip();
+                    uiTheme.tooltipEnd();
                 end
             end
             if partyState.filters.remaOpen then
@@ -628,18 +611,16 @@ local function drawPartyTab(contentWidth)
 
             do
                 local favWsLabel = partyState.filters.favWsOpen and '\xe2\x96\xb2 Fav WS' or '\xe2\x96\xbc Fav WS';
-                local favWsW     = contentWidth * 0.80;
-                imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - favWsW) * 0.5);
-                if SkillchainUI.styledButton(favWsLabel, { favWsW, 0 }, false) then
+                if uiTheme.centeredButton(favWsLabel, 'ghost') then
                     partyState.filters.favWsOpen = not partyState.filters.favWsOpen;
                     if partyState.filters.favWsOpen then partyState.filters.remaOpen = false; end
                 end
                 if imgui.IsItemHovered() then
-                    imgui.BeginTooltip();
+                    uiTheme.tooltipBegin();
                     imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
                     imgui.TextUnformatted('Fav WS: Choose a preferred weapon skill per member. Only skillchains that include at least one member\'s favored WS will be shown.');
                     imgui.PopTextWrapPos();
-                    imgui.EndTooltip();
+                    uiTheme.tooltipEnd();
                 end
             end
             if partyState.filters.favWsOpen then
@@ -693,7 +674,7 @@ local function drawPartyTab(contentWidth)
         imgui.Separator();
         imgui.Spacing();
 
-        if drawCenteredButton('Calculate Skillchains', true, contentWidth) then
+        if uiTheme.centeredButton('Calculate skillchains', 'primary') then
             partyState.filters.remaOpen   = false;
             partyState.filters.favWsOpen  = false;
             local fidx = partyState.filters.scFilterIndex;
@@ -716,55 +697,57 @@ end
 -- Returns a request table or nil.
 local function drawSettingsTab(contentWidth)
     local request = nil;
-    local baseX  = imgui.GetCursorPosX();
-    local indent = 5;
 
-    SkillchainUI.drawGradientHeader('Results Window', contentWidth);
+    uiTheme.header('Results Window');
     imgui.Spacing();
 
+    imgui.Indent(uiTheme.indent);
     if cache and cache.settings and cache.settings.anchor then
         local anchor = cache.settings.anchor;
         local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
 
-        imgui.SetCursorPosX(baseX + indent);
         local enableDrag = { cache.settings.enableDrag == true };
-        if imgui.Checkbox('Enable Mouse Drag', enableDrag) then
+        if imgui.Checkbox('Enable mouse drag', enableDrag) then
             cache.settings.enableDrag = enableDrag[1];
             SkillchainRenderer.SetEnableDrag(enableDrag[1]);
             request = request or {};
             request.anchorChanged = true;
         end
+        uiTheme.helpMarker('When enabled, click and drag the results window to move it.');
 
-        imgui.SetCursorPosX(baseX + indent);
         local x = { anchor.x or 0 };
         if imgui.SliderInt('X', x, limits.minX, limits.maxX) then
             anchor.x = x[1];
+            SkillchainRenderer.UpdateAnchor(cache.settings);
+        end
+        if imgui.IsItemDeactivatedAfterEdit() then
             request = request or {};
             request.anchorChanged = true;
         end
 
-        imgui.SetCursorPosX(baseX + indent);
         local y = { anchor.y or 0 };
         if imgui.SliderInt('Y', y, limits.minY, limits.maxY) then
             anchor.y = y[1];
+            SkillchainRenderer.UpdateAnchor(cache.settings);
+        end
+        if imgui.IsItemDeactivatedAfterEdit() then
             request = request or {};
             request.anchorChanged = true;
         end
     else
         imgui.TextDisabled('Settings not available.');
     end
+    imgui.Unindent(uiTheme.indent);
 
-    imgui.Spacing();
-    imgui.Separator();
     imgui.Spacing();
 
     -----------------------------------------------------------------------
     -- Advanced Filters
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Advanced Filters', contentWidth);
+    uiTheme.header('Advanced Filters');
     imgui.Spacing();
 
-    imgui.SetCursorPosX(baseX + indent);
+    imgui.Indent(uiTheme.indent);
     local showRema = { partyState.filters.showRema };
     if imgui.Checkbox('Enable REMA', showRema) then
         partyState.filters.showRema = showRema[1];
@@ -775,10 +758,10 @@ local function drawSettingsTab(contentWidth)
         request = request or {};
         request.settingsChanged = true;
     end
+    uiTheme.helpMarker('Adds a REMA panel to the Party tab for marking members who own a REMA weapon.');
 
-    imgui.SetCursorPosX(baseX + indent);
     local showFavWs = { partyState.filters.showFavWs };
-    if imgui.Checkbox('Enable Fav WS', showFavWs) then
+    if imgui.Checkbox('Enable favorite WS', showFavWs) then
         partyState.filters.showFavWs = showFavWs[1];
         if not partyState.filters.showFavWs then partyState.filters.favWsOpen = false; end
         if cache and cache.settings and cache.settings.partyFilters then
@@ -787,15 +770,15 @@ local function drawSettingsTab(contentWidth)
         request = request or {};
         request.settingsChanged = true;
     end
+    uiTheme.helpMarker('Adds a Fav WS panel to the Party tab for picking a preferred weapon skill per member.');
+    imgui.Unindent(uiTheme.indent);
 
-    imgui.Spacing();
-    imgui.Separator();
     imgui.Spacing();
 
     -----------------------------------------------------------------------
     -- Local Player
     -----------------------------------------------------------------------
-    SkillchainUI.drawGradientHeader('Local Player', contentWidth);
+    uiTheme.header('Local Player');
     imgui.Spacing();
 
     do
@@ -803,19 +786,17 @@ local function drawSettingsTab(contentWidth)
                               cache.settings.localPlayer.remaWeapons) or {};
 
         local remaToggleLabel = partyState.filters.localRemaOpen
-            and '\xe2\x96\xb2 REMA Weapons'
-            or  '\xe2\x96\xbc REMA Weapons';
-        local remaToggleW = contentWidth * 0.80;
-        imgui.SetCursorPosX(imgui.GetCursorPosX() + (contentWidth - remaToggleW) * 0.5);
-        if SkillchainUI.styledButton(remaToggleLabel, { remaToggleW, 0 }, false) then
+            and '\xe2\x96\xb2 REMA weapons'
+            or  '\xe2\x96\xbc REMA weapons';
+        if uiTheme.centeredButton(remaToggleLabel, 'ghost') then
             partyState.filters.localRemaOpen = not partyState.filters.localRemaOpen;
         end
         if imgui.IsItemHovered() then
-            imgui.BeginTooltip();
+            uiTheme.tooltipBegin();
             imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
             imgui.TextUnformatted('Select weapon types you own a REMA (Relic/Empyrean/Mythic/Aeonic) weapon for. When loaded into the party list, your REMA status will be set automatically based on your equipped weapon.');
             imgui.PopTextWrapPos();
-            imgui.EndTooltip();
+            uiTheme.tooltipEnd();
         end
 
         if partyState.filters.localRemaOpen then
@@ -875,49 +856,56 @@ function SkillchainParty.DrawWindow()
     end
 
     local guiPos = cache and cache.settings and cache.settings.guiPosition;
-    local flags = SkillchainUI.setupWindow(guiPos, { 50, 50 });
 
-    if not imgui.Begin('SkillchainCalc.' .. addon.version .. ' - Party', showWindow, flags) then
-        imgui.End();
-        return nil;
-    end
+    local function drawBody()
+        local request      = nil;
+        local contentWidth = imgui.GetContentRegionAvail();
 
-    local request      = nil;
-    local contentWidth = imgui.GetContentRegionAvail();
-
-    if imgui.BeginTabBar('##ptTabs') then
-        -- Party tab
-        if imgui.BeginTabItem('Party') then
-            local r = drawPartyTab(contentWidth);
-            if r then
-                request = r;
-            end
-            imgui.EndTabItem();
-        end
-
-        -- Settings tab
-        if imgui.BeginTabItem('Settings') then
-            local r = drawSettingsTab(contentWidth);
-            if r then
-                request = request or {};
-                for k, v in pairs(r) do
-                    request[k] = v;
+        if imgui.BeginTabBar('##ptTabs') then
+            -- Party tab
+            if imgui.BeginTabItem('Party') then
+                local r = drawPartyTab(contentWidth);
+                if r then
+                    request = r;
                 end
+                imgui.EndTabItem();
             end
-            imgui.EndTabItem();
+
+            -- Settings tab
+            if imgui.BeginTabItem('Settings') then
+                local r = drawSettingsTab(contentWidth);
+                if r then
+                    request = request or {};
+                    for k, v in pairs(r) do
+                        request[k] = v;
+                    end
+                end
+                imgui.EndTabItem();
+            end
+
+            imgui.EndTabBar();
         end
 
-        imgui.EndTabBar();
+        -- Track position changes (shared with calc window — they're mutually exclusive)
+        if SkillchainUI.trackWindowPosition(guiPos) then
+            request = request or {};
+            request.partyPositionChanged = true;
+        end
+
+        return request;
     end
 
-    -- Track position changes (shared with calc window — they're mutually exclusive)
-    if SkillchainUI.trackWindowPosition(guiPos) then
-        request = request or {};
-        request.partyPositionChanged = true;
+    local n = uiTheme.push();
+    local flags = SkillchainUI.setupWindow(guiPos, { 50, 50 });
+    local ok, result = true, nil;
+    if imgui.Begin('SkillchainCalc.' .. addon.version .. ' - Party', showWindow, flags) then
+        ok, result = pcall(drawBody);
     end
-
     imgui.End();
-    return request;
+    uiTheme.pop(n);
+    if not ok then error(result, 0); end
+
+    return result;
 end
 
 function SkillchainParty.SetCache(cacheRef)
