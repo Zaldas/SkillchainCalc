@@ -22,6 +22,17 @@ local gdiObjects = {
     layoutData = nil,       -- Store layout data for anchor updates
     comboMap = {},          -- Maps text pool index to combo data {opener, closer, chainName}
     noticeIndex = nil,      -- Pool index currently showing the truncation notice, if any
+    headerDecor = {},       -- { stripe, line } rect pairs, one per visible chain header
+};
+
+-- libs/uiTheme WindowBg / Border as ARGB; overrides the colour keys of settings.bg
+local themeBg = {
+    corner_rounding = 8,
+    fill_color      = 0xF00E111A,
+    outline_color   = 0x665C7AB8,
+    outline_width   = 1,
+    gradient_style  = 0,
+    gradient_color  = 0,
 };
 
 local isVisible = false;
@@ -84,6 +95,67 @@ local function hidePoolObjects(startIdx, endIdx)
     end
 end
 
+local function hideHeaderDecor(fromIdx)
+    for i = fromIdx, #gdiObjects.headerDecor do
+        gdiObjects.headerDecor[i].stripe:set_visible(false);
+        gdiObjects.headerDecor[i].line:set_visible(false);
+    end
+end
+
+-- Chain-coloured stripe spanning each header's rows in a column, plus a header underline;
+-- placed from layoutData like UpdateAnchor
+local function placeHeaderDecor(settings)
+    local used = 0;
+    if gdiObjects.layoutData then
+        local rowH = settings.layout.entriesHeight;
+        local textIndex = 1;
+        local stripe, stripeRows = nil, 0;
+        local function endStripe()
+            if stripe then
+                stripe:set_height(stripeRows * rowH - 4);
+            end
+            stripe = nil;
+        end
+        for colIdx, column in ipairs(gdiObjects.layoutData.columns) do
+            local x = settings.anchor.x + 4 + (colIdx - 1) * settings.layout.columnWidth;
+            local y = settings.anchor.y + 40;
+            for _, item in ipairs(column.items) do
+                if textIndex > gdiObjects.lastUsedCount or textIndex == gdiObjects.noticeIndex then
+                    break;
+                end
+                if item.type ~= 'header' then
+                    stripeRows = stripeRows + 1;
+                else
+                    endStripe();
+                    used = used + 1;
+                    local decor = gdiObjects.headerDecor[used];
+                    if not decor then
+                        decor = {
+                            stripe = gdi:create_rect({ width = 3, height = rowH - 4 }),
+                            line   = gdi:create_rect({ width = settings.layout.columnWidth - 12, height = 1 }),
+                        };
+                        gdiObjects.headerDecor[used] = decor;
+                    end
+                    local color = item.color or settings.font.font_color;
+                    decor.stripe:set_fill_color(color);
+                    decor.stripe:set_position_x(x);
+                    decor.stripe:set_position_y(y + 2);
+                    decor.stripe:set_visible(true);
+                    decor.line:set_fill_color(bit.bor(bit.band(color, 0x00FFFFFF), 0x73000000));
+                    decor.line:set_position_x(x);
+                    decor.line:set_position_y(y + rowH - 1);
+                    decor.line:set_visible(true);
+                    stripe, stripeRows = decor.stripe, 1;
+                end
+                textIndex = textIndex + 1;
+                y = y + rowH;
+            end
+            endStripe();
+        end
+    end
+    hideHeaderDecor(used + 1);
+end
+
 -- ============================================================================
 -- Initialization and Cleanup
 -- ============================================================================
@@ -107,7 +179,10 @@ function SkillchainRenderer.Initialize(gdiLib, settings)
     gdiObjects.title = gdi:create_object(settings.title_font);
     gdiObjects.title:set_text('Skillchains');
 
-    gdiObjects.background = gdi:create_rect(settings.bg);
+    local bg = {};
+    for k, v in pairs(settings.bg) do bg[k] = v; end
+    for k, v in pairs(themeBg) do bg[k] = v; end
+    gdiObjects.background = gdi:create_rect(bg);
 
     enableDrag = settings.enableDrag == true;
 
@@ -133,6 +208,11 @@ function SkillchainRenderer.Destroy()
 
     removeObjectsFromPool(gdiObjects.poolSize);
     gdiObjects.textPool = {};
+    for _, decor in ipairs(gdiObjects.headerDecor) do
+        gdi:destroy_object(decor.stripe);
+        gdi:destroy_object(decor.line);
+    end
+    gdiObjects.headerDecor = {};
     gdiObjects.lastUsedCount = 0;
 end
 
@@ -146,6 +226,7 @@ function SkillchainRenderer.Clear()
     end
 
     hidePoolObjects(1, gdiObjects.lastUsedCount);
+    hideHeaderDecor(1);
     gdiObjects.lastUsedCount = 0;
     gdiObjects.layoutData = nil;
     gdiObjects.comboMap = {};
@@ -203,6 +284,7 @@ function SkillchainRenderer.UpdateAnchor(settings)
             end
         end
     end
+    placeHeaderDecor(settings);
 end
 
 -- ============================================================================
@@ -307,6 +389,7 @@ function SkillchainRenderer.HandleMouse(e, settings)
         -- Hide text pool objects once at start of drag
         if not dragState.objectsHidden and gdiObjects.layoutData then
             hidePoolObjects(1, gdiObjects.lastUsedCount);
+            hideHeaderDecor(1);
             dragState.objectsHidden = true;
         end
 
@@ -571,6 +654,8 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
         -- Also print to console
         print(chat.header(addon.name):append(chat.error(errorString)));
     end
+
+    placeHeaderDecor(settings);
 
     -- Adjust background dimensions
     -- Use renderedColumnCount, not #columns: calculateLayout plans columns for the
