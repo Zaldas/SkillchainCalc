@@ -108,7 +108,7 @@ The results window appears after any calculation and displays all valid skillcha
 
 - Results are laid out in columns when there are many entries. If results exceed the display limit, a notice prompts you to narrow your filters.
 - **Click any result** to send it to your current chat channel with the skillchain name formatted using the game's auto-translate system.
-- The window is draggable when **Enable mouse drag** is checked in Settings. Drag is automatically disabled when a new calculation runs.
+- The window is draggable when **Enable mouse drag** is checked in Settings. The setting is saved, and while it is on the window blocks clicks to the game world behind it.
 - Position is remembered between sessions.
 
 ### Weapon Skill Notation
