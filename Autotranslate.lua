@@ -331,18 +331,13 @@ Autotranslate.Weaponskills = {
     ['Ram Charge']         = '\xFD\x02\x02\x26\x3A\xFD',
     ['Vertical Cleave']    = '\xFD\x02\x02\x26\x54\xFD',
 
-    -----------------------------------------------------------------------
-    -- TOAU – PUP Automaton Frame Weaponskills
-    -- Note: Auto-translate codes not yet available in HorizonXI DAT files
-    -- These will display as plain text until codes are added
-    -----------------------------------------------------------------------
+    -- PUP automaton frame weapon skills have no autotranslate code; Format()
+    -- sends them as plain text.
 };
 
 --[[
-    Strips tier markers (¹, ², ᵇ, ᶠ) and avatar prefixes from weaponskill names.
+    Strips tier markers (¹, ²) and avatar prefixes from weaponskill names.
     Example: "Asuran Fists¹" -> "Asuran Fists"
-    Example: "Foot Kickᵇ" -> "Foot Kick"
-    Example: "Chimera Ripperᶠ" -> "Chimera Ripper"
     Example: "[I]Burning Strike" -> "Burning Strike"
 
     @param name (string) The weaponskill name to normalize
@@ -351,14 +346,12 @@ Autotranslate.Weaponskills = {
 function Autotranslate.NormalizeName(name)
     if not name then return nil; end
 
-    -- Remove tier markers: ¹ (quested), ² (relic), ᵇ (blu), ᶠ (frame)
+    -- Remove tier markers: ¹ (quested), ² (relic)
     -- ¹/² are matched as explicit UTF-8 byte sequences, not a [¹²] character
     -- class -- Lua patterns match classes byte-by-byte, which would otherwise
     -- split each multi-byte character into individual bytes and match any of
     -- them individually rather than the intended 2-byte sequence.
     local normalized = name:gsub('\xC2\xB9', ''):gsub('\xC2\xB2', '');
-    normalized = normalized:gsub('ᵇ', '');
-    normalized = normalized:gsub('ᶠ', '');
 
     -- Remove avatar prefixes like [I], [T], [L], [G], [S], [R], [C], [F]
     normalized = normalized:gsub('^%[.%]', '');

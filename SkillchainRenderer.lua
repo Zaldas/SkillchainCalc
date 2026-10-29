@@ -37,8 +37,7 @@ local themeBg = {
 
 local isVisible = false;
 
--- Drag state management (enableDrag mirrors settings.enableDrag; the rest is per-drag)
-local enableDrag = false;
+-- Per-drag state; whether dragging is allowed is settings.enableDrag.
 local dragState = {
     dragActive = false,
     dragPosition = { 0, 0 },
@@ -184,8 +183,6 @@ function SkillchainRenderer.Initialize(gdiLib, settings)
     for k, v in pairs(themeBg) do bg[k] = v; end
     gdiObjects.background = gdi:create_rect(bg);
 
-    enableDrag = settings.enableDrag == true;
-
     setTitleAndBgPosition(settings);
 
     -- Start with minimum pool size
@@ -308,11 +305,6 @@ end
 
 -- Check if mouse is over the draggable area (entire background)
 local function dragHitTest(mouseX, mouseY)
-    -- Fast path: check enableDrag first (single boolean check)
-    if not enableDrag then
-        return false;
-    end
-
     if not isVisible or not gdiObjects.background then
         return false;
     end
@@ -363,7 +355,7 @@ function SkillchainRenderer.HandleMouse(e, settings)
     end
 
     -- Early exit if drag is disabled and not currently dragging
-    if not enableDrag and not dragState.dragActive then
+    if not settings.enableDrag and not dragState.dragActive then
         return nil;
     end
 
@@ -684,14 +676,6 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
     if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then
         shrinkPool();
     end
-end
-
--- ============================================================================
--- Drag State Accessor
--- ============================================================================
-
-function SkillchainRenderer.SetEnableDrag(value)
-    enableDrag = value;
 end
 
 return SkillchainRenderer;

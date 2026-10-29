@@ -82,7 +82,6 @@ end
 -- which then gets executed and stored in cache (the displayed results).
 local state = {
     initialized   = false,        -- Whether GUI has been initialized
-    openedFromCli = false,        -- Whether GUI was opened via CLI command
 
     -- Current job/subjob/weapon selections for both players (1 and 2)
     jobs = {
@@ -480,7 +479,6 @@ local function buildCalculationRequest()
     local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
 
     return {
-        mode      = 'pair',
         token1    = token1,
         token2    = token2,
         scLevel   = state.filters.scLevel or 1,
@@ -857,7 +855,7 @@ local function drawSettingsTab()
 
     if SkillchainUI.drawResultsWindowSettings(cache.settings) then
         request = request or {};
-        request.anchorChanged = true;
+        request.saveSettings = true;
     end
 
     -----------------------------------------------------------------------
@@ -899,11 +897,7 @@ function SkillchainGUI.OpenFromCli()
     -- Filters from CLI (with fallback to defaults)
     state.filters.scLevel = cache.filters.scLevel or def.scLevel or 1;
 
-    if cache.filters.both ~= nil then
-        state.filters.both = cache.filters.both;
-    else
-        state.filters.both = def.both or false;
-    end
+    state.filters.both = cache.filters.both;
 
     -- Set includeSubjob from defaults first, so applyTokenToSide can use it
     state.filters.includeSubjob = def.includeSubjob or false;
@@ -931,8 +925,7 @@ function SkillchainGUI.OpenFromCli()
     state.filters.showRema = def.showRema or false;
 
     -- Tell DrawWindow "don't re-init from defaults"
-    state.initialized   = true;
-    state.openedFromCli = true;
+    state.initialized = true;
 
     showWindow[1] = true;
 end
@@ -941,7 +934,6 @@ function SkillchainGUI.SetVisible(v)
     showWindow[1] = v;
     if showWindow[1] then
         state.initialized = false;
-        state.openedFromCli = false;
     end
 end
 
@@ -957,8 +949,7 @@ end
 -- The caller (SkillchainCalc.lua:d3d_present_cb) inspects the table and acts on set fields.
 -- Fields not listed below are never set; nil / absent means "not requested this frame".
 --
--- anchorChanged        (bool)        Results window was dragged; call SkillchainRenderer.UpdateAnchor + settings.save
--- guiPositionChanged   (bool)        GUI window was dragged; call settings.save
+-- saveSettings         (bool)        Results window settings or window position changed; call settings.save
 -- updateDefaults       (bool)        User saved new defaults; call applyDefaultsToCache + settings.save, re-parse if visible
 -- clear                (bool)        User clicked Clear; call SkillchainRenderer.Clear + resetCacheFull
 -- token1               (string)      Opener job token; presence triggers full skillchain recalculation
@@ -979,21 +970,17 @@ function SkillchainGUI.DrawWindow()
     if (not state.initialized) and cache and cache.settings and cache.settings.default then
         local def = cache.settings.default;
 
-        -- Only apply defaults when NOT opened from CLI.
-        -- cache.filters is the authoritative source (set by applyDefaultsToCache at load time).
-        -- Only GUI-only state (enableFavWs, useCharLevel) still reads directly from def.
-        if not state.openedFromCli then
-            state.filters.scLevel       = cache.filters.scLevel;
-            state.filters.both          = cache.filters.both;
-            state.filters.includeSubjob = cache.filters.includeSubjob;
-            state.filters.showRema      = cache.filters.showRema;
-            syncGuiOnlyDefaults(def);
-        end
+        -- cache.filters holds the last run's filters (the defaults until something
+        -- runs); GUI-only state (enableFavWs, useCharLevel) reads from def.
+        state.filters.scLevel       = cache.filters.scLevel;
+        state.filters.both          = cache.filters.both;
+        state.filters.includeSubjob = cache.filters.includeSubjob;
+        state.filters.showRema      = cache.filters.showRema;
+        syncGuiOnlyDefaults(def);
 
         state.filters.elementIndex = resolveElementIndex(cache.filters.scElement);
 
-        state.initialized   = true;
-        state.openedFromCli = false;
+        state.initialized = true;
     end
 
     local guiPos = cache and cache.settings and cache.settings.guiPosition;
@@ -1041,7 +1028,7 @@ function SkillchainGUI.DrawWindow()
         -- Track window position changes for saving
         if SkillchainUI.trackWindowPosition(guiPos) then
             request = request or {};
-            request.guiPositionChanged = true;
+            request.saveSettings = true;
         end
 
         return request;

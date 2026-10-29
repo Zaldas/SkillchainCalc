@@ -55,16 +55,21 @@ local partyState = {
     loaded    = false,
     members   = {},  -- array of {name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs}
     filters   = {
-        scFilterIndex = 1,  -- index into partyScFilters (1 = 'All')
         remaOpen      = false,
         favWsOpen     = false,
-        showRema      = false,
-        showFavWs     = false,
         localRemaOpen = false,
     },
 };
 
 local cache = nil;
+
+-- Saved Party filters (showRema, showFavWs, scFilterIndex) live in
+-- cache.settings.partyFilters; read them through this so a settings reload
+-- (character login) is picked up without a resync.
+local fallbackPartyFilters = { showRema = false, showFavWs = false, scFilterIndex = 1 };
+local function savedFilters()
+    return (cache and cache.settings and cache.settings.partyFilters) or fallbackPartyFilters;
+end
 
 -- Human-readable weapon names for dropdown display
 local weaponDisplayNames = {
@@ -82,15 +87,15 @@ local weaponDisplayNames = {
     club    = 'Club',
     archery = 'Archery',
     mm      = 'Marksmanship',
-    avatar  = 'Avatar (Pet)',
-    blu     = 'Blue Magic',
+    avatar    = 'Avatar (Pet)',
+    blu       = 'Blue Magic',
+    automaton = 'Automaton (Pet)',
 };
 
 -- Weapon types that have at least one REMA weapon skill, sorted for stable display.
 local remaWeaponTypes = {};
 do
-    for weaponKey, _ in pairs(weaponDisplayNames) do
-        local weaponSkills = skills[weaponKey];
+    for weaponKey, weaponSkills in pairs(skills) do
         if type(weaponSkills) == 'table' then
             for _, ws in pairs(weaponSkills) do
                 if type(ws) == 'table' and ws.rema then
@@ -594,7 +599,7 @@ local function drawPartyTab(contentWidth)
         uiTheme.header('Filter');
 
         do
-            local fidx    = partyState.filters.scFilterIndex;
+            local fidx    = savedFilters().scFilterIndex or 1;
             local fLabel  = partyScFilters[fidx] and partyScFilters[fidx].label or 'All';
             imgui.Indent(uiTheme.indent);
             imgui.SetNextItemWidth(uiTheme.comboWidth());
@@ -602,12 +607,9 @@ local function drawPartyTab(contentWidth)
                 for i = 1, #partyScFilters do
                     local selected = (i == fidx);
                     if imgui.Selectable(partyScFilters[i].label, selected) then
-                        partyState.filters.scFilterIndex = i;
-                        if cache and cache.settings and cache.settings.partyFilters then
-                            cache.settings.partyFilters.scFilterIndex = i;
-                        end
+                        savedFilters().scFilterIndex = i;
                         request = request or {};
-                        request.settingsChanged = true;
+                        request.saveSettings = true;
                     end
                     if selected then imgui.SetItemDefaultFocus(); end
                 end
@@ -616,7 +618,7 @@ local function drawPartyTab(contentWidth)
             imgui.Unindent(uiTheme.indent);
         end
 
-        if partyState.filters.showRema then
+        if savedFilters().showRema then
             imgui.Spacing();
 
             local remaTooltip = string.format('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (%s) in the calculation.', SkillchainCore.REMA_SUFFIX);
@@ -641,7 +643,7 @@ local function drawPartyTab(contentWidth)
             end
         end
 
-        if partyState.filters.showFavWs then
+        if savedFilters().showFavWs then
             imgui.Spacing();
 
             if drawPanelToggle('Fav WS', partyState.filters.favWsOpen,
@@ -664,7 +666,7 @@ local function drawPartyTab(contentWidth)
                         elseif imgui.BeginCombo('##favws' .. i, curLabel) then
                             -- Only resolve the skill list while the combo is actually
                             -- open, not every frame the Fav WS panel is expanded.
-                            local wsList = SkillchainCore.BuildMemberSkillList(member, partyState.filters.showRema);
+                            local wsList = SkillchainCore.BuildMemberSkillList(member, savedFilters().showRema);
 
                             if imgui.Selectable('(Any)', member.favWs == nil) then
                                 member.favWs = nil;
@@ -694,14 +696,14 @@ local function drawPartyTab(contentWidth)
         if uiTheme.centeredButton('Calculate skillchains', 'primary') then
             partyState.filters.remaOpen   = false;
             partyState.filters.favWsOpen  = false;
-            local fidx = partyState.filters.scFilterIndex;
+            local fidx = savedFilters().scFilterIndex or 1;
             request = {
                 mode         = 'party',
                 members      = partyState.members,
                 partyFilters = {
                     chains       = partyScFilters[fidx] and partyScFilters[fidx].chains or nil,
-                    remaEnabled  = partyState.filters.showRema,
-                    favWsEnabled = partyState.filters.showFavWs,
+                    remaEnabled  = savedFilters().showRema == true,
+                    favWsEnabled = savedFilters().showFavWs == true,
                 },
                 warnings = getPartyWarnings(),
             };
@@ -719,7 +721,7 @@ local function drawSettingsTab(contentWidth)
 
     if SkillchainUI.drawResultsWindowSettings(cache and cache.settings) then
         request = request or {};
-        request.anchorChanged = true;
+        request.saveSettings = true;
     end
 
     imgui.Spacing();
@@ -731,27 +733,21 @@ local function drawSettingsTab(contentWidth)
     imgui.Spacing();
 
     imgui.Indent(uiTheme.indent);
-    local showRema = { partyState.filters.showRema };
+    local showRema = { savedFilters().showRema == true };
     if imgui.Checkbox('Enable REMA', showRema) then
-        partyState.filters.showRema = showRema[1];
-        if not partyState.filters.showRema then partyState.filters.remaOpen = false; end
-        if cache and cache.settings and cache.settings.partyFilters then
-            cache.settings.partyFilters.showRema = showRema[1];
-        end
+        savedFilters().showRema = showRema[1];
+        if not showRema[1] then partyState.filters.remaOpen = false; end
         request = request or {};
-        request.settingsChanged = true;
+        request.saveSettings = true;
     end
     uiTheme.helpMarker('Adds a REMA panel to the Party tab for marking members who own a REMA weapon.');
 
-    local showFavWs = { partyState.filters.showFavWs };
+    local showFavWs = { savedFilters().showFavWs == true };
     if imgui.Checkbox('Enable favorite WS', showFavWs) then
-        partyState.filters.showFavWs = showFavWs[1];
-        if not partyState.filters.showFavWs then partyState.filters.favWsOpen = false; end
-        if cache and cache.settings and cache.settings.partyFilters then
-            cache.settings.partyFilters.showFavWs = showFavWs[1];
-        end
+        savedFilters().showFavWs = showFavWs[1];
+        if not showFavWs[1] then partyState.filters.favWsOpen = false; end
         request = request or {};
-        request.settingsChanged = true;
+        request.saveSettings = true;
     end
     uiTheme.helpMarker('Adds a Fav WS panel to the Party tab for picking a preferred weapon skill per member.');
     imgui.Unindent(uiTheme.indent);
@@ -787,7 +783,7 @@ local function drawSettingsTab(contentWidth)
                         end
                     end
                     request = request or {};
-                    request.settingsChanged = true;
+                    request.saveSettings = true;
                 end
                 imgui.NextColumn();
             end
@@ -807,9 +803,7 @@ end
 -- The caller (SkillchainCalc.lua:d3d_present_cb) inspects the table and acts on set fields.
 -- Fields not listed below are never set; nil / absent means "not requested this frame".
 --
--- anchorChanged        (bool)          Results window was dragged; call SkillchainRenderer.UpdateAnchor + settings.save
--- partyPositionChanged (bool)          Party window was dragged; call settings.save
--- settingsChanged      (bool)          REMA/FavWs/localPlayer settings changed; call settings.save
+-- saveSettings         (bool)          Results window, filter, REMA/Fav WS, localPlayer or window position changed; call settings.save
 -- partyLoaded          (table)         Update Party was pressed; summary to report in chat:
 --                                      { loaded = {name,...}, notLoaded = {name,...}, isAlliance = bool }
 --                                      Every active, named member appears in exactly one list, so
@@ -863,7 +857,7 @@ function SkillchainParty.DrawWindow()
         -- Track position changes (shared with calc window — they're mutually exclusive)
         if SkillchainUI.trackWindowPosition(guiPos) then
             request = request or {};
-            request.partyPositionChanged = true;
+            request.saveSettings = true;
         end
 
         return request;
@@ -884,12 +878,6 @@ end
 
 function SkillchainParty.SetCache(cacheRef)
     cache = cacheRef;
-    if cache and cache.settings and cache.settings.partyFilters then
-        local pf = cache.settings.partyFilters;
-        partyState.filters.showRema      = pf.showRema  or false;
-        partyState.filters.showFavWs     = pf.showFavWs or false;
-        partyState.filters.scFilterIndex = pf.scFilterIndex or 1;
-    end
 end
 
 function SkillchainParty.SetVisible(v)

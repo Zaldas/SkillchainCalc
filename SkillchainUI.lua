@@ -45,7 +45,6 @@ function SkillchainUI.drawResultsWindowSettings(settings)
         local enableDrag = { settings.enableDrag == true };
         if imgui.Checkbox('Enable mouse drag', enableDrag) then
             settings.enableDrag = enableDrag[1];
-            SkillchainRenderer.SetEnableDrag(enableDrag[1]);
             changed = true;
         end
         uiTheme.helpMarker('When enabled, click and drag the results window to move it.');
@@ -76,8 +75,7 @@ local positionDirty = false;
 
 -- Tracks the current ImGui window's position and writes it back into guiPos
 -- in place when it changes. Returns true once per move, after the mouse is
--- released -- the caller sets its own request.*PositionChanged field (name
--- differs per caller) and is responsible for calling settings.save().
+-- released; the caller requests settings.save().
 -- guiPos : cache.settings.guiPosition table, or nil/false if unavailable
 function SkillchainUI.trackWindowPosition(guiPos)
     if not guiPos then

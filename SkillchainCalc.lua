@@ -56,8 +56,6 @@ local Autotranslate      = require('Autotranslate');
 local gdi                = require('gdifonts.include');
 local settings           = require('settings');
 
-local debugMode = false; -- Debug mode flag
-
 -- Each block below grew with a different feature and is owned by a different
 -- window; the naming isn't fully consistent across them (e.g. `default.enableFavWs`
 -- vs `partyFilters.showFavWs` for the same concept on each window's side), but
@@ -85,12 +83,8 @@ local sccSettings = T{
         outline_color = 0xFF48494B,
         outline_width = 1,
     },
+    -- Colours, outline and rounding come from the theme (SkillchainRenderer themeBg).
     bg = {
-        corner_rounding = 5,
-        fill_color = 0xBF000000,
-        outline_color = 0xFFFFFFFF,
-        gradient_style = gdi.Gradient.TopToBottom,
-        gradient_color = 0x59010640,
         z_order = -1,
     },
     anchor = {
@@ -152,13 +146,12 @@ local cache = {
     -- Step mode configuration (property → WS calculations)
     step = {
         enabled = false,
-        filter = nil,      -- tier number (1-4) or property name
+        filter = nil,      -- tier number (1-3) or property name
         filterType = nil,  -- "tier" or "property"
     },
 
     -- Application settings and state
     settings = sccSettings,
-    keepResultsOpen = false,  -- When true, results stay open even if GUI closes
     resultsSource = nil,      -- 'calc' or 'party': which window produced the last results
 };
 
@@ -176,10 +169,10 @@ local function resetCacheFull()
     cache.jobs.favWs1 = nil;
     cache.jobs.favWs2 = nil;
     cache.filters.scElement = nil;
+    cache.filters.charLevel = nil;
     cache.step.enabled = false;
     cache.step.filter = nil;
     cache.step.filterType = nil;
-    cache.keepResultsOpen = false;
     applyDefaultsToCache();
 end
 
@@ -188,7 +181,7 @@ end
 -- instead of each command-handler branch hand-rolling its own
 -- SetVisible/clear/resetCacheFull combination.
 local function closeAllWindows()
-    if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+    SkillchainGUI.SetVisible(false);
     SkillchainParty.SetVisible(false);
     SkillchainRenderer.Clear();
     resetCacheFull();
@@ -196,17 +189,17 @@ end
 
 local function showCalculator()
     SkillchainParty.SetVisible(false);
-    if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(true); end
+    SkillchainGUI.SetVisible(true);
 end
 
 local function showParty()
-    if SkillchainGUI ~= nil then SkillchainGUI.SetVisible(false); end
+    SkillchainGUI.SetVisible(false);
     SkillchainParty.SetVisible(true);
 end
 
 local function renderResults(skillchains)
     local resultsTable = SkillchainCore.BuildSkillchainTable(skillchains);
-    local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable, debugMode);
+    local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable);
 
     SkillchainRenderer.Render(sortedResults, orderedResults, cache.settings, cache.filters.both);
 end
@@ -224,7 +217,6 @@ ashita.events.register('load', 'load_cb', function()
             SkillchainRenderer.Destroy();
             cache.settings = s;
             applyDefaultsToCache();
-            SkillchainParty.SetCache(cache);
             SkillchainRenderer.Initialize(gdi, cache.settings);
         end
     end)
@@ -264,7 +256,7 @@ local function parseSkillchains(isStep)
             return;
         end
 
-        local wsList = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, nil, cache.filters.charLevel);
+        local wsList = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, cache.filters.charLevel);
         if (not wsList) then
             err('Invalid weapon/job token for step mode: ' .. tostring(cache.jobs.token1));
             SkillchainRenderer.Clear();
@@ -277,6 +269,11 @@ local function parseSkillchains(isStep)
         if cache.step.filterType == 'property' and #combinations == 0 then
             if SkillchainCore.IsChainName(cache.step.filter) then
                 msg(('No skillchains from %s with the %s property.'):format(tostring(cache.jobs.token1), tostring(cache.step.filter)));
+                SkillchainRenderer.Clear();
+                return;
+            end
+            if tonumber(cache.step.filter) then
+                err('Step tier must be 1, 2 or 3.');
                 SkillchainRenderer.Clear();
                 return;
             end
@@ -296,8 +293,8 @@ local function parseSkillchains(isStep)
         return;
     end
 
-    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, nil, cache.filters.charLevel);
-    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, nil, cache.filters.charLevel);
+    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, cache.filters.charLevel);
+    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, cache.filters.charLevel);
 
     if (not skills1 or not skills2) then
         err(('Invalid weapon/job token(s): %s, %s'):format(tostring(cache.jobs.token1), tostring(cache.jobs.token2)));
@@ -362,14 +359,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
     -- Party window (standalone, default /scc)
     local partyReq = SkillchainParty.DrawWindow();
     if partyReq then
-        if partyReq.anchorChanged then
-            SkillchainRenderer.UpdateAnchor(cache.settings);
-            settings.save();
-        end
-        if partyReq.settingsChanged then
-            settings.save();
-        end
-        if partyReq.partyPositionChanged then
+        if partyReq.saveSettings then
             settings.save();
         end
         if partyReq.partyLoaded then
@@ -383,29 +373,21 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 end
             end
             cache.step.enabled = false;
-            cache.keepResultsOpen = false;
             parsePartySkillchains(partyReq.members, partyReq.partyFilters);
         end
     end
 
-    if (SkillchainGUI ~= nil and SkillchainGUI.IsVisible()) then
+    if SkillchainGUI.IsVisible() then
         local req = SkillchainGUI.DrawWindow();
         if req ~= nil then
-            if req.anchorChanged then
-                SkillchainRenderer.UpdateAnchor(cache.settings);
-                settings.save();
-                -- No need to re-parse skillchains - anchor is visual only
-            end
-
-            if req.guiPositionChanged then
+            if req.saveSettings then
                 settings.save();
             end
 
             if req.updateDefaults then
                 applyDefaultsToCache();
                 settings.save();
-                -- Only re-parse if results are currently visible and defaults affect calculation
-                -- (scLevel, both, includeSubjob, charLevel, enableFavWs)
+                -- Re-run visible Calculator results so new scLevel/both/showRema defaults apply
                 if SkillchainRenderer.IsVisible() and cache.resultsSource == 'calc' then
                     parseSkillchains(cache.step.enabled);
                 end
@@ -437,17 +419,13 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
 
                 -- GUI-initiated requests are always normal mode (tied to GUI)
                 cache.step.enabled = false;
-                cache.keepResultsOpen = false;
 
                 parseSkillchains(false);
             end
         end
     elseif not SkillchainParty.IsVisible() then
-        -- Only clear renderer if results are not set to stay open
-        -- (Party window manages its own results; don't clear while it's visible)
-        -- isVisible() guard avoids a needless clear() every idle frame once
-        -- results are already hidden -- clear() is idempotent but not free.
-        if not cache.keepResultsOpen and SkillchainRenderer.IsVisible() then
+        -- With both windows closed, results stay up only in step mode.
+        if not cache.step.enabled and SkillchainRenderer.IsVisible() then
             SkillchainRenderer.Clear();
         end
     end
@@ -480,7 +458,7 @@ local function withDefaultSubjob(token)
     return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, defaultSubjob);
 end
 
--- Handles the 1-arg utility commands (calc/party/debug/help). Returns true if
+-- Handles the 1-arg utility commands (calc/party/help). Returns true if
 -- the command was recognized and handled (caller should return immediately).
 local function handleUtilityCommand(args)
     if #args ~= 2 then
@@ -488,14 +466,12 @@ local function handleUtilityCommand(args)
     end
 
     if (args[2] == 'calc') then
-        if SkillchainGUI ~= nil then
-            if SkillchainGUI.IsVisible() then
-                closeAllWindows();
-            else
-                showCalculator();
-                msg('/scc calc - Generic skillchain calculator');
-                msg('/scc (or /scc party) - Party skillchain calculator for your current party');
-            end
+        if SkillchainGUI.IsVisible() then
+            closeAllWindows();
+        else
+            showCalculator();
+            msg('/scc calc - Generic skillchain calculator');
+            msg('/scc (or /scc party) - Party skillchain calculator for your current party');
         end
         return true;
     elseif (args[2] == 'party') then
@@ -507,15 +483,10 @@ local function handleUtilityCommand(args)
             msg('/scc calc - Generic skillchain calculator');
         end
         return true;
-    elseif (args[2] == 'debug') then
-        debugMode = not debugMode;
-        msg(('Debug mode %s.'):format(debugMode and 'enabled' or 'disabled'));
-        return true;
     elseif (args[2] == 'help') then
         msg('Commands:');
         msg('  /scc (or /scc party) - Toggle party skillchain calculator');
         msg('  /scc calc - Toggle generic skillchain calculator');
-        msg('  /scc debug - Toggle debug mode');
         return true;
     end
 
@@ -539,9 +510,9 @@ local function detectStepMode(args)
         local colonPos = stepArg:find(':');
         local filterValue = stepArg:sub(colonPos + 1);
 
-        -- Try to parse as a tier number (1-4)
+        -- Try to parse as a tier number (1-3)
         local tierNum = tonumber(filterValue);
-        if tierNum and tierNum >= 1 and tierNum <= 4 then
+        if tierNum and tierNum >= 1 and tierNum <= 3 then
             stepFilter = tierNum;
             stepFilterType = 'tier';
         else
@@ -658,7 +629,7 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Bare /scc toggles windows; two-arg forms (a lone token, bare "step") reach
     -- resolveTokens, which reports the usage error.
     if (#args == 1) then
-        local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
+        local anyOpen = SkillchainParty.IsVisible() or SkillchainGUI.IsVisible();
         if anyOpen then
             closeAllWindows();
         else
@@ -714,13 +685,9 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.step.filter = stepFilter;
     cache.step.filterType = stepFilterType;
 
-    -- In step mode, keep results open without GUI
-    -- In normal mode, results are tied to GUI (unless we add a future option)
-    cache.keepResultsOpen = isStep;
-
     parseSkillchains(isStep);
 
-    if (not isStep) and SkillchainGUI ~= nil then
+    if not isStep then
         SkillchainParty.SetVisible(false);
         SkillchainGUI.OpenFromCli();
     end
@@ -734,7 +701,5 @@ ashita.events.register('unload', 'unload_cb', function()
     ashita.events.unregister('command', 'command_cb');
     ashita.events.unregister('unload', 'unload_cb');
 
-    -- Disable drag on shutdown
-    SkillchainRenderer.SetEnableDrag(false);
     SkillchainRenderer.Destroy();
 end);

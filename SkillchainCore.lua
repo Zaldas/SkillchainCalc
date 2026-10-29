@@ -5,7 +5,6 @@ require('common');
 local skills         = require('Skills');
 local jobs           = require('Jobs');
 local SkillRanks     = require('SkillRanks');
-local chat           = require('chat');
 
 local SkillchainCore = {};
 
@@ -458,8 +457,7 @@ end
 --   - Job tokens: "nin", "nin/war", "thf:dagger", "nin/war:katana,dagger"
 --   - Weapon tokens: "katana", "ga" (all skills for that weapon type, sorted by WS id;
 --     charLevel caps at the best skill rank any job has in that weapon)
--- The subJobId parameter is used as a fallback if the token doesn't specify a subjob
-function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
+function SkillchainCore.ResolveTokenToSkills(token, charLevel)
     if not token or type(token) ~= 'string' then
         return nil;
     end
@@ -467,11 +465,9 @@ function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
     local lower = token:lower();
 
     -- Strategy 1: Try parsing as job token (handles all job formats)
-    local jobId, allowedWeapons, tokenSubJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
+    local jobId, allowedWeapons, subJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
     if jobId then
-        -- Use tokenSubJobId if present, otherwise fall back to parameter subJobId
-        local effectiveSubJob = tokenSubJobId or subJobId;
-        return SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, effectiveSubJob, charLevel);
+        return SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, charLevel);
     end
 
     -- Strategy 2: Try as weapon type or alias, e.g. "katana", "scythe", "ga", "greataxe"
@@ -705,7 +701,7 @@ function SkillchainCore.CalculateSkillchains(wsList1, wsList2, both)
 end
 
 -- Step mode: Property→WS combinations.
--- stepFilter: optional filter value (tier number 1-4 or property name like "distortion")
+-- stepFilter: optional filter value (tier number 1-3 or property name like "distortion")
 -- stepFilterType: "tier" or "property" or nil
 function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterType)
     if not wsList then
@@ -890,13 +886,9 @@ function SkillchainCore.BuildSkillchainTable(skillchains)
     return resultsTable;
 end
 
-function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
+function SkillchainCore.SortSkillchainTable(resultsTable)
     local sortedResults  = {};
     local orderedResults = {};
-
-    if debugMode then
-        print(chat.header(addon.name):append(chat.message('[Debug] Starting level-based sorting')));
-    end
 
     -- Sort chains by display order (via skills.GetDisplayIndex)
     local chainLevels = {};
@@ -921,10 +913,6 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
     for chainName, openers in pairs(sortedResults) do
         local sortedOpeners = {};
 
-        if debugMode then
-            print(chat.header(addon.name):append(chat.message(('[Debug] Sorting openers for chain %s'):format(chainName))));
-        end
-
         for opener, closers in pairs(openers) do
             local openerLevel = findSkillLevel(opener);
 
@@ -946,10 +934,6 @@ function SkillchainCore.SortSkillchainTable(resultsTable, debugMode)
         end);
 
         sortedResults[chainName] = sortedOpeners;
-    end
-
-    if debugMode then
-        print(chat.header(addon.name):append(chat.message('[Debug] Sorting completed')));
     end
 
     return sortedResults, orderedResults;

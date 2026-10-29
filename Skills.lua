@@ -98,7 +98,7 @@ skills.sword = { -- Sword
     [40] = {en='Vorpal Blade',     skillchain={'Scission','Impaction'},          skill=200,
                 JobRestrictions={'WAR','RDM','PLD','DRK','BLU'},
                 allowSubjob=true},
-    [41] = {en='Swift Blade¹',     skillchain={'Gravitation'},                   skill=225,
+    [41] = {en='Swift Blade',      skillchain={'Gravitation'},                   skill=225,
                 JobRestrictions={'PLD'}},
     [42] = {en='Savage Blade¹',    skillchain={'Fragmentation','Scission'},      skill=240,
                 JobRestrictions={'WAR','RDM','PLD','DRK','BLU'}},
@@ -155,7 +155,7 @@ skills.ga = { -- Great Axe
     [85] = {en='Weapon Break',    skillchain={'Impaction'},                      skill=175},
     [86] = {en='Raging Rush',     skillchain={'Induration','Reverberation'},     skill=200,
                 JobRestrictions={'WAR'}},
-    [87] = {en='Full Break¹',     skillchain={'Distortion'},                     skill=225,
+    [87] = {en='Full Break',      skillchain={'Distortion'},                     skill=225,
                 JobRestrictions={'WAR'}},
     [88] = {en='Steel Cyclone¹',  skillchain={'Distortion','Detonation'},        skill=240,
                 JobRestrictions={'WAR','DRK'}},
@@ -420,14 +420,10 @@ skills.frameRanged = {
 
 -- static information on skillchains
 skills.ChainInfo = T{
-    Radiance = T{level = 4, burst = T{'Lightning','Fire','Wind','Light'}},
-    Umbra    = T{level = 4, burst = T{'Ice','Water','Earth','Dark'}},
     Light    = T{level = 3, burst = T{'Lightning','Fire','Wind','Light'},
-        aeonic = T{level = 4, skillchain = 'Radiance'},
         Light  = T{level = 4, skillchain = 'Light'},
     },
     Darkness = T{level = 3, burst = T{'Ice','Water','Earth','Dark'},
-        aeonic   = T{level = 4, skillchain = 'Umbra'},
         Darkness = T{level = 4, skillchain = 'Darkness'},
     },
     Gravitation = T{level = 2, burst = T{'Earth','Dark'},
@@ -498,9 +494,7 @@ colors.Fragmentation = 0xFF008080;
 colors.Fusion =        0xFFFF4500;
 colors.Distortion =    0xFF00AEE6;
 colors.Darkness =      colors.Dark;
-colors.Umbra =         colors.Dark;
 colors.Compression =   colors.Dark;
-colors.Radiance =      colors.Light;
 colors.Transfixion =   colors.Light;
 colors.Induration =    colors.Ice;
 colors.Reverberation = colors.Water;
