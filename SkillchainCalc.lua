@@ -13,6 +13,15 @@ local chat               = require('chat');
 local function msg(text) print(chat.header(addon.name):append(chat.message(text))); end
 local function err(text) print(chat.header(addon.name):append(chat.error(text))); end
 
+local jobs               = require('Jobs');
+local SkillchainCore     = require('SkillchainCore');
+local SkillchainRenderer = require('SkillchainRenderer');
+local SkillchainGUI      = require('SkillchainGui');
+local SkillchainParty    = require('SkillchainParty');
+local Autotranslate      = require('Autotranslate');
+local gdi                = require('gdifonts.include');
+local settings           = require('settings');
+
 -- Reports the result of an Update Party press. summary comes from
 -- SkillchainParty's request.partyLoaded:
 --   { loaded = {name,...}, notLoaded = {name,...}, isAlliance = bool }
@@ -47,20 +56,8 @@ local function reportPartyLoad(summary)
     msg('Note: other members use a default weapon for their job - check the list.');
 end
 
-local jobs               = require('Jobs');
-local SkillchainCore     = require('SkillchainCore');
-local SkillchainRenderer = require('SkillchainRenderer');
-local SkillchainGUI      = require('SkillchainGui');
-local SkillchainParty    = require('SkillchainParty');
-local Autotranslate      = require('Autotranslate');
-local gdi                = require('gdifonts.include');
-local settings           = require('settings');
-
--- Each block below grew with a different feature and is owned by a different
--- window; the naming isn't fully consistent across them (e.g. `default.enableFavWs`
--- vs `partyFilters.showFavWs` for the same concept on each window's side), but
--- keys are not renamed for consistency -- that would break existing users'
--- settings.json for no functional gain. Owner reference:
+-- Saved key names are persisted in users' settings.json and must not be
+-- renamed (e.g. `default.enableFavWs` vs `partyFilters.showFavWs`). Owners:
 --   font/title_font/bg/layout -- GDI results window rendering (shared)
 --   anchor                    -- results window position (shared)
 --   enableDrag                -- results window mouse drag toggle (shared)
@@ -176,10 +173,7 @@ local function resetCacheFull()
     applyDefaultsToCache();
 end
 
--- Window mutual-exclusion policy: only one of the two input windows is ever
--- open at a time. These three helpers are the single place that enforces it,
--- instead of each command-handler branch hand-rolling its own
--- SetVisible/clear/resetCacheFull combination.
+-- Only one of the two input windows is open at a time; these helpers enforce it.
 local function closeAllWindows()
     SkillchainGUI.SetVisible(false);
     SkillchainParty.SetVisible(false);
@@ -243,7 +237,7 @@ local function displaySkillchainResults(combinations, label)
         renderResults(filteredCombinations, cache.filters.both);
     else
         local suffix = label and (' ' .. label) or '';
-        msg(('No%s skillchain combinations found for filter level %d.'):format(suffix, cache.filters.scLevel));
+        msg(string.format('No%s skillchain combinations found for filter level %d.', suffix, cache.filters.scLevel));
         SkillchainRenderer.Clear();
     end
 end
@@ -267,7 +261,7 @@ local function parseSkillchains(isStep)
         -- No combinations: a valid property with no matches, or an invalid property name
         if cache.step.filterType == 'property' and #combinations == 0 then
             if SkillchainCore.IsChainName(cache.step.filter) then
-                msg(('No skillchains from %s with the %s property.'):format(tostring(cache.jobs.token1), tostring(cache.step.filter)));
+                msg(string.format('No skillchains from %s with the %s property.', tostring(cache.jobs.token1), tostring(cache.step.filter)));
                 SkillchainRenderer.Clear();
                 return;
             end
@@ -276,7 +270,7 @@ local function parseSkillchains(isStep)
                 SkillchainRenderer.Clear();
                 return;
             end
-            err('Invalid property name "' .. tostring(cache.step.filter) .. '".');
+            err(string.format('Invalid property name "%s".', tostring(cache.step.filter)));
             msg('Valid properties: ' .. table.concat(SkillchainCore.CHAIN_NAMES, ', '));
             SkillchainRenderer.Clear();
             return;
@@ -296,7 +290,7 @@ local function parseSkillchains(isStep)
     local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, cache.filters.charLevel);
 
     if (not skills1 or not skills2) then
-        err(('Invalid weapon/job token(s): %s, %s'):format(tostring(cache.jobs.token1), tostring(cache.jobs.token2)));
+        err(string.format('Invalid weapon/job token(s): %s, %s', tostring(cache.jobs.token1), tostring(cache.jobs.token2)));
         SkillchainRenderer.Clear();
         return;
     end
@@ -541,7 +535,7 @@ local function parseCommandArgs(args, startIdx)
         elseif lower:sub(1, 3) == 'sc:' then
             scElement = lower:sub(4);
             if not SkillchainCore.IsScFilterToken(scElement) then
-                err(('Invalid sc: value "%s".'):format(scElement));
+                err(string.format('Invalid sc: value "%s".', scElement));
                 msg(string.format('Use a burst element: %s.', table.concat(SkillchainCore.BURST_ELEMENTS, ', '):lower()));
                 return false;
             end
@@ -552,7 +546,7 @@ local function parseCommandArgs(args, startIdx)
             if lvlVal and lvlVal == math.floor(lvlVal) and lvlVal >= 1 and lvlVal <= jobs.MAX_LEVEL then
                 charLevel = lvlVal;
             else
-                err(('Invalid level value. Must be a whole number between 1 and %d.'):format(jobs.MAX_LEVEL));
+                err(string.format('Invalid level value. Must be a whole number between 1 and %d.', jobs.MAX_LEVEL));
                 return false;
             end
         else

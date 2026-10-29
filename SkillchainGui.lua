@@ -36,8 +36,7 @@ do
 end
 
 -----------------------------------------------------------------------
--- Character level dropdown items (1 to MAX_LEVEL, descending never changes
--- at runtime) -- built once instead of every frame the dropdown is shown.
+-- Character level dropdown items "1".."MAX_LEVEL"; index i is level i.
 -----------------------------------------------------------------------
 local levelItems = {};
 for i = 1, jobsData.MAX_LEVEL do
@@ -56,8 +55,6 @@ end
 
 -- Resolves an element filter token (e.g. cache.filters.scElement, lowercase)
 -- to its dropdown index, or 1 ("Any") if absent/unrecognized.
--- Shared by OpenFromCli and DrawWindow's one-time init -- previously
--- duplicated byte-for-byte in both places.
 local function resolveElementIndex(elementToken)
     if not elementToken then
         return 1;
@@ -361,8 +358,8 @@ local function buildFavWsItems(jobState, side)
         end
         table.sort(selectedWeapons);
     end
-    local cacheKey = (jobId or '') .. '|' .. (subJobId or '') .. '|' .. tostring(charLevel) ..
-                     '|' .. tostring(state.filters.showRema) .. '|' .. table.concat(selectedWeapons, ',');
+    local cacheKey = string.format('%s|%s|%s|%s|%s', jobId or '', subJobId or '', tostring(charLevel),
+        tostring(state.filters.showRema), table.concat(selectedWeapons, ','));
 
     local cached = favWsItemsCache[side];
     if cached and cached.key == cacheKey then
@@ -474,7 +471,6 @@ local function buildCalculationRequest()
         validateFavWs(2);
     end
 
-    -- Get favorite WS names directly from state (much simpler now!)
     local favWs1 = state.filters.enableFavWs and state.jobs[1].favWsName or nil;
     local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
 
@@ -792,7 +788,7 @@ local function drawFiltersTab()
 
     -- Set Defaults button
     if uiTheme.button('Set as defaults', buttonWidth, 'primary') then
-        local def = (cache and cache.settings and cache.settings.default) or {};
+        local def = cache.settings.default or {};
         def.scLevel = state.filters.scLevel;
         def.both  = state.filters.both;
         def.includeSubjob = state.filters.includeSubjob;

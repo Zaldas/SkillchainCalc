@@ -7,8 +7,8 @@
     - SMN Blood Pacts
 
     Auto-translate format:
-    - Phrase bytes: \xFD\x02\x02\xXX\xYY\xFD (category/index encoding)
-    - Display brackets: \xEF\x27 (open) and \xEF\x28 (close)
+    - Phrase bytes: \xFD\x02\x02\xXX\xYY\xFD (category/index encoding); the
+      client draws the auto-translate brackets itself
 ]]
 
 local Autotranslate = {};

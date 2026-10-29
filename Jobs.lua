@@ -1,9 +1,9 @@
--- Jobs.lua – Era/Horizon style job data
--- For retail, change MAX_LEVEL to 99 and uncomment ToAU/WotG/SoA jobs.
+-- Jobs.lua – Era/Horizon style job data (the retail build ships retail/Jobs.lua instead)
 --
 -- Only includes weapon types that exist in skills.lua:
 -- h2h, dagger, sword, gs (Great Sword), ga (Great Axe), axe, scythe,
--- polearm, katana, gkt (Great Katana), staff, club, archery, mm (Marksmanship).
+-- polearm, katana, gkt (Great Katana), staff, club, archery, mm (Marksmanship),
+-- avatar (SMN pets), blu (Blue Magic).
 
 local jobs = {}
 
@@ -32,10 +32,6 @@ jobs.aliases = {
     blu = 'BLU', bluemage    = 'BLU',
     cor = 'COR', corsair     = 'COR',
     pup = 'PUP', puppetmaster = 'PUP',
-
-    -- WotG jobs – uncomment when WotG releases on HorizonXI
-    -- dnc = 'DNC', dancer      = 'DNC',
-    -- sch = 'SCH', scholar     = 'SCH',
 }
 
 jobs.WAR = {
@@ -57,7 +53,6 @@ jobs.WAR = {
     },
 }
 
--- Primary Weapons per Job
 jobs.MNK = {
     defaultSubjob = 'WAR',
     primaryWeapons = { 'h2h' },
@@ -269,31 +264,6 @@ jobs.PUP = {
         harlequin  = { melee = 'B-', ranged = 'B-' },  -- hybrid frame
     },
 }
-
------------------------------------------------------------------------
--- WotG jobs – uncomment when WotG releases on HorizonXI
------------------------------------------------------------------------
---[[
-jobs.DNC = {
-    defaultSubjob = 'NIN',
-    primaryWeapons = { 'dagger' },
-    weapons = {
-        dagger = { skillRank = 'A+' },
-        sword  = { skillRank = 'D' },
-        h2h    = { skillRank = 'D' },
-    },
-}
-
-jobs.SCH = {
-    defaultSubjob = 'RDM',
-    primaryWeapons = { 'staff', 'club' },
-    weapons = {
-        staff  = { skillRank = 'C+' },
-        club   = { skillRank = 'C+' },
-        dagger = { skillRank = 'D' },
-    },
-}
-]]
 
 -----------------------------------------------------------------------
 -- Helper function to get default subjob for a job

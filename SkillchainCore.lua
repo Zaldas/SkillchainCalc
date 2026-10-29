@@ -10,11 +10,8 @@ local SkillchainCore = {};
 
 SkillchainCore.REMA_SUFFIX = '\xC2\xB2'; -- UTF-8 encoding of ² (superscript 2) — marks REMA weapon skills, display only
 
--- Canonical WS-name -> is-REMA lookup, built once from Skills.lua's rema=true
--- field (the ² suffix in `en` is purely cosmetic; this is the source of truth
--- for filtering). Exported so callers that only have a WS name string (not
--- the ws table itself, e.g. resolved combo results) don't have to re-scan
--- Skills.lua or sniff the display suffix themselves.
+-- WS-name -> is-REMA lookup built from Skills.lua's rema=true field (the ²
+-- suffix in `en` is display only), for callers that hold only a WS name.
 local remaWsNameSet = {};
 do
     for weaponType, weaponSkills in pairs(skills) do
@@ -32,9 +29,7 @@ function SkillchainCore.IsRemaWsName(wsName)
     return wsName ~= nil and remaWsNameSet[wsName] == true;
 end
 
--- Get skill cap from rank and level. Exported so other modules (e.g. the
--- Calculator's Fav WS dropdown) don't reimplement this against SkillRanks
--- directly and risk drifting from the calculation's own eligibility rules.
+-- Skill cap for a weapon rank at a level (nil level = MAX_LEVEL); 999 for an unknown rank.
 function SkillchainCore.GetSkillCapFromRank(skillRank, level)
     if not skillRank or not SkillRanks.Cap[skillRank] then
         return 999;
@@ -131,16 +126,6 @@ local function appendFrameSkills(jobId, job, weaponFilter, charLevel, result)
 
     return result;
 end
-
--- ============================================================================
--- Parses tokens in the following formats:
---   "nin"                    -> NIN job, no weapons, no subjob
---   "nin/war"                -> NIN main, WAR subjob, no weapons
---   "nin:dagger"             -> NIN job, dagger only, no subjob
---   "nin:dagger,katana"      -> NIN job, dagger+katana, no subjob
---   "nin/war:dagger"         -> NIN/WAR, dagger only
---   "nin/war:dagger,katana"  -> NIN/WAR, dagger+katana
--- ============================================================================
 
 -- ============================================================================
 -- Job and Weapon Utilities
@@ -337,8 +322,13 @@ local function parseJobPart(jobString)
     end
 end
 
--- Public: Parse a complete token into its components
--- This is the unified token parser that handles all formats
+-- Public: Parse a complete token into its components. Formats:
+--   "nin"                    -> NIN job, no weapons, no subjob
+--   "nin/war"                -> NIN main, WAR subjob, no weapons
+--   "nin:dagger"             -> NIN job, dagger only, no subjob
+--   "nin:dagger,katana"      -> NIN job, dagger+katana, no subjob
+--   "nin/war:dagger"         -> NIN/WAR, dagger only
+--   "nin/war:dagger,katana"  -> NIN/WAR, dagger+katana
 function SkillchainCore.GetJobAndWeaponsFromToken(token)
     if not token or type(token) ~= 'string' then
         return nil, nil, nil;
@@ -552,7 +542,7 @@ local function findSkillLevel(name)
         return 0;
     end
 
-    -- 2) Weaponskill – O(1) lookup instead of linear scan
+    -- 2) Weaponskill
     return wsNameToSortIndex[name] or 0;
 end
 
@@ -645,14 +635,9 @@ local function buildCombinations(list1, list2, opts)
         end
     end
 
-    -- Most L/D pairs are bidirectional, but not all: first-match resolution can
-    -- intercept one direction with a lower-tier chain. Ground Strike
-    -- [Fragmentation, Distortion] → Evisceration [Gravitation, Transfixion] is
-    -- Darkness, but the reverse hits Fragmentation×Gravitation first and yields
-    -- Fragmentation. Merge into one ↔ row only when BOTH directions actually
-    -- resolve to the same chain; otherwise keep the direction that resolved.
-    -- `seen` holds every combo produced by both passes, so it answers this
-    -- directly -- the reverse pass has already run by this point.
+    -- A Light/Darkness pair merges into one ↔ row only when both directions
+    -- resolve to that chain; first-match resolution can give the reverse a
+    -- lower tier (knowledge/skillchain-resolution.md). `seen` holds both passes.
     if both then
         local ldSeen    = {};
         local filtered  = {};
@@ -794,7 +779,7 @@ function SkillchainCore.IsChainName(token)
 end
 
 -- Consolidated single-pass filter: applies all filters in one iteration
--- filters: {scLevel, scElement, favWs1, favWs2, both}
+-- filters: {scLevel, scElement, favWs1, favWs2, both, showRema, charLevel}
 function SkillchainCore.FilterSkillchains(combinations, filters)
     if not filters then
         return combinations;

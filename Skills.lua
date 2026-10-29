@@ -479,7 +479,7 @@ skills.ChainInfo = T{
     },
 };
 
--- IMGUI RGB color format {red, green, blue, alpha}
+-- Chain header colours as 0xAARRGGBB (gdifonts font colour)
 local colors = {};   -- Color codes by Sammeh
 colors.Light =         0xFFFFFFFF;
 colors.Dark =          0xFF616161;
@@ -516,10 +516,10 @@ local displayOrder = {
 function skills.GetDisplayIndex(chain)
     for i, v in ipairs(displayOrder) do
         if v == chain then
-            return i
+            return i;
         end
     end
-    return #displayOrder + 1 -- Default to the end if not found
+    return #displayOrder + 1; -- Default to the end if not found
 end
 
 return skills;

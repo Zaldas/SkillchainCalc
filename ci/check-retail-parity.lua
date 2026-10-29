@@ -7,11 +7,8 @@
 -- This only checks key existence, not values -- retail data is expected to
 -- diverge in skill ranks/levels, and retail is expected to have *extra*
 -- top-level keys (DNC/SCH/GEO/RUN) for jobs not yet active on HorizonXI.
--- It is not expected to be missing anything the shared code relies on. This
--- is exactly the class of bug that shipped a broken retail build for two
--- release cycles: jobs.IdMap was added to the shared Jobs.lua but never
--- backported to retail/Jobs.lua, and the retail release zip overwrites
--- Jobs.lua wholesale rather than merging.
+-- It must not be missing anything the shared code relies on: the retail
+-- release zip overwrites Jobs.lua/Skills.lua wholesale rather than merging.
 --
 -- Skills.lua: main models PUP automaton weapon skills per-frame
 -- (skills.frameMelee/skills.frameRanged, keyed off jobs.PUP.frames), while

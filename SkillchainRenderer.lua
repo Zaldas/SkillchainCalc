@@ -320,9 +320,7 @@ local function comboClickTest(mouseX, mouseY)
         return nil;
     end
 
-    -- Hit-test against each combo's cached {x, y, w, h} (set at render/updateAnchor
-    -- time) instead of reading gdifonts' internal .settings fields or calling
-    -- get_texture() here -- keeps this addon decoupled from the lib's internals.
+    -- Hit-test against each combo's cached {x, y, w, h}, set at render/UpdateAnchor time.
     for _, comboData in pairs(gdiObjects.comboMap) do
         if mouseX >= comboData.x and mouseX <= comboData.x + comboData.w
             and mouseY >= comboData.y and mouseY <= comboData.y + comboData.h then
@@ -400,7 +398,6 @@ function SkillchainRenderer.HandleMouse(e, settings)
         end
     -- Start dragging on left mouse button down (message 513)
     elseif (e.message == 513) then
-        -- Pass coordinates directly to avoid table allocation
         if dragHitTest(e.x, e.y) then
             dragState.dragActive = true;
             dragState.dragPosition[1] = e.x;
@@ -672,7 +669,7 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
     gdiObjects.bgRect.w = totalWidth;
     gdiObjects.bgRect.h = totalHeight;
 
-    -- Shrink pool if oversized (do this after a delay to avoid thrashing)
+    -- Shrink only when 50+ objects over the last render's use, to avoid thrashing
     if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then
         shrinkPool();
     end

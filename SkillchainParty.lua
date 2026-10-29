@@ -452,9 +452,8 @@ local function drawMemberRow(member, index, contentWidth)
     imgui.SetCursorPosX(contentWidth - comboWidth);
     imgui.PushItemWidth(comboWidth);
 
-    -- jobId is fixed once loadParty() seeds this member row, so the option list
-    -- never changes for this member -- cache it on the member instead of
-    -- rebuilding a table every frame.
+    -- jobId is fixed once loadParty() seeds this member row, so the option
+    -- list is cached on the member.
     local weaponOptions = member.weaponOptions;
     if not weaponOptions then
         weaponOptions = buildWeaponOptions(member.jobId);
@@ -535,9 +534,8 @@ local function drawPartyTab(contentWidth)
     -----------------------------------------------------------------------
     -- Party section
     -----------------------------------------------------------------------
-    -- Only group into "Party N" sections when more than one alliance
-    -- sub-party is actually present; a normal (non-alliance) party renders
-    -- exactly as before, with a single plain "Party" header.
+    -- "Party N" sections only when more than one alliance sub-party is present;
+    -- a normal party gets a single plain "Party" header.
     local multipleParties = false;
     if partyState.loaded and #partyState.members > 0 then
         for _, member in ipairs(partyState.members) do
@@ -631,7 +629,7 @@ local function drawPartyTab(contentWidth)
                 for i, member in ipairs(partyState.members) do  -- display-only rows have no REMA state
                     if not member.outOfZone then
                         local hr = { member.hasRema or false };
-                        if imgui.Checkbox(member.name .. '##rema' .. i, hr) then
+                        if imgui.Checkbox(string.format('%s##rema%d', member.name, i), hr) then
                             member.hasRema = hr[1];
                             if not hr[1] and SkillchainCore.IsRemaWsName(member.favWs) then
                                 member.favWs = nil;
@@ -674,7 +672,7 @@ local function drawPartyTab(contentWidth)
                             if member.favWs == nil then imgui.SetItemDefaultFocus(); end
                             for _, ws in ipairs(wsList or {}) do
                                 local selected = (member.favWs == ws.en);
-                                if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
+                                if imgui.Selectable(string.format('%s##fw%d', ws.en, i), selected) then
                                     member.favWs = ws.en;
                                 end
                                 if selected then imgui.SetItemDefaultFocus(); end
@@ -775,13 +773,7 @@ local function drawSettingsTab(contentWidth)
             for _, weaponKey in ipairs(remaWeaponTypes) do
                 local owned = { remaSettings[weaponKey] == true };
                 if imgui.Checkbox(weaponDisplayNames[weaponKey] or weaponKey, owned) then
-                    if cache and cache.settings and cache.settings.localPlayer then
-                        if owned[1] then
-                            cache.settings.localPlayer.remaWeapons[weaponKey] = true;
-                        else
-                            cache.settings.localPlayer.remaWeapons[weaponKey] = nil;
-                        end
-                    end
+                    remaSettings[weaponKey] = owned[1] or nil;
                     request = request or {};
                     request.saveSettings = true;
                 end
