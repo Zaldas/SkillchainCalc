@@ -150,6 +150,7 @@ local cache = {
     -- Application settings and state
     settings = sccSettings,
     resultsSource = nil,      -- 'calc' or 'party': which window produced the last results
+    cliCommand = nil,         -- Command text while a weapon-only CLI run locks the Calculator
 };
 
 local function applyDefaultsToCache()
@@ -170,6 +171,7 @@ local function resetCacheFull()
     cache.step.enabled = false;
     cache.step.filter = nil;
     cache.step.filterType = nil;
+    cache.cliCommand = nil;
     applyDefaultsToCache();
 end
 
@@ -181,12 +183,22 @@ local function closeAllWindows()
     resetCacheFull();
 end
 
+-- Step results stand alone; opening an input window clears them.
+local function clearStepResults()
+    if cache.step.enabled then
+        SkillchainRenderer.Clear();
+        resetCacheFull();
+    end
+end
+
 local function showCalculator()
+    clearStepResults();
     SkillchainParty.SetVisible(false);
     SkillchainGUI.SetVisible(true);
 end
 
 local function showParty()
+    clearStepResults();
     SkillchainGUI.SetVisible(false);
     SkillchainParty.SetVisible(true);
 end
@@ -366,6 +378,11 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             cache.step.enabled = false;
             parsePartySkillchains(partyReq.members, partyReq.partyFilters);
         end
+    end
+
+    -- The CLI lock lasts only while the Calculator is open.
+    if not SkillchainGUI.IsVisible() then
+        cache.cliCommand = nil;
     end
 
     if SkillchainGUI.IsVisible() then
@@ -645,6 +662,21 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
+    -- An invalid token leaves the windows and displayed results untouched.
+    if not isStep then
+        local invalid = {};
+        if not SkillchainCore.ResolveTokenToSkills(token1) then
+            table.insert(invalid, token1);
+        end
+        if token2 ~= token1 and not SkillchainCore.ResolveTokenToSkills(token2) then
+            table.insert(invalid, token2);
+        end
+        if #invalid > 0 then
+            err(string.format('Invalid weapon/job token: %s', table.concat(invalid, ', ')));
+            return;
+        end
+    end
+
     applyDefaultsToCache();
     -- Mirrors the Calculator: subjobs are on when the default says so or either
     -- token names one, and a side without one then uses its default subjob.
@@ -658,6 +690,12 @@ ashita.events.register('command', 'command_cb', function(e)
 
     cache.jobs.token1 = token1;
     cache.jobs.token2 = token2;
+    -- A weapon-only token has no job to select, so the Calculator shows the command instead.
+    if not isStep and not (job1 and job2) then
+        cache.cliCommand = table.concat(args, ' ');
+    else
+        cache.cliCommand = nil;
+    end
     -- Fav WS is a Calculator-only filter; a CLI run starts without one.
     cache.jobs.favWs1 = nil;
     cache.jobs.favWs2 = nil;

@@ -134,6 +134,8 @@ The results window appears after any calculation and displays all valid skillcha
 
 The CLI lets you run calculations directly. The Calculator window opens alongside the results.
 
+When either token is weapon-only (e.g. `/scc katana sword`), the Calculator tab shows the command instead of the job pickers. The Filters tab still recalculates it (custom level, subjob and favorite WS are hidden; a `lvl:` in the command still applies), and **Clear** returns the window to the job pickers.
+
 Calculations take two **tokens** — one per job. A token describes the job, an optional subjob, and an optional weapon restriction:
 
 ```

@@ -118,12 +118,18 @@ local state = {
 -- Module-level cache reference (set externally via SetCache)
 local cache = nil;
 
--- Syncs the two GUI-only filter fields (never mirrored into cache.filters)
--- from stored defaults. Shared by Reset Filters, OpenFromCli, and DrawWindow's
--- one-time init -- all three read these two fields from `def` identically.
+-- True while a weapon-only CLI run is displayed; its tokens come from cache.jobs.
+local function isCliLocked()
+    return cache ~= nil and cache.cliCommand ~= nil;
+end
+
+-- Syncs the GUI-only filter fields (never mirrored into cache.filters) from
+-- stored defaults, with the level back at max. Shared by Reset Filters,
+-- OpenFromCli, and DrawWindow's one-time init.
 local function syncGuiOnlyDefaults(def)
     state.filters.enableFavWs = def.enableFavWs or false;
     state.customLevel.enabled = def.useCharLevel or false;
+    state.customLevel.value   = jobsData.MAX_LEVEL;
 end
 
 -----------------------------------------------------------------------
@@ -453,26 +459,33 @@ local function validateFavWs(side)
     return items;
 end
 
--- Helper function to build calculation request from current state
+-- Helper function to build calculation request from current state, or the locked CLI tokens
 local function buildCalculationRequest()
-    local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
-    local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
+    local locked = isCliLocked();
+    local token1, token2;
+    if locked then
+        token1, token2 = cache.jobs.token1, cache.jobs.token2;
+    else
+        local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
+        local job2Id = jobItems[state.jobs[2].index] or jobItems[2];
 
-    local job1SubId = state.filters.includeSubjob and jobItems[state.jobs[1].subIndex] or nil;
-    local job2SubId = state.filters.includeSubjob and jobItems[state.jobs[2].subIndex] or nil;
+        local job1SubId = state.filters.includeSubjob and jobItems[state.jobs[1].subIndex] or nil;
+        local job2SubId = state.filters.includeSubjob and jobItems[state.jobs[2].subIndex] or nil;
 
-    local token1 = SkillchainCore.BuildTokenFromSelection(job1Id, state.jobs[1].weapons, job1SubId);
-    local token2 = SkillchainCore.BuildTokenFromSelection(job2Id, state.jobs[2].weapons, job2SubId);
+        token1 = SkillchainCore.BuildTokenFromSelection(job1Id, state.jobs[1].weapons, job1SubId);
+        token2 = SkillchainCore.BuildTokenFromSelection(job2Id, state.jobs[2].weapons, job2SubId);
+    end
 
     local elemTok = elementTokens[state.filters.elementIndex] or '';
 
-    if state.filters.enableFavWs then
+    local useFavWs = state.filters.enableFavWs and not locked;
+    if useFavWs then
         validateFavWs(1);
         validateFavWs(2);
     end
 
-    local favWs1 = state.filters.enableFavWs and state.jobs[1].favWsName or nil;
-    local favWs2 = state.filters.enableFavWs and state.jobs[2].favWsName or nil;
+    local favWs1 = useFavWs and state.jobs[1].favWsName or nil;
+    local favWs2 = useFavWs and state.jobs[2].favWsName or nil;
 
     return {
         token1    = token1,
@@ -518,7 +531,37 @@ local function drawFavWsCombo(side, comboId)
     imgui.PopItemWidth();
 end
 
+-- Clear resets state.initialized so the filters re-sync from defaults.
+local function drawCliCommandTab()
+    uiTheme.header('CLI Command');
+
+    imgui.Indent(uiTheme.indent);
+    imgui.TextWrapped(cache.cliCommand);
+    imgui.Unindent(uiTheme.indent);
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    local availWidth  = imgui.GetContentRegionAvail();
+    local buttonWidth = 120;
+    if availWidth > buttonWidth then
+        imgui.SetCursorPosX(imgui.GetCursorPosX() + ((availWidth - buttonWidth) / 2));
+    end
+
+    if uiTheme.button('Clear', buttonWidth, 'primary') then
+        state.initialized = false;
+        return { clear = true };
+    end
+
+    return nil;
+end
+
 local function drawCalculatorTab()
+    if isCliLocked() then
+        return drawCliCommandTab();
+    end
+
     local request = nil;
 
     -----------------------------------------------------------------------
@@ -715,44 +758,48 @@ local function drawFiltersTab()
 
     imgui.Indent(uiTheme.indent);
 
-    -- Custom Level Checkbox
-    local useCustomLevel = { state.customLevel.enabled };
-    if imgui.Checkbox('Enable custom character level', useCustomLevel) then
-        state.customLevel.enabled = useCustomLevel[1];
-    end
-    uiTheme.helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
+    -- Level, subjob and Fav WS add controls to the job-picker view, which a
+    -- CLI-locked run replaces; a CLI lvl: still applies.
+    if not isCliLocked() then
+        -- Custom Level Checkbox
+        local useCustomLevel = { state.customLevel.enabled };
+        if imgui.Checkbox('Enable custom character level', useCustomLevel) then
+            state.customLevel.enabled = useCustomLevel[1];
+        end
+        uiTheme.helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
-    -- Include Subjob Checkbox
-    local includeSubjob = { state.filters.includeSubjob };
-    if imgui.Checkbox('Enable subjob in calculator', includeSubjob) then
-        local wasEnabled = state.filters.includeSubjob;
-        state.filters.includeSubjob = includeSubjob[1];
+        -- Include Subjob Checkbox
+        local includeSubjob = { state.filters.includeSubjob };
+        if imgui.Checkbox('Enable subjob in calculator', includeSubjob) then
+            local wasEnabled = state.filters.includeSubjob;
+            state.filters.includeSubjob = includeSubjob[1];
 
-        -- When first enabling subjobs, populate default subjobs for both sides
-        if not wasEnabled and state.filters.includeSubjob then
-            for i = 1, 2 do
-                local jobId = jobItems[state.jobs[i].index];
-                if jobId then
-                    applyDefaultSubjob(state.jobs[i], jobId);
+            -- When first enabling subjobs, populate default subjobs for both sides
+            if not wasEnabled and state.filters.includeSubjob then
+                for i = 1, 2 do
+                    local jobId = jobItems[state.jobs[i].index];
+                    if jobId then
+                        applyDefaultSubjob(state.jobs[i], jobId);
+                    end
                 end
             end
         end
-    end
-    uiTheme.helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
+        uiTheme.helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
 
-    -- Enable Favorite WS Checkbox
-    local enableFavWs = { state.filters.enableFavWs };
-    if imgui.Checkbox('Enable favorite WS in calculator', enableFavWs) then
-        local wasEnabled = state.filters.enableFavWs;
-        state.filters.enableFavWs = enableFavWs[1];
+        -- Enable Favorite WS Checkbox
+        local enableFavWs = { state.filters.enableFavWs };
+        if imgui.Checkbox('Enable favorite WS in calculator', enableFavWs) then
+            local wasEnabled = state.filters.enableFavWs;
+            state.filters.enableFavWs = enableFavWs[1];
 
-        -- Reset favorite WS when disabling the filter (clean slate for next time)
-        if wasEnabled and not state.filters.enableFavWs then
-            state.jobs[1].favWsName = nil;
-            state.jobs[2].favWsName = nil;
+            -- Reset favorite WS when disabling the filter (clean slate for next time)
+            if wasEnabled and not state.filters.enableFavWs then
+                state.jobs[1].favWsName = nil;
+                state.jobs[2].favWsName = nil;
+            end
         end
+        uiTheme.helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');
     end
-    uiTheme.helpMarker('When enabled, adds favorite weaponskill dropdowns in Calculator tab.\nThis allows filtering results to show only specific weapon skills.');
 
     -- Both Directions Checkbox
     local both = { state.filters.both };
@@ -903,11 +950,14 @@ function SkillchainGUI.OpenFromCli()
 
     -- Jobs + weapons from token1 / token2
     -- These may set state.filters.includeSubjob = true if tokens contain explicit subjobs
-    if cache.jobs.token1 then
-        applyTokenToSide(1, cache.jobs.token1);
-    end
-    if cache.jobs.token2 then
-        applyTokenToSide(2, cache.jobs.token2);
+    -- Skipped when locked: a subjob token would turn on the hidden subjob toggle, which Set as defaults saves.
+    if not isCliLocked() then
+        if cache.jobs.token1 then
+            applyTokenToSide(1, cache.jobs.token1);
+        end
+        if cache.jobs.token2 then
+            applyTokenToSide(2, cache.jobs.token2);
+        end
     end
 
     -- Custom level from CLI, falling back to defaults (also syncs enableFavWs)
