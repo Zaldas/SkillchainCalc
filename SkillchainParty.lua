@@ -9,7 +9,6 @@ local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainUI = require('SkillchainUI');
 local uiTheme = require('libs/uiTheme');
-local SkillchainRenderer = require('SkillchainRenderer');
 
 local SkillchainParty = {};
 
@@ -32,8 +31,7 @@ local partyScFilters = {
 -- Per-element options: every chain whose burst list includes the element.
 -- Appended after the family options so saved scFilterIndex values keep their meaning.
 do
-    local elements = { 'Fire', 'Ice', 'Wind', 'Earth', 'Lightning', 'Water', 'Light', 'Dark' };
-    for _, elem in ipairs(elements) do
+    for _, elem in ipairs(SkillchainCore.BURST_ELEMENTS) do
         local chains = {};
         for name, info in pairs(skills.ChainInfo or {}) do
             if type(info) == 'table' and type(info.burst) == 'table' then
@@ -488,6 +486,21 @@ end
 -----------------------------------------------------------------------
 local showWindow = { false };
 
+-- Draws a ▲/▼ collapsible-panel button with a wrapped hover tooltip.
+-- Returns true when clicked; the caller flips its own open flag.
+local function drawPanelToggle(label, isOpen, tooltip)
+    local arrow = isOpen and '\xe2\x96\xb2' or '\xe2\x96\xbc';
+    local clicked = uiTheme.centeredButton(string.format('%s %s', arrow, label), 'ghost');
+    if imgui.IsItemHovered() then
+        uiTheme.tooltipBegin();
+        imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
+        imgui.TextUnformatted(tooltip);
+        imgui.PopTextWrapPos();
+        uiTheme.tooltipEnd();
+    end
+    return clicked;
+end
+
 -- Draws the Party tab body: Update/Clear buttons, member list, SC/REMA/Fav WS
 -- filters, and the Calculate button. Returns a request table or nil.
 local function drawPartyTab(contentWidth)
@@ -606,19 +619,10 @@ local function drawPartyTab(contentWidth)
         if partyState.filters.showRema then
             imgui.Spacing();
 
-            do
-                local remaLabel = partyState.filters.remaOpen and '\xe2\x96\xb2 REMA' or '\xe2\x96\xbc REMA';
-                if uiTheme.centeredButton(remaLabel, 'ghost') then
-                    partyState.filters.remaOpen = not partyState.filters.remaOpen;
-                    if partyState.filters.remaOpen then partyState.filters.favWsOpen = false; end
-                end
-                if imgui.IsItemHovered() then
-                    uiTheme.tooltipBegin();
-                    imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                    imgui.TextUnformatted('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (' .. SkillchainCore.REMA_SUFFIX .. ') in the calculation.');
-                    imgui.PopTextWrapPos();
-                    uiTheme.tooltipEnd();
-                end
+            local remaTooltip = string.format('REMA: Relic, Empyrean, Mythic, or Aeonic weapons. Check a player\'s name here if they have a REMA weapon to include those weapon skills (%s) in the calculation.', SkillchainCore.REMA_SUFFIX);
+            if drawPanelToggle('REMA', partyState.filters.remaOpen, remaTooltip) then
+                partyState.filters.remaOpen = not partyState.filters.remaOpen;
+                if partyState.filters.remaOpen then partyState.filters.favWsOpen = false; end
             end
             if partyState.filters.remaOpen then
                 imgui.Indent(contentWidth * 0.15);
@@ -640,19 +644,10 @@ local function drawPartyTab(contentWidth)
         if partyState.filters.showFavWs then
             imgui.Spacing();
 
-            do
-                local favWsLabel = partyState.filters.favWsOpen and '\xe2\x96\xb2 Fav WS' or '\xe2\x96\xbc Fav WS';
-                if uiTheme.centeredButton(favWsLabel, 'ghost') then
-                    partyState.filters.favWsOpen = not partyState.filters.favWsOpen;
-                    if partyState.filters.favWsOpen then partyState.filters.remaOpen = false; end
-                end
-                if imgui.IsItemHovered() then
-                    uiTheme.tooltipBegin();
-                    imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                    imgui.TextUnformatted('Fav WS: Choose a preferred weapon skill per member. A member with a favored WS contributes only that WS to the calculation.');
-                    imgui.PopTextWrapPos();
-                    uiTheme.tooltipEnd();
-                end
+            if drawPanelToggle('Fav WS', partyState.filters.favWsOpen,
+                'Fav WS: Choose a preferred weapon skill per member. A member with a favored WS contributes only that WS to the calculation.') then
+                partyState.filters.favWsOpen = not partyState.filters.favWsOpen;
+                if partyState.filters.favWsOpen then partyState.filters.remaOpen = false; end
             end
             if partyState.filters.favWsOpen then
                 imgui.Indent(contentWidth * 0.12);
@@ -669,27 +664,18 @@ local function drawPartyTab(contentWidth)
                         elseif imgui.BeginCombo('##favws' .. i, curLabel) then
                             -- Only resolve the skill list while the combo is actually
                             -- open, not every frame the Fav WS panel is expanded.
-                            local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
-                            local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, SkillchainCore.GetMemberSkillLevel(member));
+                            local wsList = SkillchainCore.BuildMemberSkillList(member, partyState.filters.showRema);
 
                             if imgui.Selectable('(Any)', member.favWs == nil) then
                                 member.favWs = nil;
                             end
                             if member.favWs == nil then imgui.SetItemDefaultFocus(); end
-                            if wsList then
-                                -- Real REMA weapons can't be wielded below level 75,
-                                -- regardless of the member's REMA-ownership checkbox.
-                                local memberRemaAllowed = partyState.filters.showRema and member.hasRema and (member.level or 0) >= 75;
-                                for _, ws in ipairs(wsList) do
-                                    local isRema = ws.rema == true;
-                                    if not isRema or memberRemaAllowed then
-                                        local selected = (member.favWs == ws.en);
-                                        if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
-                                            member.favWs = ws.en;
-                                        end
-                                        if selected then imgui.SetItemDefaultFocus(); end
-                                    end
+                            for _, ws in ipairs(wsList or {}) do
+                                local selected = (member.favWs == ws.en);
+                                if imgui.Selectable(ws.en .. '##fw' .. i, selected) then
+                                    member.favWs = ws.en;
                                 end
+                                if selected then imgui.SetItemDefaultFocus(); end
                             end
                             imgui.EndCombo();
                         end
@@ -731,46 +717,10 @@ end
 local function drawSettingsTab(contentWidth)
     local request = nil;
 
-    uiTheme.header('Results Window');
-    imgui.Spacing();
-
-    imgui.Indent(uiTheme.indent);
-    if cache and cache.settings and cache.settings.anchor then
-        local anchor = cache.settings.anchor;
-        local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
-
-        local enableDrag = { cache.settings.enableDrag == true };
-        if imgui.Checkbox('Enable mouse drag', enableDrag) then
-            cache.settings.enableDrag = enableDrag[1];
-            SkillchainRenderer.SetEnableDrag(enableDrag[1]);
-            request = request or {};
-            request.anchorChanged = true;
-        end
-        uiTheme.helpMarker('When enabled, click and drag the results window to move it.');
-
-        local x = { anchor.x or 0 };
-        if imgui.SliderInt('X', x, limits.minX, limits.maxX) then
-            anchor.x = x[1];
-            SkillchainRenderer.UpdateAnchor(cache.settings);
-        end
-        if imgui.IsItemDeactivatedAfterEdit() then
-            request = request or {};
-            request.anchorChanged = true;
-        end
-
-        local y = { anchor.y or 0 };
-        if imgui.SliderInt('Y', y, limits.minY, limits.maxY) then
-            anchor.y = y[1];
-            SkillchainRenderer.UpdateAnchor(cache.settings);
-        end
-        if imgui.IsItemDeactivatedAfterEdit() then
-            request = request or {};
-            request.anchorChanged = true;
-        end
-    else
-        imgui.TextDisabled('Settings not available.');
+    if SkillchainUI.drawResultsWindowSettings(cache and cache.settings) then
+        request = request or {};
+        request.anchorChanged = true;
     end
-    imgui.Unindent(uiTheme.indent);
 
     imgui.Spacing();
 
@@ -818,18 +768,9 @@ local function drawSettingsTab(contentWidth)
         local remaSettings = (cache and cache.settings and cache.settings.localPlayer and
                               cache.settings.localPlayer.remaWeapons) or {};
 
-        local remaToggleLabel = partyState.filters.localRemaOpen
-            and '\xe2\x96\xb2 REMA weapons'
-            or  '\xe2\x96\xbc REMA weapons';
-        if uiTheme.centeredButton(remaToggleLabel, 'ghost') then
+        if drawPanelToggle('REMA weapons', partyState.filters.localRemaOpen,
+            'Select weapon types you own a REMA (Relic/Empyrean/Mythic/Aeonic) weapon for. When loaded into the party list, your REMA status will be set automatically based on your equipped weapon.') then
             partyState.filters.localRemaOpen = not partyState.filters.localRemaOpen;
-        end
-        if imgui.IsItemHovered() then
-            uiTheme.tooltipBegin();
-            imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-            imgui.TextUnformatted('Select weapon types you own a REMA (Relic/Empyrean/Mythic/Aeonic) weapon for. When loaded into the party list, your REMA status will be set automatically based on your equipped weapon.');
-            imgui.PopTextWrapPos();
-            uiTheme.tooltipEnd();
         end
 
         if partyState.filters.localRemaOpen then

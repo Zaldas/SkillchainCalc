@@ -2,6 +2,8 @@
 -- Shared ImGui UI helpers for SkillchainCalc.
 
 local imgui = require('imgui');
+local uiTheme = require('libs/uiTheme');
+local SkillchainRenderer = require('SkillchainRenderer');
 
 local SkillchainUI = {};
 
@@ -25,6 +27,48 @@ function SkillchainUI.setupWindow(guiPos, fallbackPos)
         ImGuiWindowFlags_NoDocking or 0,
         ImGuiWindowFlags_AlwaysAutoResize
     );
+end
+
+-- Draws the "Results Window" settings section (drag toggle + X/Y anchor
+-- sliders). Slider moves update the renderer live; returns true when a
+-- change should be saved (drag toggled, or a slider released).
+function SkillchainUI.drawResultsWindowSettings(settings)
+    uiTheme.header('Results Window');
+    imgui.Spacing();
+
+    imgui.Indent(uiTheme.indent);
+    local changed = false;
+    if settings and settings.anchor then
+        local anchor = settings.anchor;
+        local limits = SkillchainRenderer.CalculateAnchorLimits(settings);
+
+        local enableDrag = { settings.enableDrag == true };
+        if imgui.Checkbox('Enable mouse drag', enableDrag) then
+            settings.enableDrag = enableDrag[1];
+            SkillchainRenderer.SetEnableDrag(enableDrag[1]);
+            changed = true;
+        end
+        uiTheme.helpMarker('When enabled, click and drag the results window to move it.');
+
+        local x = { anchor.x or 0 };
+        if imgui.SliderInt('X', x, limits.minX, limits.maxX) then
+            anchor.x = x[1];
+            SkillchainRenderer.UpdateAnchor(settings);
+        end
+        changed = imgui.IsItemDeactivatedAfterEdit() or changed;
+
+        local y = { anchor.y or 0 };
+        if imgui.SliderInt('Y', y, limits.minY, limits.maxY) then
+            anchor.y = y[1];
+            SkillchainRenderer.UpdateAnchor(settings);
+        end
+        changed = imgui.IsItemDeactivatedAfterEdit() or changed;
+    else
+        imgui.TextDisabled('Settings not available.');
+    end
+    imgui.Unindent(uiTheme.indent);
+
+    return changed;
 end
 
 -- Set while a window move is in progress and not yet reported.

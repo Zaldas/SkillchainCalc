@@ -281,7 +281,7 @@ local function parseSkillchains(isStep)
                 return;
             end
             err('Invalid property name "' .. tostring(cache.step.filter) .. '".');
-            msg('Valid properties: Compression, Detonation, Distortion, Fragmentation, Fusion, Gravitation, Impaction, Induration, Liquefaction, Reverberation, Scission, Transfixion, Light, Darkness');
+            msg('Valid properties: ' .. table.concat(SkillchainCore.CHAIN_NAMES, ', '));
             SkillchainRenderer.Clear();
             return;
         end
@@ -473,8 +473,8 @@ local function withDefaultSubjob(token)
     if not jobId or subJobId then
         return token;
     end
-    local defaultSubjob = jobs.GetDefaultSubjob(jobId);
-    if not defaultSubjob or defaultSubjob == jobId then
+    local defaultSubjob = SkillchainCore.ResolveSubjob(jobId, nil, true);
+    if not defaultSubjob then
         return token;
     end
     return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, defaultSubjob);
@@ -574,7 +574,7 @@ local function parseCommandArgs(args, startIdx)
             scElement = lower:sub(4);
             if not SkillchainCore.IsScFilterToken(scElement) then
                 err(('Invalid sc: value "%s".'):format(scElement));
-                msg('Use a burst element: fire, ice, wind, earth, lightning, water, light, dark.');
+                msg(string.format('Use a burst element: %s.', table.concat(SkillchainCore.BURST_ELEMENTS, ', '):lower()));
                 return false;
             end
         elseif lower:sub(1, 4) == 'lvl:' or lower:sub(1, 6) == 'level:' then

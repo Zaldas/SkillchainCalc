@@ -6,7 +6,6 @@ local imgui    = require('imgui');
 local jobsData = require('Jobs');
 local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
-local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainUI = require('SkillchainUI');
 local uiTheme = require('libs/uiTheme');
 
@@ -46,47 +45,13 @@ for i = 1, jobsData.MAX_LEVEL do
 end
 
 -----------------------------------------------------------------------
--- Dynamic element list from skills.ChainInfo using display order.
--- Only properties with a single burst element are considered.
--- Elements appear in the order of the first property that uses them.
+-- Burst element dropdown
 -----------------------------------------------------------------------
 local elementItems  = { 'Any' };
 local elementTokens = { '' };
-do
-    local chainInfo = skills.ChainInfo or {};
-    local props     = {};
-
-    -- Collect properties that have exactly one burst element.
-    for name, info in pairs(chainInfo) do
-        if type(info) == 'table' and type(info.burst) == 'table' and #info.burst == 1 then
-            table.insert(props, name);
-        end
-    end
-
-    -- Sort properties by display order (skills.GetDisplayIndex),
-    -- fall back to name if helper is missing / equal.
-    table.sort(props, function(a, b)
-        local ia = skills.GetDisplayIndex and skills.GetDisplayIndex(a) or 0;
-        local ib = skills.GetDisplayIndex and skills.GetDisplayIndex(b) or 0;
-        if ia ~= ib then
-            return ia < ib;
-        end
-        return a < b;
-    end)
-
-    -- Walk properties in display order and add their single burst element
-    -- once, in the order we encounter them.
-    local seen = {};
-    for _, name in ipairs(props) do
-        local info  = chainInfo[name];
-        local burst = info.burst;
-        local elem  = burst[1];  -- exactly one
-        if not seen[elem] then
-            seen[elem] = true;
-            table.insert(elementItems,  elem);
-            table.insert(elementTokens, elem:lower());
-        end
-    end
+for _, elem in ipairs(SkillchainCore.BURST_ELEMENTS) do
+    table.insert(elementItems,  elem);
+    table.insert(elementTokens, elem:lower());
 end
 
 -- Resolves an element filter token (e.g. cache.filters.scElement, lowercase)
@@ -245,6 +210,15 @@ local function findFavWsIndex(items, wsName)
     return 1;  -- Not found, default to "Any"
 end
 
+-- Sets a side's subjob dropdown to its job's default subjob, if it has one.
+local function applyDefaultSubjob(jobState, jobId)
+    local subJobId = SkillchainCore.ResolveSubjob(jobId, nil, true);
+    local subIdx = subJobId and findJobIndex(subJobId);
+    if subIdx then
+        jobState.subIndex = subIdx;
+    end
+end
+
 -- Ensure weapon selection is valid for a job state object
 -- jobState: reference to state.jobs[1] or state.jobs[2]
 local function ensureJobWeaponSelection(jobState)
@@ -260,15 +234,8 @@ local function ensureJobWeaponSelection(jobState)
         jobState.lastId = jobId;
         jobState.favWsName = nil;  -- Reset favorite WS when job changes
 
-        -- If subjobs are enabled, set the default subjob for this job
         if state.filters.includeSubjob then
-            local defaultSubjob = jobsData.GetDefaultSubjob(jobId);
-            if defaultSubjob then
-                local subIdx = findJobIndex(defaultSubjob);
-                if subIdx then
-                    jobState.subIndex = subIdx;
-                end
-            end
+            applyDefaultSubjob(jobState, jobId);
         end
     elseif type(jobState.weapons) ~= 'table' then
         -- Same job, but somehow no table yet.
@@ -292,23 +259,14 @@ local function applyTokenToSide(side, token)
         return;
     end
 
-    -- Ignore subjob if it's the same as main job
-    if subJobId and subJobId == jobId then
-        subJobId = nil;
+    -- A token naming a subjob other than the main job turns subjobs on.
+    if subJobId and subJobId ~= jobId then
+        state.filters.includeSubjob = true;
     end
 
     local idx = findJobIndex(jobId) or 1;
-    local subIdx = 1;
-    if subJobId then
-        subIdx = findJobIndex(subJobId) or 1;
-        state.filters.includeSubjob = true;  -- Auto-enable subjob filter if token contains subjob
-    elseif state.filters.includeSubjob then
-        -- No subjob in token, but subjobs are enabled - use default subjob
-        local defaultSubjob = jobsData.GetDefaultSubjob(jobId);
-        if defaultSubjob then
-            subIdx = findJobIndex(defaultSubjob) or 1;
-        end
-    end
+    local effectiveSub = SkillchainCore.ResolveSubjob(jobId, subJobId, state.filters.includeSubjob);
+    local subIdx = effectiveSub and findJobIndex(effectiveSub) or 1;
 
     local sel = {};
 
@@ -348,7 +306,7 @@ local function drawWeaponCheckboxes(jobState)
     local job = jobId and jobsData[jobId] or nil;
     if not job or not job.weapons then
         imgui.TextDisabled('(no weapons)');
-        return false;
+        return;
     end
 
     local list = SkillchainCore.GetWeaponsForJob(jobId);
@@ -365,8 +323,6 @@ local function drawWeaponCheckboxes(jobState)
     local baseX = imgui.GetCursorPosX();
     local indent = 5;
 
-    local weaponsChanged = false;
-
     for _, w in ipairs(list) do
         -- Move text + checkbox inward
         imgui.SetCursorPosX(baseX + indent);
@@ -379,15 +335,12 @@ local function drawWeaponCheckboxes(jobState)
 
         if imgui.Checkbox(w, checked) then
             jobState.weapons[w] = checked[1];
-            weaponsChanged = true;
         end
 
         if primarySet[w] then
             imgui.PopStyleColor();
         end
     end
-
-    return weaponsChanged;
 end
 
 -- Cached fav WS item lists; invalidated by cache key when job/weapons/level/showRema changes
@@ -456,12 +409,9 @@ local function buildFavWsItems(jobState, side)
 
                         local maxSkill = SkillchainCore.GetSkillCapFromRank(skillRank, charLevel);
 
-                        -- Check job restrictions and REMA filter -- real REMA
-                        -- weapons can't be wielded below level 75, regardless
-                        -- of the "Show REMA" toggle.
-                        local remaAllowed = state.filters.showRema and (charLevel or jobsData.MAX_LEVEL) >= 75;
+                        local remaAllowed = SkillchainCore.IsRemaAllowed(state.filters.showRema, charLevel);
                         if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
-                            and (remaAllowed or not SkillchainCore.IsRemaWsName(ws.en)) then
+                            and (remaAllowed or not ws.rema) then
                             table.insert(wsForWeapon, {
                                 name = ws.en,
                                 index = index
@@ -496,6 +446,17 @@ local function buildFavWsItems(jobState, side)
     return items;
 end
 
+-- Clears a side's fav WS when the current job/weapon/subjob/level/REMA
+-- selection no longer offers it. Returns that side's fav WS items.
+local function validateFavWs(side)
+    local jobState = state.jobs[side];
+    local items = buildFavWsItems(jobState, side);
+    if jobState.favWsName and findFavWsIndex(items, jobState.favWsName) == 1 then
+        jobState.favWsName = nil;
+    end
+    return items;
+end
+
 -- Helper function to build calculation request from current state
 local function buildCalculationRequest()
     local job1Id = jobItems[state.jobs[1].index] or jobItems[1];
@@ -509,15 +470,9 @@ local function buildCalculationRequest()
 
     local elemTok = elementTokens[state.filters.elementIndex] or '';
 
-    -- A fav WS the current job/weapon/subjob/level/REMA selection no longer
-    -- offers is cleared, as drawFavWsCombo does on the Calculator tab.
     if state.filters.enableFavWs then
-        for side = 1, 2 do
-            local jobState = state.jobs[side];
-            if jobState.favWsName and findFavWsIndex(buildFavWsItems(jobState, side), jobState.favWsName) == 1 then
-                jobState.favWsName = nil;
-            end
-        end
+        validateFavWs(1);
+        validateFavWs(2);
     end
 
     -- Get favorite WS names directly from state (much simpler now!)
@@ -550,20 +505,12 @@ local function ensureJobsAreDifferent(mainIdx, subIdx, prevMainIdx, prevSubIdx)
 end
 
 -- Draws the favorite-WS combo for one side (1 = opener/"from", 2 = closer/"to").
--- Handles index<->name conversion and the "stored WS no longer valid" reset.
--- Both sides previously duplicated this logic verbatim, which is exactly how
--- the ternary-with-nil favWsName reset bug shipped in two places at once.
 local function drawFavWsCombo(side, comboId)
     local jobState = state.jobs[side];
-    local items = buildFavWsItems(jobState, side);
+    local items = validateFavWs(side);
 
     imgui.PushItemWidth(JOB_COLUMN_WIDTH - 18);
     local index = findFavWsIndex(items, jobState.favWsName);
-
-    -- If we have a stored WS but it's not in the list (index = 1/"Any"), clear it permanently
-    if jobState.favWsName and index == 1 then
-        jobState.favWsName = nil;
-    end
 
     local newIndex = drawCombo(comboId, items, index);
     if newIndex ~= index then
@@ -590,8 +537,6 @@ local function drawCalculatorTab()
         imgui.SetNextItemWidth(uiTheme.comboWidth());
         state.customLevel.value = drawCombo('Level##charlevel', levelItems, state.customLevel.value);
         imgui.Unindent(uiTheme.indent);
-
-        -- No reset needed - if WS becomes unavailable, dropdown will auto-reset to "Any"
 
         imgui.Spacing();
     end
@@ -660,8 +605,6 @@ local function drawCalculatorTab()
 
         state.jobs[1].index, state.jobs[1].subIndex = ensureJobsAreDifferent(state.jobs[1].index, state.jobs[1].subIndex, prevJob1Index, prevJob1SubIndex);
         state.jobs[2].index, state.jobs[2].subIndex = ensureJobsAreDifferent(state.jobs[2].index, state.jobs[2].subIndex, prevJob2Index, prevJob2SubIndex);
-
-        -- No reset needed - if WS becomes unavailable due to subjob change, dropdown will auto-reset to "Any"
     end
 
     ensureJobWeaponSelection(state.jobs[1]);
@@ -682,7 +625,7 @@ local function drawCalculatorTab()
     -- Row 2: weapons under each job
     imgui.NextColumn();
     imgui.PushID('job1_weapons');
-    local job1WeaponsChanged = drawWeaponCheckboxes(state.jobs[1]);
+    drawWeaponCheckboxes(state.jobs[1]);
     imgui.PopID();
 
     imgui.NextColumn();
@@ -690,39 +633,10 @@ local function drawCalculatorTab()
 
     imgui.NextColumn();
     imgui.PushID('job2_weapons');
-    local job2WeaponsChanged = drawWeaponCheckboxes(state.jobs[2]);
+    drawWeaponCheckboxes(state.jobs[2]);
     imgui.PopID();
 
     imgui.Columns(1);
-
-    -- Smart reset: only reset favorite WS if it's no longer available after weapon change
-    if job1WeaponsChanged and state.jobs[1].favWsName then
-        local items = buildFavWsItems(state.jobs[1], 1);
-        local found = false;
-        for _, name in ipairs(items) do
-            if name == state.jobs[1].favWsName then
-                found = true;
-                break;
-            end
-        end
-        if not found then
-            state.jobs[1].favWsName = nil;  -- WS no longer available, reset to "Any"
-        end
-    end
-
-    if job2WeaponsChanged and state.jobs[2].favWsName then
-        local items = buildFavWsItems(state.jobs[2], 2);
-        local found = false;
-        for _, name in ipairs(items) do
-            if name == state.jobs[2].favWsName then
-                found = true;
-                break;
-            end
-        end
-        if not found then
-            state.jobs[2].favWsName = nil;  -- WS no longer available, reset to "Any"
-        end
-    end
 
     imgui.Separator();
     imgui.Spacing();
@@ -811,7 +725,6 @@ local function drawFiltersTab()
     local useCustomLevel = { state.customLevel.enabled };
     if imgui.Checkbox('Enable custom character level', useCustomLevel) then
         state.customLevel.enabled = useCustomLevel[1];
-        -- No reset needed - dropdown will auto-reset to "Any" if WS becomes unavailable
     end
     uiTheme.helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
@@ -826,18 +739,10 @@ local function drawFiltersTab()
             for i = 1, 2 do
                 local jobId = jobItems[state.jobs[i].index];
                 if jobId then
-                    local defaultSubjob = jobsData.GetDefaultSubjob(jobId);
-                    if defaultSubjob then
-                        local subIdx = findJobIndex(defaultSubjob);
-                        if subIdx then
-                            state.jobs[i].subIndex = subIdx;
-                        end
-                    end
+                    applyDefaultSubjob(state.jobs[i], jobId);
                 end
             end
         end
-
-        -- No reset needed - dropdown will auto-reset to "Any" if WS becomes unavailable
     end
     uiTheme.helpMarker('When enabled, adds subjob dropdowns in Calculator tab.\nThis allows filtering weaponskills based on subjob restrictions\n(e.g., marksmanship).');
 
@@ -866,16 +771,6 @@ local function drawFiltersTab()
     local showRema = { state.filters.showRema };
     if imgui.Checkbox('Show REMA weapon skills (²)', showRema) then
         state.filters.showRema = showRema[1];
-        -- Reset favorite WS if it was a REMA WS that is now hidden
-        if not state.filters.showRema then
-            local function clearRemaFavWs(jobState)
-                if SkillchainCore.IsRemaWsName(jobState.favWsName) then
-                    jobState.favWsName = nil;
-                end
-            end
-            clearRemaFavWs(state.jobs[1]);
-            clearRemaFavWs(state.jobs[2]);
-        end
     end
     uiTheme.helpMarker('When enabled, includes Relic/Empyrean/Mythic/Aeonic weapon skills\n(marked with ²) in results. Disabled by default.');
     imgui.Unindent(uiTheme.indent);
@@ -960,49 +855,10 @@ local function drawSettingsTab()
         return nil;
     end
 
-    -----------------------------------------------------------------------
-    -- Anchor adjustment position
-    -----------------------------------------------------------------------
-    local anchor = cache.settings.anchor;
-
-    local limits = SkillchainRenderer.CalculateAnchorLimits(cache.settings);
-    local pad = limits.minX;
-    local maxX = limits.maxX;
-    local maxY = limits.maxY;
-
-    uiTheme.header('Results Window');
-    imgui.Spacing();
-
-    imgui.Indent(uiTheme.indent);
-    local enableDrag = { cache.settings.enableDrag == true };
-    if imgui.Checkbox('Enable mouse drag', enableDrag) then
-        cache.settings.enableDrag = enableDrag[1];
-        SkillchainRenderer.SetEnableDrag(enableDrag[1]);
+    if SkillchainUI.drawResultsWindowSettings(cache.settings) then
         request = request or {};
         request.anchorChanged = true;
     end
-    uiTheme.helpMarker('When enabled, click and drag the results window to move it.');
-
-    local x = { anchor.x or 0 };
-    if imgui.SliderInt('X', x, pad, maxX) then
-        anchor.x = x[1];
-        SkillchainRenderer.UpdateAnchor(cache.settings);
-    end
-    if imgui.IsItemDeactivatedAfterEdit() then
-        request = request or {};
-        request.anchorChanged = true;
-    end
-
-    local y = { anchor.y or 0 };
-    if imgui.SliderInt('Y', y, pad, maxY) then
-        anchor.y = y[1];
-        SkillchainRenderer.UpdateAnchor(cache.settings);
-    end
-    if imgui.IsItemDeactivatedAfterEdit() then
-        request = request or {};
-        request.anchorChanged = true;
-    end
-    imgui.Unindent(uiTheme.indent);
 
     -----------------------------------------------------------------------
     -- Stored Default Filter Status (read-only)

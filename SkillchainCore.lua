@@ -200,6 +200,9 @@ end
 -- Public: Build a token string from job, weapon selection, and optional subjob
 -- Input: jobId (string), weaponSelection (table like {dagger=true, katana=true}), subJobId (string, optional)
 -- Output: token string like "nin:dagger,katana" or "nin/war:dagger"
+-- Weapons outside GetWeaponsForJob(jobId) are dropped, and a selection with
+-- none left yields the bare job token, which resolves to its primaryWeapons.
+-- Party members holding an off-job weapon use BuildMemberSkillList instead.
 function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId)
     if not jobId then
         return nil;
@@ -213,42 +216,48 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
 
     -- Build weapon list in proper order
     local selectedWeapons = {};
-    local seen             = {};
     local weaponList = SkillchainCore.GetWeaponsForJob(jobId);
 
     for _, w in ipairs(weaponList) do
         if weaponSelection and weaponSelection[w] then
             table.insert(selectedWeapons, w);
-            seen[w] = true;
         end
     end
 
-    -- Weapons the main job has no skill in (a NIN holding a staff to tank) are
-    -- passed through, not filtered out. Filtering leaves the token
-    -- unconstrained, which resolves to every weapon skill the job has; the
-    -- resolver correctly returns none for a weapon the job can't use.
-    if weaponSelection then
-        local extras = {};
-        for w, selected in pairs(weaponSelection) do
-            if selected and not seen[w] then
-                table.insert(extras, w);
-            end
-        end
-        -- pairs() order is unspecified; sort so the same selection always
-        -- produces the same token (callers use it as a cache/dedupe key).
-        table.sort(extras);
-        for _, w in ipairs(extras) do
-            table.insert(selectedWeapons, w);
-        end
-    end
-
-    -- Combine job and weapons (if any)
     if #selectedWeapons > 0 then
         return jobPart .. ':' .. table.concat(selectedWeapons, ',');
     end
-
-    -- No weapon filter requested at all -- the whole job.
     return jobPart;
+end
+
+-- REMA (Relic/Empyrean/Mythic/Aeonic) weapons can't be wielded below this level.
+SkillchainCore.REMA_MIN_LEVEL = 75;
+
+-- True if REMA weapon skills apply: showRema is on and the level reaches
+-- REMA_MIN_LEVEL. nil/0 level (not given or not reported) counts as MAX_LEVEL.
+function SkillchainCore.IsRemaAllowed(showRema, level)
+    if not showRema then
+        return false;
+    end
+    if type(level) ~= 'number' or level <= 0 then
+        level = jobs.MAX_LEVEL;
+    end
+    return level >= SkillchainCore.REMA_MIN_LEVEL;
+end
+
+-- Effective subjob for a side: an explicit subjob other than the main job,
+-- else the job's default subjob when subjobs are enabled, else nil.
+function SkillchainCore.ResolveSubjob(jobId, explicitSubId, includeSubjob)
+    if explicitSubId and explicitSubId ~= jobId then
+        return explicitSubId;
+    end
+    if includeSubjob then
+        local defaultSubjob = jobs.GetDefaultSubjob(jobId);
+        if defaultSubjob and defaultSubjob ~= jobId then
+            return defaultSubjob;
+        end
+    end
+    return nil;
 end
 
 -- Helper: Resolve job abbreviation or name to job ID
@@ -736,37 +745,56 @@ function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterT
     return buildCombinations(properties, wsList, { both = false });
 end
 
--- True if token (any case) is a burst element -- the values FilterSkillchains
--- understands as scElement.
-function SkillchainCore.IsScFilterToken(token)
+-- CHAIN_NAMES: every ChainInfo property in display order.
+-- BURST_ELEMENTS: the burst element of each single-element property, in the same order.
+SkillchainCore.CHAIN_NAMES    = {};
+SkillchainCore.BURST_ELEMENTS = {};
+do
+    for name, info in pairs(skills.ChainInfo or {}) do
+        if type(info) == 'table' then
+            table.insert(SkillchainCore.CHAIN_NAMES, name);
+        end
+    end
+    table.sort(SkillchainCore.CHAIN_NAMES, function(a, b)
+        local ia, ib = skills.GetDisplayIndex(a), skills.GetDisplayIndex(b);
+        if ia ~= ib then
+            return ia < ib;
+        end
+        return a < b;
+    end);
+
+    local seen = {};
+    for _, name in ipairs(SkillchainCore.CHAIN_NAMES) do
+        local burst = skills.ChainInfo[name].burst;
+        if type(burst) == 'table' and #burst == 1 and not seen[burst[1]] then
+            seen[burst[1]] = true;
+            table.insert(SkillchainCore.BURST_ELEMENTS, burst[1]);
+        end
+    end
+end
+
+local function containsIgnoreCase(list, token)
     if type(token) ~= 'string' or token == '' then
         return false;
     end
     local lower = token:lower();
-    for _, info in pairs(skills.ChainInfo or {}) do
-        if type(info) == 'table' and type(info.burst) == 'table' then
-            for _, elem in ipairs(info.burst) do
-                if elem:lower() == lower then
-                    return true;
-                end
-            end
+    for _, v in ipairs(list) do
+        if v:lower() == lower then
+            return true;
         end
     end
     return false;
 end
 
+-- True if token (any case) is a burst element -- the values FilterSkillchains
+-- understands as scElement.
+function SkillchainCore.IsScFilterToken(token)
+    return containsIgnoreCase(SkillchainCore.BURST_ELEMENTS, token);
+end
+
 -- True if token (any case) names a skillchain property in ChainInfo.
 function SkillchainCore.IsChainName(token)
-    if type(token) ~= 'string' then
-        return false;
-    end
-    local lower = token:lower();
-    for name, info in pairs(skills.ChainInfo or {}) do
-        if type(info) == 'table' and name:lower() == lower then
-            return true;
-        end
-    end
-    return false;
+    return containsIgnoreCase(SkillchainCore.CHAIN_NAMES, token);
 end
 
 -- Consolidated single-pass filter: applies all filters in one iteration
@@ -812,12 +840,9 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
             pass = elementMatch;
         end
 
-        -- Filter 3: REMA weapon skills -- real REMA (Relic/Empyrean/Mythic/Aeonic)
-        -- weapons can't be wielded below level 75, regardless of the "Show REMA"
-        -- toggle, so a custom character level below 75 forces them off too.
+        -- Filter 3: REMA weapon skills
         if pass then
-            local effectiveLevel = filters.charLevel or jobs.MAX_LEVEL;
-            local remaAllowed = filters.showRema and effectiveLevel >= 75;
+            local remaAllowed = SkillchainCore.IsRemaAllowed(filters.showRema, filters.charLevel);
             if not remaAllowed then
                 local isRema = SkillchainCore.IsRemaWsName(combo.skill1) or SkillchainCore.IsRemaWsName(combo.skill2);
                 pass = not isRema;
@@ -954,6 +979,30 @@ function SkillchainCore.GetMemberSkillLevel(member)
     return nil;
 end
 
+-- Weapon skills a party member can use with their selected weapon, capped by
+-- their level; REMA WS only when remaEnabled and the member has REMA.
+-- Returns an array (possibly empty), or nil if the job can't use the weapon.
+function SkillchainCore.BuildMemberSkillList(member, remaEnabled)
+    if not member or not member.jobId or not member.weapon then
+        return nil;
+    end
+    local level = SkillchainCore.GetMemberSkillLevel(member);
+    local list = SkillchainCore.BuildSkillListForJob(member.jobId, { [member.weapon] = true }, member.subJobId, level);
+    if not list then
+        return nil;
+    end
+    if SkillchainCore.IsRemaAllowed(remaEnabled and member.hasRema, level) then
+        return list;
+    end
+    local noRema = {};
+    for _, ws in ipairs(list) do
+        if not ws.rema then
+            table.insert(noRema, ws);
+        end
+    end
+    return noRema;
+end
+
 -- Calculate all skillchains between every ordered pair of active members. This
 -- is one flat pool regardless of alliance sub-party -- partyIndex (if present)
 -- is a display-grouping detail only and plays no role in the calculation.
@@ -971,21 +1020,8 @@ function SkillchainCore.CalculatePartySkillchains(members, options)
     local active = {};
     for _, m in ipairs(members) do
         if m.enabled and m.weapon then
-            local token = SkillchainCore.BuildTokenFromSelection(m.jobId, { [m.weapon] = true }, m.subJobId);
-            local skillList = SkillchainCore.ResolveTokenToSkills(token, nil, SkillchainCore.GetMemberSkillLevel(m));
+            local skillList = SkillchainCore.BuildMemberSkillList(m, options.remaEnabled);
             if skillList then
-                -- Real REMA weapons can't be wielded below level 75, regardless
-                -- of the member's REMA-ownership flag.
-                local memberRemaAllowed = options.remaEnabled and m.hasRema and (m.level or 0) >= 75;
-                if not memberRemaAllowed then
-                    local noRema = {};
-                    for _, ws in ipairs(skillList) do
-                        if not ws.rema then
-                            table.insert(noRema, ws);
-                        end
-                    end
-                    skillList = noRema;
-                end
                 -- With Fav WS enabled, a member's fav restricts them to that WS. A fav
                 -- the member can't currently use (REMA off, level too low) is ignored.
                 if options.favWsEnabled and m.favWs then

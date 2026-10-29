@@ -45,7 +45,7 @@ The list does not refresh on its own — press **Update party** again once they 
 
 | Filter | Description |
 |--------|-------------|
-| **Skillchain** | Limit results by chain family: All, Any Tier 2+, Fragmentation, Fusion, Gravitation, Distortion, or Light / Darkness — or by burst element (Fire … Dark), which lists every tier that bursts it (e.g. Dark burst: Compression, Gravitation, Darkness) |
+| **Skillchain** | Limit results by chain family: All, Any Tier 2+, Fragmentation, Fusion, Gravitation, Distortion, or Light / Darkness — or by burst element (Lightning … Dark), which lists every tier that bursts it (e.g. Dark burst: Compression, Gravitation, Darkness) |
 | **REMA** *(Advanced)* | Expand to mark which members have REMA (Relic/Empyrean/Mythic/Aeonic) weapons. Members flagged as REMA will include those weapon skills (marked ²) in the calculation. |
 | **Fav WS** *(Advanced)* | Pin a preferred weapon skill per member. A member with a fav WS set contributes only that WS to the calculation; members without one are unrestricted. |
 
