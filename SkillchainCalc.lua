@@ -197,11 +197,11 @@ local function showParty()
     SkillchainParty.SetVisible(true);
 end
 
-local function renderResults(skillchains)
-    local resultsTable = SkillchainCore.BuildSkillchainTable(skillchains);
-    local sortedResults, orderedResults = SkillchainCore.SortSkillchainTable(resultsTable);
-
-    SkillchainRenderer.Render(sortedResults, orderedResults, cache.settings, cache.filters.both);
+-- entries: Calculator combos or party entries (see SkillchainCore.BuildResultsTable)
+local function renderResults(entries, both)
+    local sortedResults, orderedResults = SkillchainCore.BuildResultsTable(entries);
+    SkillchainRenderer.Clear();
+    SkillchainRenderer.Render(sortedResults, orderedResults, cache.settings, both);
 end
 
 -- Event handler for addon loading
@@ -240,8 +240,7 @@ local function displaySkillchainResults(combinations, label)
     });
 
     if (#filteredCombinations > 0) then
-        SkillchainRenderer.Clear();
-        renderResults(filteredCombinations);
+        renderResults(filteredCombinations, cache.filters.both);
     else
         local suffix = label and (' ' .. label) or '';
         msg(('No%s skillchain combinations found for filter level %d.'):format(suffix, cache.filters.scLevel));
@@ -330,9 +329,7 @@ local function parsePartySkillchains(members, partyFilters)
         return;
     end
 
-    local sortedResults, orderedResults = SkillchainCore.BuildPartySkillchainTable(filtered);
-    SkillchainRenderer.Clear();
-    SkillchainRenderer.Render(sortedResults, orderedResults, cache.settings, true);
+    renderResults(filtered, true);
 end
 
 -- Mouse event handler for drag functionality and combo clicks

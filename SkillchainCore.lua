@@ -868,64 +868,96 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
     return results;
 end
 
-function SkillchainCore.BuildSkillchainTable(skillchains)
-    local resultsTable = {};
-
-    for _, combo in ipairs(skillchains) do
-        local opener = combo.skill1;
-        local closer = combo.skill2;
-
-        resultsTable[combo.chain]         = resultsTable[combo.chain] or {};
-        resultsTable[combo.chain][opener] = resultsTable[combo.chain][opener] or {};
-        table.insert(resultsTable[combo.chain][opener], {
-            closer     = closer,
-            reversible = combo.reversible,
-        });
+-- Append name to list if not already present
+local function appendNameUnique(list, name)
+    for _, existing in ipairs(list) do
+        if existing == name then
+            return;
+        end
     end
-
-    return resultsTable;
+    table.insert(list, name);
 end
 
-function SkillchainCore.SortSkillchainTable(resultsTable)
-    local sortedResults  = {};
-    local orderedResults = {};
+-- Groups results by chain -> opener -> closer for display: chains in display
+-- order, openers and closers by WS skill level (highest first).
+-- entries: CalculateSkillchains combos {skill1, skill2, chain, reversible}, or
+--   CalculatePartySkillchains entries {opener, closer, chain, reversible, openerNames, closerNames}.
+-- Returns sortedResults, orderedResults where:
+--   orderedResults = array of chain names in display order
+--   sortedResults[chainName] = array of {opener, level, closers = {{closer, reversible, openerNames, closerNames}}}
+--   openerNames/closerNames are present only for party entries (the renderer keys party mode on them).
+function SkillchainCore.BuildResultsTable(entries)
+    -- Group: chain -> opener -> closer, in first-seen order
+    local byChain = {};
 
-    -- Sort chains by display order (via skills.GetDisplayIndex)
-    local chainLevels = {};
-    for chainName, _ in pairs(resultsTable) do
-        table.insert(chainLevels, {
-            chain = chainName,
-            level = findChainLevel(chainName),
-        });
+    for _, entry in ipairs(entries) do
+        local chainName = entry.chain;
+        local opener    = entry.opener or entry.skill1;
+        local closer    = entry.closer or entry.skill2;
+
+        local chainGroup = byChain[chainName];
+        if not chainGroup then
+            chainGroup = { openers = {}, openerOrder = {} };
+            byChain[chainName] = chainGroup;
+        end
+
+        local openerGroup = chainGroup.openers[opener];
+        if not openerGroup then
+            openerGroup = { closers = {}, closerOrder = {} };
+            chainGroup.openers[opener] = openerGroup;
+            table.insert(chainGroup.openerOrder, opener);
+        end
+
+        -- Names are kept per closer so names pruned for one closer don't
+        -- bleed into other closers sharing the same opener WS.
+        local closerEntry = openerGroup.closers[closer];
+        if not closerEntry then
+            closerEntry = { closer = closer, reversible = entry.reversible };
+            if entry.openerNames then
+                closerEntry.openerNames = {};
+                closerEntry.closerNames = {};
+            end
+            openerGroup.closers[closer] = closerEntry;
+            table.insert(openerGroup.closerOrder, closer);
+        end
+        if closerEntry.openerNames then
+            for _, name in ipairs(entry.openerNames or {}) do
+                appendNameUnique(closerEntry.openerNames, name);
+            end
+            for _, name in ipairs(entry.closerNames or {}) do
+                appendNameUnique(closerEntry.closerNames, name);
+            end
+        end
     end
 
-    table.sort(chainLevels, function(a, b)
-        return skills.GetDisplayIndex(a.chain) < skills.GetDisplayIndex(b.chain);
-    end);
-
-    for _, chainData in ipairs(chainLevels) do
-        local chainName = chainData.chain;
-        sortedResults[chainName] = resultsTable[chainName];
+    local orderedResults = {};
+    for chainName, _ in pairs(byChain) do
         table.insert(orderedResults, chainName);
     end
+    table.sort(orderedResults, function(a, b)
+        return skills.GetDisplayIndex(a) < skills.GetDisplayIndex(b);
+    end);
 
-    -- Sort openers and closers by WS skill level
-    for chainName, openers in pairs(sortedResults) do
+    local sortedResults = {};
+    for _, chainName in ipairs(orderedResults) do
+        local chainGroup = byChain[chainName];
+
         local sortedOpeners = {};
+        for _, opener in ipairs(chainGroup.openerOrder) do
+            local openerGroup = chainGroup.openers[opener];
 
-        for opener, closers in pairs(openers) do
-            local openerLevel = findSkillLevel(opener);
-
+            local closers = {};
+            for _, closer in ipairs(openerGroup.closerOrder) do
+                table.insert(closers, openerGroup.closers[closer]);
+            end
             table.sort(closers, function(a, b)
-                local levelA = findSkillLevel(a.closer);
-                local levelB = findSkillLevel(b.closer);
-                return levelA > levelB;
+                return findSkillLevel(a.closer) > findSkillLevel(b.closer);
             end);
 
             table.insert(sortedOpeners, {
                 opener  = opener,
                 closers = closers,
-                level   = openerLevel,
+                level   = findSkillLevel(opener),
             });
         end
 
@@ -942,16 +974,6 @@ end
 -- ============================================================================
 -- Party Skillchain Calculation
 -- ============================================================================
-
--- Append name to list if not already present
-local function appendNameUnique(list, name)
-    for _, existing in ipairs(list) do
-        if existing == name then
-            return;
-        end
-    end
-    table.insert(list, name);
-end
 
 -- Level used for a member's skill caps. 0/nil (level not reported) returns nil,
 -- so callers cap at jobs.MAX_LEVEL.
@@ -1109,101 +1131,6 @@ function SkillchainCore.CalculatePartySkillchains(members, options)
     end
 
     return results;
-end
-
--- Build the display table for party results in the same shape as SortSkillchainTable,
--- extended with per-WS member-name lists.
--- partyResults: flat array from CalculatePartySkillchains (already SC-level filtered).
--- Returns sortedResults, orderedResults where:
---   orderedResults = array of chain names in display order
---   sortedResults[chainName] = array of {opener, openerNames, closers={{closer, closerNames}}}
-function SkillchainCore.BuildPartySkillchainTable(partyResults)
-    local sortedResults  = {};
-    local orderedResults = {};
-
-    -- Group: chain -> opener -> { closers = { closer -> { openerNames, closerNames } } }
-    local byChain = {};
-
-    for _, entry in ipairs(partyResults) do
-        local chainName = entry.chain;
-
-        local chainGroup = byChain[chainName];
-        if not chainGroup then
-            chainGroup = { openers = {}, openerOrder = {} };
-            byChain[chainName] = chainGroup;
-        end
-
-        local openerGroup = chainGroup.openers[entry.opener];
-        if not openerGroup then
-            openerGroup = { closers = {}, closerOrder = {} };
-            chainGroup.openers[entry.opener] = openerGroup;
-            table.insert(chainGroup.openerOrder, entry.opener);
-        end
-
-        -- Store opener names per-closer so names pruned for one closer
-        -- don't bleed into other closers sharing the same opener WS.
-        local closerEntry = openerGroup.closers[entry.closer];
-        if not closerEntry then
-            closerEntry = { openerNames = {}, closerNames = {}, reversible = entry.reversible };
-            openerGroup.closers[entry.closer] = closerEntry;
-            table.insert(openerGroup.closerOrder, entry.closer);
-        end
-        for _, name in ipairs(entry.openerNames or {}) do
-            appendNameUnique(closerEntry.openerNames, name);
-        end
-        for _, name in ipairs(entry.closerNames or {}) do
-            appendNameUnique(closerEntry.closerNames, name);
-        end
-    end
-
-    -- Order chains by display index (same as the rest of the codebase)
-    local chainList = {};
-    for chainName, _ in pairs(byChain) do
-        table.insert(chainList, chainName);
-    end
-    table.sort(chainList, function(a, b)
-        return skills.GetDisplayIndex(a) < skills.GetDisplayIndex(b);
-    end);
-
-    for _, chainName in ipairs(chainList) do
-        local chainGroup = byChain[chainName];
-
-        -- Sort openers by WS skill level (highest first), matching SortSkillchainTable
-        local sortedOpeners = {};
-        for _, openerName in ipairs(chainGroup.openerOrder) do
-            local openerGroup = chainGroup.openers[openerName];
-
-            local closers = {};
-            for _, closerName in ipairs(openerGroup.closerOrder) do
-                local closerEntry = openerGroup.closers[closerName];
-                table.insert(closers, {
-                    closer      = closerName,
-                    reversible  = closerEntry.reversible,
-                    openerNames = closerEntry.openerNames,
-                    closerNames = closerEntry.closerNames,
-                });
-            end
-
-            table.sort(closers, function(a, b)
-                return findSkillLevel(a.closer) > findSkillLevel(b.closer);
-            end);
-
-            table.insert(sortedOpeners, {
-                opener  = openerName,
-                closers = closers,
-                level   = findSkillLevel(openerName),
-            });
-        end
-
-        table.sort(sortedOpeners, function(a, b)
-            return a.level > b.level;
-        end);
-
-        sortedResults[chainName] = sortedOpeners;
-        table.insert(orderedResults, chainName);
-    end
-
-    return sortedResults, orderedResults;
 end
 
 return SkillchainCore;
