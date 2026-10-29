@@ -229,8 +229,8 @@ function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId
     -- resolver correctly returns none for a weapon the job can't use.
     if weaponSelection then
         local extras = {};
-        for w in pairs(weaponSelection) do
-            if not seen[w] then
+        for w, selected in pairs(weaponSelection) do
+            if selected and not seen[w] then
                 table.insert(extras, w);
             end
         end
