@@ -27,10 +27,13 @@ function SkillchainUI.setupWindow(guiPos, fallbackPos)
     );
 end
 
+-- Set while a window move is in progress and not yet reported.
+local positionDirty = false;
+
 -- Tracks the current ImGui window's position and writes it back into guiPos
--- in place when it changes. Returns true if it changed this frame -- the
--- caller sets its own request.*PositionChanged field (name differs per
--- caller) and is responsible for calling settings.save().
+-- in place when it changes. Returns true once per move, after the mouse is
+-- released -- the caller sets its own request.*PositionChanged field (name
+-- differs per caller) and is responsible for calling settings.save().
 -- guiPos : cache.settings.guiPosition table, or nil/false if unavailable
 function SkillchainUI.trackWindowPosition(guiPos)
     if not guiPos then
@@ -47,6 +50,11 @@ function SkillchainUI.trackWindowPosition(guiPos)
     if cx ~= guiPos.x or cy ~= guiPos.y then
         guiPos.x = cx;
         guiPos.y = cy;
+        positionDirty = true;
+    end
+
+    if positionDirty and not imgui.IsMouseDown(0) then
+        positionDirty = false;
         return true;
     end
 

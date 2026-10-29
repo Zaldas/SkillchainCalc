@@ -1036,6 +1036,10 @@ function SkillchainGUI.OpenFromCli()
 
     local def = (cache.settings and cache.settings.default) or {};
 
+    -- CLI runs carry no Fav WS (cache.jobs.favWs1/2 are cleared), so the window shows none.
+    state.jobs[1].favWsName = nil;
+    state.jobs[2].favWsName = nil;
+
     -- Filters from CLI (with fallback to defaults)
     state.filters.scLevel = cache.filters.scLevel or def.scLevel or 1;
 
