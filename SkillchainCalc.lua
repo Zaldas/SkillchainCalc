@@ -271,8 +271,13 @@ local function parseSkillchains(isStep)
 
         local combinations = SkillchainCore.CalculateStepSkillchains(wsList, cache.step.filter, cache.step.filterType);
 
-        -- Check if filtering resulted in no combinations (possibly invalid property name)
+        -- No combinations: a valid property with no matches, or an invalid property name
         if cache.step.filterType == 'property' and #combinations == 0 then
+            if SkillchainCore.IsChainName(cache.step.filter) then
+                msg(('No skillchains from %s with the %s property.'):format(tostring(cache.jobs.token1), tostring(cache.step.filter)));
+                SkillchainRenderer.Clear();
+                return;
+            end
             err('Invalid property name "' .. tostring(cache.step.filter) .. '".');
             msg('Valid properties: Compression, Detonation, Distortion, Fragmentation, Fusion, Gravitation, Impaction, Induration, Liquefaction, Reverberation, Scission, Transfixion, Light, Darkness');
             SkillchainRenderer.Clear();
@@ -564,14 +569,19 @@ local function parseCommandArgs(args, startIdx)
             both = true;
         elseif lower:sub(1, 3) == 'sc:' then
             scElement = lower:sub(4);
+            if not SkillchainCore.IsScFilterToken(scElement) then
+                err(('Invalid sc: value "%s".'):format(scElement));
+                msg('Use a burst element (fire, ice, wind, earth, lightning, water, light, dark) or a tier-2 chain (fragmentation, fusion, gravitation, distortion).');
+                return false;
+            end
         elseif lower:sub(1, 4) == 'lvl:' or lower:sub(1, 6) == 'level:' then
             -- Extract level value after the colon
             local colonPos = lower:find(':');
             local lvlVal = tonumber(lower:sub(colonPos + 1));
-            if lvlVal and lvlVal >= 1 and lvlVal <= jobs.MAX_LEVEL then
+            if lvlVal and lvlVal == math.floor(lvlVal) and lvlVal >= 1 and lvlVal <= jobs.MAX_LEVEL then
                 charLevel = lvlVal;
             else
-                err(('Invalid level value. Must be between 1 and %d.'):format(jobs.MAX_LEVEL));
+                err(('Invalid level value. Must be a whole number between 1 and %d.'):format(jobs.MAX_LEVEL));
                 return false;
             end
         else
@@ -642,17 +652,16 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Detect step mode early and parse step filter
     local isStep, stepFilter, stepFilterType = detectStepMode(args);
 
-    local minArgs = 3; -- both step (/scc step <token>) and normal (/scc <t1> <t2>) need at least 3 args
-    if (#args < minArgs) then
-        if (#args == 1) then
-            local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
-            if anyOpen then
-                closeAllWindows();
-            else
-                showParty();
-                msg('/scc (or /scc party) - Party skillchain calculator for your current party');
-                msg('/scc calc - Generic skillchain calculator');
-            end
+    -- Bare /scc toggles windows; two-arg forms (a lone token, bare "step") reach
+    -- resolveTokens, which reports the usage error.
+    if (#args == 1) then
+        local anyOpen = SkillchainParty.IsVisible() or (SkillchainGUI ~= nil and SkillchainGUI.IsVisible());
+        if anyOpen then
+            closeAllWindows();
+        else
+            showParty();
+            msg('/scc (or /scc party) - Party skillchain calculator for your current party');
+            msg('/scc calc - Generic skillchain calculator');
         end
         return;
     end

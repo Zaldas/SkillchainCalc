@@ -87,6 +87,12 @@ do
             table.insert(elementTokens, elem:lower());
         end
     end
+
+    -- Tier-2 chains (each also matches its tier 3), same tokens as sc:<chain>.
+    for _, name in ipairs(SkillchainCore.TIER2_FILTER_NAMES) do
+        table.insert(elementItems,  name);
+        table.insert(elementTokens, name:lower());
+    end
 end
 
 -- Resolves an element filter token (e.g. cache.filters.scElement, lowercase)
@@ -508,6 +514,17 @@ local function buildCalculationRequest()
     local token2 = SkillchainCore.BuildTokenFromSelection(job2Id, state.jobs[2].weapons, job2SubId);
 
     local elemTok = elementTokens[state.filters.elementIndex] or '';
+
+    -- A fav WS the current job/weapon/subjob/level/REMA selection no longer
+    -- offers is cleared, as drawFavWsCombo does on the Calculator tab.
+    if state.filters.enableFavWs then
+        for side = 1, 2 do
+            local jobState = state.jobs[side];
+            if jobState.favWsName and findFavWsIndex(buildFavWsItems(jobState, side), jobState.favWsName) == 1 then
+                jobState.favWsName = nil;
+            end
+        end
+    end
 
     -- Get favorite WS names directly from state (much simpler now!)
     local favWs1 = state.filters.enableFavWs and state.jobs[1].favWsName or nil;
@@ -1094,7 +1111,7 @@ end
 -- token2               (string)      Closer job token (always paired with token1)
 -- scLevel              (number 1-3)  Skillchain level filter override
 -- both                 (bool)        Calculate both opener→closer and closer→opener directions
--- scElement            (string|nil)  Burst element filter token (lowercase); nil = Any
+-- scElement            (string|nil)  Burst element or tier-2 chain token (lowercase); nil = Any
 -- charLevel            (number|nil)  Character level cap; nil = use maximum
 -- favWs1               (string|nil)  Opener favorite WS name filter; nil = Any
 -- favWs2               (string|nil)  Closer favorite WS name filter; nil = Any

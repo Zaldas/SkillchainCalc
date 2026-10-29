@@ -263,7 +263,7 @@ function SkillchainCore.GetJobIdFromToken(token)
     end
 
     local upper = token:upper();
-    if jobs[upper] and jobs[upper].weapons then
+    if type(jobs[upper]) == 'table' and jobs[upper].weapons then
         return upper;                       -- e.g. "NIN"
     end
 
@@ -447,7 +447,8 @@ end
 -- Public: Resolve a token to a list of weapon skills
 -- Token formats supported:
 --   - Job tokens: "nin", "nin/war", "thf:dagger", "nin/war:katana,dagger"
---   - Weapon tokens: "katana", "ga" (returns all skills for that weapon type)
+--   - Weapon tokens: "katana", "ga" (all skills for that weapon type, sorted by WS id;
+--     charLevel caps at the best skill rank any job has in that weapon)
 -- The subJobId parameter is used as a fallback if the token doesn't specify a subjob
 function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
     if not token or type(token) ~= 'string' then
@@ -471,13 +472,25 @@ function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
         weaponKey = skills.aliases[lower];
     end
 
-    local weaponTable = skills[weaponKey];
-    if weaponTable == nil then
+    if skills[weaponKey] == nil then
         -- Fallback: direct lookup on the raw lower token (in case aliases table is incomplete)
-        weaponTable = skills[lower];
+        weaponKey = lower;
     end
+    local weaponTable = skills[weaponKey];
     if type(weaponTable) ~= 'table' then
         return nil;
+    end
+
+    -- nil = uncapped: no level given, or no job has a known rank in this weapon
+    -- (PUP frame buckets are modelled under jobs.PUP.frames, not weapons).
+    local maxSkill = nil;
+    if charLevel then
+        for _, job in pairs(jobs) do
+            local cfg = type(job) == 'table' and job.weapons and job.weapons[weaponKey];
+            if cfg and SkillRanks.Cap[cfg.skillRank] then
+                maxSkill = math.max(maxSkill or 0, getSkillCapFromRank(cfg.skillRank, charLevel));
+            end
+        end
     end
 
     -- Weapon tables are keyed by WS id (e.g. katana 128+), so ipairs-based
@@ -492,7 +505,10 @@ function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
 
     local list = {};
     for _, id in ipairs(ids) do
-        table.insert(list, weaponTable[id]);
+        local ws = weaponTable[id];
+        if not maxSkill or (ws.skill or 0) <= maxSkill then
+            table.insert(list, ws);
+        end
     end
     return (#list > 0) and list or nil;
 end
@@ -727,6 +743,46 @@ local tier2Families = {
     gravitation   = { Gravitation   = true, Darkness = true },
     distortion    = { Distortion    = true, Darkness = true },
 };
+
+-- Display names for the tier-2 chain filters, in dropdown order; must list the
+-- same chains as tier2Families.
+SkillchainCore.TIER2_FILTER_NAMES = { 'Fragmentation', 'Fusion', 'Gravitation', 'Distortion' };
+
+-- True if token (any case) is a burst element or a tier-2 chain name -- the
+-- values FilterSkillchains understands as scElement.
+function SkillchainCore.IsScFilterToken(token)
+    if type(token) ~= 'string' or token == '' then
+        return false;
+    end
+    local lower = token:lower();
+    if tier2Families[lower] then
+        return true;
+    end
+    for _, info in pairs(skills.ChainInfo or {}) do
+        if type(info) == 'table' and type(info.burst) == 'table' then
+            for _, elem in ipairs(info.burst) do
+                if elem:lower() == lower then
+                    return true;
+                end
+            end
+        end
+    end
+    return false;
+end
+
+-- True if token (any case) names a skillchain property in ChainInfo.
+function SkillchainCore.IsChainName(token)
+    if type(token) ~= 'string' then
+        return false;
+    end
+    local lower = token:lower();
+    for name, info in pairs(skills.ChainInfo or {}) do
+        if type(info) == 'table' and name:lower() == lower then
+            return true;
+        end
+    end
+    return false;
+end
 
 -- Consolidated single-pass filter: applies all filters in one iteration
 -- filters: {scLevel, scElement, favWs1, favWs2, both}

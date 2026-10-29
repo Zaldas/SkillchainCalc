@@ -85,7 +85,7 @@ The Calculator window is for general-purpose planning — pick any two jobs (not
 
 | Filter | Description |
 |--------|-------------|
-| **Skillchain Element** | Show only skillchains whose burst element matches (e.g., Ice, Fire, Light). |
+| **Skillchain Element** | Show only skillchains whose burst element matches (e.g., Ice, Fire, Light), or a tier-2 chain plus its tier 3 (e.g., Distortion: Distortion and Darkness). |
 | **Skillchain Level** | Minimum tier: 1 = all, 2 = Tier 2+, 3 = Tier 3 only. |
 | **Custom Character Level** | Enables the level selector in the Calculator tab. |
 | **Enable subjob** | Enables subjob dropdowns in the Calculator tab. |
@@ -161,7 +161,7 @@ job[/subjob][:weapon,weapon,...]
 | Tier filter | `1` / `2` / `3` | Minimum skillchain tier to include |
 | Both directions | `both` | Calculate both Job1→Job2 and Job2→Job1 |
 | Element filter | `sc:<element>` or `sc:<tier-2 chain>` | Limit results to a burst element, or to a tier-2 chain plus its tier-3 (`sc:distortion` → Distortion and Darkness) |
-| Level cap | `lvl:<n>` or `level:<n>` | Exclude weapon skills above the skill cap for level n |
+| Level cap | `lvl:<n>` or `level:<n>` | Exclude weapon skills above the skill cap for level n. A weapon-only token uses the best skill rank any job has in that weapon |
 
 **Examples:**
 
