@@ -367,7 +367,6 @@ skills.blu = { -- Physical, ranged and magical; skill is minimum BLU level to ca
     [554] = {en='Death Scissors',    skillchain={'Compression','Reverberation'}, skill=60},
     [650] = {en='Seedspray',         skillchain={'Induration','Detonation'},     skill=61},
     [564] = {en='Body Slam',         skillchain={'Impaction'},                   skill=62},
-    [595] = {en='1000 Needles',      skillchain={'Compression'},                 skill=62},
     [631] = {en='Hydro Shot',        skillchain={'Reverberation'},               skill=63},
     [628] = {en='Frypan',            skillchain={'Impaction'},                   skill=63},
     [560] = {en='Frenetic Rip',      skillchain={'Induration'},                  skill=63},
