@@ -87,12 +87,6 @@ do
             table.insert(elementTokens, elem:lower());
         end
     end
-
-    -- Tier-2 chains (each also matches its tier 3), same tokens as sc:<chain>.
-    for _, name in ipairs(SkillchainCore.TIER2_FILTER_NAMES) do
-        table.insert(elementItems,  name);
-        table.insert(elementTokens, name:lower());
-    end
 end
 
 -- Resolves an element filter token (e.g. cache.filters.scElement, lowercase)
@@ -1111,7 +1105,7 @@ end
 -- token2               (string)      Closer job token (always paired with token1)
 -- scLevel              (number 1-3)  Skillchain level filter override
 -- both                 (bool)        Calculate both opener→closer and closer→opener directions
--- scElement            (string|nil)  Burst element or tier-2 chain token (lowercase); nil = Any
+-- scElement            (string|nil)  Burst element filter token (lowercase); nil = Any
 -- charLevel            (number|nil)  Character level cap; nil = use maximum
 -- favWs1               (string|nil)  Opener favorite WS name filter; nil = Any
 -- favWs2               (string|nil)  Closer favorite WS name filter; nil = Any

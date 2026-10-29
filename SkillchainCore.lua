@@ -736,28 +736,13 @@ function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterT
     return buildCombinations(properties, wsList, { both = false });
 end
 
--- sc:<name> tokens that name a tier-2 chain. Light/Dark stay burst elements.
-local tier2Families = {
-    fragmentation = { Fragmentation = true, Light    = true },
-    fusion        = { Fusion        = true, Light    = true },
-    gravitation   = { Gravitation   = true, Darkness = true },
-    distortion    = { Distortion    = true, Darkness = true },
-};
-
--- Display names for the tier-2 chain filters, in dropdown order; must list the
--- same chains as tier2Families.
-SkillchainCore.TIER2_FILTER_NAMES = { 'Fragmentation', 'Fusion', 'Gravitation', 'Distortion' };
-
--- True if token (any case) is a burst element or a tier-2 chain name -- the
--- values FilterSkillchains understands as scElement.
+-- True if token (any case) is a burst element -- the values FilterSkillchains
+-- understands as scElement.
 function SkillchainCore.IsScFilterToken(token)
     if type(token) ~= 'string' or token == '' then
         return false;
     end
     local lower = token:lower();
-    if tier2Families[lower] then
-        return true;
-    end
     for _, info in pairs(skills.ChainInfo or {}) do
         if type(info) == 'table' and type(info.burst) == 'table' then
             for _, elem in ipairs(info.burst) do
@@ -809,11 +794,8 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
             pass = chainLevel >= minLevel;
         end
 
-        -- Filter 2: Burst element, or a tier-2 chain name (matches its tier-3 too)
-        local family = targetElement and tier2Families[targetElement];
-        if pass and family then
-            pass = family[combo.chain] == true;
-        elseif pass and targetElement then
+        -- Filter 2: Burst element
+        if pass and targetElement then
             local info = skills.ChainInfo[combo.chain];
             local burst = info and info.burst;
             local elementMatch = false;

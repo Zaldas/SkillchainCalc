@@ -309,7 +309,7 @@ jobs.RUN = {
     primaryWeapons = { 'gs' },
     weapons = {
         gs   = { skillRank = 'A+' },
-        sword = { skillRank = 'A' },
+        sword = { skillRank = 'A-' },
         ga   = { skillRank = 'B' },
         axe  = { skillRank = 'B-' },
         club = { skillRank = 'C-' },

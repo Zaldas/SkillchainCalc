@@ -159,6 +159,7 @@ local cache = {
     -- Application settings and state
     settings = sccSettings,
     keepResultsOpen = false,  -- When true, results stay open even if GUI closes
+    resultsSource = nil,      -- 'calc' or 'party': which window produced the last results
 };
 
 local function applyDefaultsToCache()
@@ -257,6 +258,7 @@ local function displaySkillchainResults(combinations, label)
 end
 
 local function parseSkillchains(isStep)
+    cache.resultsSource = 'calc';
     if isStep then
         if (not cache.jobs.token1) then
             return;
@@ -309,6 +311,7 @@ local function parseSkillchains(isStep)
 end
 
 local function parsePartySkillchains(members, partyFilters)
+    cache.resultsSource = 'party';
     local chains = partyFilters and partyFilters.chains or nil;
 
     local partyResults = SkillchainCore.CalculatePartySkillchains(members, {
@@ -403,7 +406,7 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 settings.save();
                 -- Only re-parse if results are currently visible and defaults affect calculation
                 -- (scLevel, both, includeSubjob, charLevel, enableFavWs)
-                if SkillchainRenderer.IsVisible() then
+                if SkillchainRenderer.IsVisible() and cache.resultsSource == 'calc' then
                     parseSkillchains(cache.step.enabled);
                 end
             end
@@ -571,7 +574,7 @@ local function parseCommandArgs(args, startIdx)
             scElement = lower:sub(4);
             if not SkillchainCore.IsScFilterToken(scElement) then
                 err(('Invalid sc: value "%s".'):format(scElement));
-                msg('Use a burst element (fire, ice, wind, earth, lightning, water, light, dark) or a tier-2 chain (fragmentation, fusion, gravitation, distortion).');
+                msg('Use a burst element: fire, ice, wind, earth, lightning, water, light, dark.');
                 return false;
             end
         elseif lower:sub(1, 4) == 'lvl:' or lower:sub(1, 6) == 'level:' then
