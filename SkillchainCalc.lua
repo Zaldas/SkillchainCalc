@@ -223,6 +223,7 @@ ashita.events.register('load', 'load_cb', function()
             SkillchainRenderer.Destroy();
             cache.settings = s;
             applyDefaultsToCache();
+            SkillchainParty.SetCache(cache);
             SkillchainRenderer.Initialize(gdi, cache.settings);
         end
     end)
@@ -305,7 +306,10 @@ end
 local function parsePartySkillchains(members, partyFilters)
     local chains = partyFilters and partyFilters.chains or nil;
 
-    local partyResults = SkillchainCore.CalculatePartySkillchains(members);
+    local partyResults = SkillchainCore.CalculatePartySkillchains(members, {
+        remaEnabled  = partyFilters and partyFilters.remaEnabled or false,
+        favWsEnabled = partyFilters and partyFilters.favWsEnabled or false,
+    });
 
     -- Filter by chain family set (nil = Any, pass all)
     local filtered = {};
@@ -329,13 +333,17 @@ end
 -- Mouse event handler for drag functionality and combo clicks
 ashita.events.register('mouse', 'mouse_cb', function(e)
     local result = SkillchainRenderer.HandleMouse(e, cache.settings);
+    if result and result.dragEnded then
+        settings.save();
+        return;
+    end
     -- Check if a combo was clicked
     if result and result.opener and result.closer and result.chainName then
         local message;
         if result.openerNames then
-            message = Autotranslate.FormatPartyCombo(result.opener, result.openerNames, result.closer, result.closerNames, result.chainName);
+            message = Autotranslate.FormatPartyCombo(result.opener, result.openerNames, result.closer, result.closerNames, result.chainName, result.reversible);
         else
-            message = Autotranslate.FormatCombo(result.opener, result.closer, result.chainName);
+            message = Autotranslate.FormatCombo(result.opener, result.closer, result.chainName, result.reversible);
         end
         AshitaCore:GetChatManager():QueueCommand(1, message);
     end
@@ -448,6 +456,20 @@ local function normalizeToken(token)
         return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, subJobId);
     end
     return token;
+end
+
+-- Adds the job's default subjob to a job token that names none. Weapon-only
+-- tokens and tokens with an explicit subjob are returned unchanged.
+local function withDefaultSubjob(token)
+    local jobId, allowedWeapons, subJobId = SkillchainCore.GetJobAndWeaponsFromToken(token);
+    if not jobId or subJobId then
+        return token;
+    end
+    local defaultSubjob = jobs.GetDefaultSubjob(jobId);
+    if not defaultSubjob or defaultSubjob == jobId then
+        return token;
+    end
+    return SkillchainCore.BuildTokenFromSelection(jobId, allowedWeapons, defaultSubjob);
 end
 
 -- Handles the 1-arg utility commands (calc/party/debug/help). Returns true if
@@ -649,10 +671,23 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
+    applyDefaultsToCache();
+    -- Mirrors the Calculator: subjobs are on when the default says so or either
+    -- token names one, and a side without one then uses its default subjob.
+    local job1, _, sub1 = SkillchainCore.GetJobAndWeaponsFromToken(token1);
+    local job2, _, sub2 = SkillchainCore.GetJobAndWeaponsFromToken(token2);
+    local namesSubjob = (sub1 ~= nil and sub1 ~= job1) or (sub2 ~= nil and sub2 ~= job2);
+    if not isStep and (cache.filters.includeSubjob or namesSubjob) then
+        token1 = withDefaultSubjob(token1);
+        token2 = withDefaultSubjob(token2);
+    end
+
     cache.jobs.token1 = token1;
     cache.jobs.token2 = token2;
+    -- Fav WS is a Calculator-only filter; a CLI run starts without one.
+    cache.jobs.favWs1 = nil;
+    cache.jobs.favWs2 = nil;
 
-    applyDefaultsToCache();
     if scLevel ~= nil then
         cache.filters.scLevel = scLevel;
     end
@@ -674,6 +709,7 @@ ashita.events.register('command', 'command_cb', function(e)
     parseSkillchains(isStep);
 
     if (not isStep) and SkillchainGUI ~= nil then
+        SkillchainParty.SetVisible(false);
         SkillchainGUI.OpenFromCli();
     end
 end);

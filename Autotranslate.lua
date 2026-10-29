@@ -427,22 +427,23 @@ end
     @param opener (string) The opening weaponskill name
     @param closer (string) The closing weaponskill name
     @param chainName (string) The resulting skillchain property name
+    @param reversible (boolean) Either order forms the chain; prints '<>' instead of '>'
     @return (string) The formatted combo string
 ]]
-function Autotranslate.FormatCombo(opener, closer, chainName)
+function Autotranslate.FormatCombo(opener, closer, chainName, reversible)
     local openerFmt = Autotranslate.Format(opener, 'weaponskill');
     local closerFmt = Autotranslate.Format(closer, 'weaponskill');
     local chainFmt  = Autotranslate.Format(chainName, 'skillchain');
-    local sep       = (chainName == 'Light' or chainName == 'Darkness') and '<>' or '>';
+    local sep       = reversible and '<>' or '>';
 
     return string.format('%s %s %s > %s', openerFmt, sep, closerFmt, chainFmt);
 end
 
-function Autotranslate.FormatPartyCombo(opener, openerNames, closer, closerNames, chainName)
+function Autotranslate.FormatPartyCombo(opener, openerNames, closer, closerNames, chainName, reversible)
     local openerFmt = Autotranslate.Format(opener, 'weaponskill');
     local closerFmt = Autotranslate.Format(closer, 'weaponskill');
     local chainFmt  = Autotranslate.Format(chainName, 'skillchain');
-    local sep       = (chainName == 'Light' or chainName == 'Darkness') and '<>' or '>';
+    local sep       = reversible and '<>' or '>';
 
     local openerStr = table.concat(openerNames or {}, '/');
     local closerStr = table.concat(closerNames or {}, '/');

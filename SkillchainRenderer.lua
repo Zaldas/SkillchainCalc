@@ -341,6 +341,8 @@ local function comboClickTest(mouseX, mouseY)
     return nil;
 end
 
+-- Returns the clicked combo's data, { dragEnded = true } when a drag is
+-- released (the caller persists settings.anchor), or nil.
 function SkillchainRenderer.HandleMouse(e, settings)
     -- Check for a result-line click on mouse down (513), before drag handling,
     -- so clicks work even when drag is disabled. Block both 513 and 514 so the
@@ -364,6 +366,8 @@ function SkillchainRenderer.HandleMouse(e, settings)
     if not enableDrag and not dragState.dragActive then
         return nil;
     end
+
+    local dragEnded = false;
 
     -- Handle active dragging
     if dragState.dragActive then
@@ -400,6 +404,7 @@ function SkillchainRenderer.HandleMouse(e, settings)
             dragState.limits = nil;
             -- Update ALL positions and show text when drag completes
             SkillchainRenderer.UpdateAnchor(settings);
+            dragEnded = true;
         end
     -- Start dragging on left mouse button down (message 513)
     elseif (e.message == 513) then
@@ -419,6 +424,10 @@ function SkillchainRenderer.HandleMouse(e, settings)
     if (e.message == 514) and (dragState.mouseBlocked) then
         e.blocked = true;
         dragState.mouseBlocked = false;
+    end
+
+    if dragEnded then
+        return { dragEnded = true };
     end
 end
 
@@ -526,7 +535,8 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
                 -- Add combo item
                 -- Reversibility is per-pair, not per-chain: some Light/Darkness
                 -- pairs only chain one way (see buildCombinations in the core).
-                local arrow = (closerData.reversible and both) and '↔' or '→';
+                local reversible = (closerData.reversible and both) == true;
+                local arrow = reversible and '↔' or '→';
 
                 table.insert(currentCol.items, {
                     type = 'combo',
@@ -534,6 +544,7 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
                     opener = openerData.opener,
                     closer = closerData.closer,
                     chainName = chainName,
+                    reversible = reversible,
                     -- Party mode fields (nil in normal mode):
                     openerNames = closerData.openerNames,
                     closerNames = closerData.closerNames,
@@ -613,6 +624,7 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
                     opener = item.opener,
                     closer = item.closer,
                     chainName = item.chainName,
+                    reversible = item.reversible,
                     openerNames = item.openerNames,   -- nil in normal mode
                     closerNames = item.closerNames,   -- nil in normal mode
                     x = posX,

@@ -1049,11 +1049,6 @@ function SkillchainGUI.OpenFromCli()
         applyTokenToSide(2, cache.jobs.token2);
     end
 
-    -- Override includeSubjob if explicitly set in cache.filters
-    if cache.filters.includeSubjob ~= nil then
-        state.filters.includeSubjob = cache.filters.includeSubjob;
-    end
-
     -- Custom level from CLI, falling back to defaults (also syncs enableFavWs)
     syncGuiOnlyDefaults(def);
     if cache.filters.charLevel then

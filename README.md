@@ -20,9 +20,9 @@ The Party window reads your live party from memory and lets you calculate skillc
 
 **Party section**
 
-- Press **Update party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown. A summary of what was loaded is printed to chat.
+- Press **Update party** to load the current party from game memory. Each member appears with their name, job, subjob, levels, and a weapon type dropdown. Each member's weapon skills are capped by their level. A summary of what was loaded is printed to chat.
 - Casters and support jobs (BLM, WHM, SMN, BRD, RDM) default to disabled — toggle the checkbox next to any member's name to include or exclude them.
-- The local player's weapon is auto-detected from their equipped gear when loading — the main hand normally, or the ranged slot for jobs whose weapon skills come from a bow or gun (RNG, COR). A ranged job with nothing in the ranged slot falls back to the main hand.
+- The local player's weapon is auto-detected from their equipped gear when loading — the main hand normally, or the ranged slot for jobs whose weapon skills come from a bow or gun (RNG, COR). A ranged job with nothing in the ranged slot falls back to the main hand. SMN always loads as Avatar.
 - Other party members default to their job's primary weapon. The game does not send equipment for other players, so their weapon cannot be detected — adjust the dropdown if it's wrong.
 - Press **Clear party** to reset.
 
@@ -45,7 +45,7 @@ The list does not refresh on its own — press **Update party** again once they 
 
 | Filter | Description |
 |--------|-------------|
-| **Skillchain** | Limit results by chain family: All, Any Tier 2+, Fragmentation, Fusion, Gravitation, Distortion, or Light / Darkness |
+| **Skillchain** | Limit results by chain family: All, Any Tier 2+, Fragmentation, Fusion, Gravitation, Distortion, or Light / Darkness — or by burst element (Fire … Dark), which lists every tier that bursts it (e.g. Dark burst: Compression, Gravitation, Darkness) |
 | **REMA** *(Advanced)* | Expand to mark which members have REMA (Relic/Empyrean/Mythic/Aeonic) weapons. Members flagged as REMA will include those weapon skills (marked ²) in the calculation. |
 | **Fav WS** *(Advanced)* | Pin a preferred weapon skill per member. A member with a fav WS set contributes only that WS to the calculation; members without one are unrestricted. |
 
@@ -143,7 +143,7 @@ job[/subjob][:weapon,weapon,...]
 | Part | Description |
 |------|-------------|
 | `job` | Any job abbreviation |
-| `/subjob` | Optional — adds weapon skills accessible through that subjob |
+| `/subjob` | Optional — adds weapon skills accessible through that subjob. When subjobs are on (your saved default, or the other token names one), a job without one uses its default subjob |
 | `:weapon,...` | Optional — comma-separated list of weapon types to restrict the calculation to |
 
 **Usage:**
@@ -160,7 +160,7 @@ job[/subjob][:weapon,weapon,...]
 |--------|--------|-------------|
 | Tier filter | `1` / `2` / `3` | Minimum skillchain tier to include |
 | Both directions | `both` | Calculate both Job1→Job2 and Job2→Job1 |
-| Element filter | `sc:<element>` | Limit results to a specific burst element |
+| Element filter | `sc:<element>` or `sc:<tier-2 chain>` | Limit results to a burst element, or to a tier-2 chain plus its tier-3 (`sc:distortion` → Distortion and Darkness) |
 | Level cap | `lvl:<n>` or `level:<n>` | Exclude weapon skills above the skill cap for level n |
 
 **Examples:**
@@ -171,7 +171,7 @@ job[/subjob][:weapon,weapon,...]
 | `/scc thf:sword war` | THF restricted to Sword only (non-default weapon), WAR unrestricted |
 | `/scc sam/rng nin` | SAM with RNG subjob — pulls in Archery/Marksmanship weapon skills via subjob |
 | `/scc war mnk 2 both` | Tier 2+ only, both directions |
-| `/scc sam drk lvl:66 sc:distortion` | Level-capped at 66, results filtered to Distortion burst |
+| `/scc sam drk lvl:66 sc:distortion` | Level-capped at 66, results filtered to Distortion and Darkness |
 
 ---
 

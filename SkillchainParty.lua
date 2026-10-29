@@ -29,6 +29,26 @@ local partyScFilters = {
     { label = 'Light / Darkness', chains = { Light         = true, Darkness  = true } },
 };
 
+-- Per-element options: every chain whose burst list includes the element.
+-- Appended after the family options so saved scFilterIndex values keep their meaning.
+do
+    local elements = { 'Fire', 'Ice', 'Wind', 'Earth', 'Lightning', 'Water', 'Light', 'Dark' };
+    for _, elem in ipairs(elements) do
+        local chains = {};
+        for name, info in pairs(skills.ChainInfo or {}) do
+            if type(info) == 'table' and type(info.burst) == 'table' then
+                for _, burstElem in ipairs(info.burst) do
+                    if burstElem == elem then
+                        chains[name] = true;
+                        break;
+                    end
+                end
+            end
+        end
+        table.insert(partyScFilters, { label = string.format('%s burst', elem), chains = chains });
+    end
+end
+
 -- Jobs defaulted to disabled at seed time (casters/support with no melee WS contribution)
 local defaultDisabledJobs = { BLM=true, WHM=true, SMN=true, BRD=true, RDM=true };
 
@@ -201,9 +221,10 @@ local function getPartyWarnings()
     for i = 0, 17 do
         if party:GetMemberIsActive(i) ~= 0 then
             local name = party:GetMemberName(i);
+            local jobId = jobIds[party:GetMemberMainJob(i)];
             if name and name ~= '' then
                 live[name] = {
-                    jobId     = jobIds[party:GetMemberMainJob(i)],
+                    jobId     = jobId,
                     subJobId  = jobIds[party:GetMemberSubJob(i)],
                     level     = party:GetMemberMainJobLevel(i),
                     subLevel  = party:GetMemberSubJobLevel(i),
@@ -211,6 +232,10 @@ local function getPartyWarnings()
                     -- comparisons against the seeded snapshot are skipped for
                     -- them -- a stale read would otherwise look like a job change.
                     outOfZone = party:GetMemberZone(i) ~= localZone,
+                    -- In-zone with no resolvable job (/anon, 0x00DD pending):
+                    -- loadParty gives them no row, so they never match the seed.
+                    unloadable = party:GetMemberZone(i) == localZone
+                        and not (jobId and jobsData[jobId] and jobsData[jobId].weapons),
                 };
             end
         end
@@ -254,8 +279,10 @@ local function getPartyWarnings()
 
     -- Any remaining live members weren't in the seed. Update Party captures
     -- out-of-zone members too, so the zone doesn't change the advice.
-    for name, _ in pairs(live) do
-        table.insert(warnings, name .. ' joined the party after loading');
+    for name, cur in pairs(live) do
+        if not cur.unloadable then
+            table.insert(warnings, name .. ' joined the party after loading');
+        end
     end
 
     return warnings;
@@ -321,8 +348,9 @@ local function loadParty()
                 local job           = jobsData[jobId];
                 local defaultWeapon = (job.primaryWeapons or {})[1];
 
-                -- For the local player (slot 0), read their actual equipped weapon
-                if i == 0 then
+                -- For the local player (slot 0), read their actual equipped weapon.
+                -- Avatar jobs keep Avatar: the staff in hand isn't what they chain with.
+                if i == 0 and defaultWeapon ~= 'avatar' then
                     local equipped = readLocalPlayerWeapon(jobId);
                     if equipped then
                         defaultWeapon = equipped;
@@ -599,6 +627,9 @@ local function drawPartyTab(contentWidth)
                         local hr = { member.hasRema or false };
                         if imgui.Checkbox(member.name .. '##rema' .. i, hr) then
                             member.hasRema = hr[1];
+                            if not hr[1] and SkillchainCore.IsRemaWsName(member.favWs) then
+                                member.favWs = nil;
+                            end
                         end
                     end
                 end
@@ -618,7 +649,7 @@ local function drawPartyTab(contentWidth)
                 if imgui.IsItemHovered() then
                     uiTheme.tooltipBegin();
                     imgui.PushTextWrapPos(imgui.GetFontSize() * 18.0);
-                    imgui.TextUnformatted('Fav WS: Choose a preferred weapon skill per member. Only skillchains that include at least one member\'s favored WS will be shown.');
+                    imgui.TextUnformatted('Fav WS: Choose a preferred weapon skill per member. A member with a favored WS contributes only that WS to the calculation.');
                     imgui.PopTextWrapPos();
                     uiTheme.tooltipEnd();
                 end
@@ -639,7 +670,7 @@ local function drawPartyTab(contentWidth)
                             -- Only resolve the skill list while the combo is actually
                             -- open, not every frame the Fav WS panel is expanded.
                             local token = SkillchainCore.BuildTokenFromSelection(member.jobId, { [member.weapon] = true }, member.subJobId);
-                            local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
+                            local wsList = SkillchainCore.ResolveTokenToSkills(token, nil, SkillchainCore.GetMemberSkillLevel(member));
 
                             if imgui.Selectable('(Any)', member.favWs == nil) then
                                 member.favWs = nil;
@@ -648,7 +679,7 @@ local function drawPartyTab(contentWidth)
                             if wsList then
                                 -- Real REMA weapons can't be wielded below level 75,
                                 -- regardless of the member's REMA-ownership checkbox.
-                                local memberRemaAllowed = member.hasRema and (member.level or 0) >= 75;
+                                local memberRemaAllowed = partyState.filters.showRema and member.hasRema and (member.level or 0) >= 75;
                                 for _, ws in ipairs(wsList) do
                                     local isRema = ws.rema == true;
                                     if not isRema or memberRemaAllowed then
@@ -682,7 +713,9 @@ local function drawPartyTab(contentWidth)
                 mode         = 'party',
                 members      = partyState.members,
                 partyFilters = {
-                    chains = partyScFilters[fidx] and partyScFilters[fidx].chains or nil,
+                    chains       = partyScFilters[fidx] and partyScFilters[fidx].chains or nil,
+                    remaEnabled  = partyState.filters.showRema,
+                    favWsEnabled = partyState.filters.showFavWs,
                 },
                 warnings = getPartyWarnings(),
             };
@@ -848,7 +881,7 @@ end
 --                                      { name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs, outOfZone, partyIndex }
 --                                      outOfZone entries are display-only rows carrying enabled=false
 --                                      and weapon=nil, so CalculatePartySkillchains skips them.
--- partyFilters         (table)         { chains: table|nil } — set of SC family names or nil for Any
+-- partyFilters         (table)         { chains: table|nil, remaEnabled: bool, favWsEnabled: bool } — chains is a set of SC names or nil for Any
 -- warnings             (array)         Stale-party warnings (strings) to print to chat; present when mode == 'party'
 function SkillchainParty.DrawWindow()
     if not showWindow[1] then

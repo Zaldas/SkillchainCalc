@@ -471,18 +471,30 @@ function SkillchainCore.ResolveTokenToSkills(token, subJobId, charLevel)
         weaponKey = skills.aliases[lower];
     end
 
-    -- Try alias-resolved key first
-    if skills[weaponKey] ~= nil then
-        return skills[weaponKey];
+    local weaponTable = skills[weaponKey];
+    if weaponTable == nil then
+        -- Fallback: direct lookup on the raw lower token (in case aliases table is incomplete)
+        weaponTable = skills[lower];
+    end
+    if type(weaponTable) ~= 'table' then
+        return nil;
     end
 
-    -- Fallback: direct lookup on the raw lower token (in case aliases table is incomplete)
-    if skills[lower] ~= nil then
-        return skills[lower];
+    -- Weapon tables are keyed by WS id (e.g. katana 128+), so ipairs-based
+    -- consumers see nothing unless they get a dense array.
+    local ids = {};
+    for id, ws in pairs(weaponTable) do
+        if type(id) == 'number' and type(ws) == 'table' then
+            table.insert(ids, id);
+        end
     end
+    table.sort(ids);
 
-    -- No match found
-    return nil;
+    local list = {};
+    for _, id in ipairs(ids) do
+        table.insert(list, weaponTable[id]);
+    end
+    return (#list > 0) and list or nil;
 end
 
 -- Local helpers
@@ -708,6 +720,14 @@ function SkillchainCore.CalculateStepSkillchains(wsList, stepFilter, stepFilterT
     return buildCombinations(properties, wsList, { both = false });
 end
 
+-- sc:<name> tokens that name a tier-2 chain. Light/Dark stay burst elements.
+local tier2Families = {
+    fragmentation = { Fragmentation = true, Light    = true },
+    fusion        = { Fusion        = true, Light    = true },
+    gravitation   = { Gravitation   = true, Darkness = true },
+    distortion    = { Distortion    = true, Darkness = true },
+};
+
 -- Consolidated single-pass filter: applies all filters in one iteration
 -- filters: {scLevel, scElement, favWs1, favWs2, both}
 function SkillchainCore.FilterSkillchains(combinations, filters)
@@ -733,8 +753,11 @@ function SkillchainCore.FilterSkillchains(combinations, filters)
             pass = chainLevel >= minLevel;
         end
 
-        -- Filter 2: Burst element
-        if pass and targetElement then
+        -- Filter 2: Burst element, or a tier-2 chain name (matches its tier-3 too)
+        local family = targetElement and tier2Families[targetElement];
+        if pass and family then
+            pass = family[combo.chain] == true;
+        elseif pass and targetElement then
             local info = skills.ChainInfo[combo.chain];
             local burst = info and info.burst;
             local elementMatch = false;
@@ -883,27 +906,39 @@ local function appendNameUnique(list, name)
     table.insert(list, name);
 end
 
+-- Level used for a member's skill caps. 0/nil (level not reported) returns nil,
+-- so callers cap at jobs.MAX_LEVEL.
+function SkillchainCore.GetMemberSkillLevel(member)
+    local level = member and member.level;
+    if type(level) == 'number' and level > 0 then
+        return level;
+    end
+    return nil;
+end
+
 -- Calculate all skillchains between every ordered pair of active members. This
 -- is one flat pool regardless of alliance sub-party -- partyIndex (if present)
 -- is a display-grouping detail only and plays no role in the calculation.
 -- members: array of {name, jobId, subJobId, level, subLevel, enabled, weapon}
+-- options: {remaEnabled, favWsEnabled} -- per-member hasRema/favWs apply only when enabled
 -- Returns a flat array of:
 --   {opener, closer, chain, chainLevel, openerNames, closerNames}
-function SkillchainCore.CalculatePartySkillchains(members)
+function SkillchainCore.CalculatePartySkillchains(members, options)
     if not members then
         return {};
     end
+    options = options or {};
 
     -- Filter to active members with a chosen weapon, resolving skills once each.
     local active = {};
     for _, m in ipairs(members) do
         if m.enabled and m.weapon then
             local token = SkillchainCore.BuildTokenFromSelection(m.jobId, { [m.weapon] = true }, m.subJobId);
-            local skillList = SkillchainCore.ResolveTokenToSkills(token, nil, nil);
+            local skillList = SkillchainCore.ResolveTokenToSkills(token, nil, SkillchainCore.GetMemberSkillLevel(m));
             if skillList then
                 -- Real REMA weapons can't be wielded below level 75, regardless
                 -- of the member's REMA-ownership flag.
-                local memberRemaAllowed = m.hasRema and (m.level or 0) >= 75;
+                local memberRemaAllowed = options.remaEnabled and m.hasRema and (m.level or 0) >= 75;
                 if not memberRemaAllowed then
                     local noRema = {};
                     for _, ws in ipairs(skillList) do
@@ -913,15 +948,18 @@ function SkillchainCore.CalculatePartySkillchains(members)
                     end
                     skillList = noRema;
                 end
-                -- If member has a favWs, restrict them to that WS only.
-                if m.favWs then
+                -- With Fav WS enabled, a member's fav restricts them to that WS. A fav
+                -- the member can't currently use (REMA off, level too low) is ignored.
+                if options.favWsEnabled and m.favWs then
                     local favOnly = {};
                     for _, ws in ipairs(skillList) do
                         if ws.en == m.favWs then
                             table.insert(favOnly, ws);
                         end
                     end
-                    skillList = favOnly;
+                    if #favOnly > 0 then
+                        skillList = favOnly;
+                    end
                 end
                 if #skillList > 0 then
                     table.insert(active, { member = m, skills = skillList });
