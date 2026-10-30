@@ -102,6 +102,21 @@ The Calculator window is for general-purpose planning — pick any two jobs (not
 
 ---
 
+## 3-Step Calculator
+
+Open with `/scc 3step`.
+
+Finds every three-weapon-skill sequence (WS1 → WS2 → WS3) that either bursts the same element on both skillchains, so a nuker can burst twice, or finishes on a tier 3 (Light/Darkness).
+
+- **Members** — 3 or 4 rows, each a step, job, weapon and optional favorite WS. Setting a row's step to 1, 2 or 3 locks it to that step (e.g. WAR always opens), and only rows locked to a step can fill it; `-` lets the row fill any unlocked step. Changing a row's job picks that job's primary weapon; a favorite WS restricts that member to one weapon skill. PUP rows can pick an automaton frame as their weapon; use one PUP row for the master and another for the automaton.
+- **Burst on** — **Both chains**: the first and final skillchain both burst the chosen element. **Final chain (T3)**: the final skillchain is Light or Darkness; the element is optional and filters only the final chain.
+- **Element** — one of the eight elements (or **Any** with Final chain).
+- **Include REMA** — adds REMA weapon skills (²) for every member.
+
+Each step comes from a different row. Every row uses the max level (75 on HorizonXI) and its job's default subjob. Results update as you change any selection and are grouped by chain path (e.g. `Liquefaction → Fusion [Fire]`). Clicking a result sends `opener > closer 1 > chain 1 > closer 2 > chain 2` to chat. Your rows, favorite WS, element and REMA setting are saved.
+
+---
+
 ## Results Window
 
 The results window appears after any calculation and displays all valid skillchain combinations grouped by chain name and tier.
@@ -127,6 +142,7 @@ The results window appears after any calculation and displays all valid skillcha
 | `/scc` | Toggle the Party Calculator |
 | `/scc party` | Toggle the Party Calculator |
 | `/scc calc` | Toggle the Calculator |
+| `/scc 3step` | Toggle the 3-Step Calculator |
 
 ---
 
@@ -184,8 +200,9 @@ job[/subjob][:weapon,weapon,...]
 | `SkillchainCalc.lua` | Main addon, command handling, event wiring |
 | `SkillchainParty.lua` | Party window UI and party data logic |
 | `SkillchainGui.lua` | Calculator window UI |
+| `SkillchainThreeStep.lua` | 3-Step window UI |
 | `SkillchainUI.lua` | Shared ImGui helpers (styled buttons, gradient headers, window scaffolding) |
-| `SkillchainCore.lua` | Filtering, skillchain calculation, party pair logic |
+| `SkillchainCore.lua` | Filtering, skillchain calculation, party pair and 3-step logic |
 | `SkillchainRenderer.lua` | GDI results window rendering |
 | `Skills.lua` | Weapon skill data, properties, and colors |
 | `Jobs.lua` | Job skill caps and primary weapon lists |

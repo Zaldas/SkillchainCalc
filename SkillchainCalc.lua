@@ -18,6 +18,7 @@ local SkillchainCore     = require('SkillchainCore');
 local SkillchainRenderer = require('SkillchainRenderer');
 local SkillchainGUI      = require('SkillchainGui');
 local SkillchainParty    = require('SkillchainParty');
+local SkillchainThreeStep = require('SkillchainThreeStep');
 local Autotranslate      = require('Autotranslate');
 local gdi                = require('gdifonts.include');
 local settings           = require('settings');
@@ -65,6 +66,7 @@ end
 --   default                   -- Calculator tab defaults/filters
 --   partyFilters              -- Party tab REMA/Fav WS toggles
 --   localPlayer               -- Party tab "Local Player" REMA weapon ownership
+--   threeStep                 -- 3-Step window rows, burst filter and REMA toggle
 local sccSettings = T{
     font = {
         font_family = 'Arial',
@@ -116,6 +118,7 @@ local sccSettings = T{
     localPlayer = {
         remaWeapons = {},
     },
+    threeStep = SkillchainThreeStep.DefaultSettings(),
 };
 
 -- CACHE: Stores the last skillchain calculation that was performed.
@@ -149,7 +152,7 @@ local cache = {
 
     -- Application settings and state
     settings = sccSettings,
-    resultsSource = nil,      -- 'calc' or 'party': which window produced the last results
+    resultsSource = nil,      -- 'calc', 'party' or 'threeStep': which window produced the last results
     cliCommand = nil,         -- Command text while a weapon-only CLI run locks the Calculator
 };
 
@@ -175,10 +178,11 @@ local function resetCacheFull()
     applyDefaultsToCache();
 end
 
--- Only one of the two input windows is open at a time; these helpers enforce it.
+-- Only one input window is open at a time; these helpers enforce it.
 local function closeAllWindows()
     SkillchainGUI.SetVisible(false);
     SkillchainParty.SetVisible(false);
+    SkillchainThreeStep.SetVisible(false);
     SkillchainRenderer.Clear();
     resetCacheFull();
 end
@@ -194,13 +198,22 @@ end
 local function showCalculator()
     clearStepResults();
     SkillchainParty.SetVisible(false);
+    SkillchainThreeStep.SetVisible(false);
     SkillchainGUI.SetVisible(true);
 end
 
 local function showParty()
     clearStepResults();
     SkillchainGUI.SetVisible(false);
+    SkillchainThreeStep.SetVisible(false);
     SkillchainParty.SetVisible(true);
+end
+
+local function showThreeStep()
+    clearStepResults();
+    SkillchainGUI.SetVisible(false);
+    SkillchainParty.SetVisible(false);
+    SkillchainThreeStep.SetVisible(true);
 end
 
 -- entries: Calculator combos or party entries (see SkillchainCore.BuildResultsTable)
@@ -216,6 +229,7 @@ ashita.events.register('load', 'load_cb', function()
     applyDefaultsToCache();
     SkillchainGUI.SetCache(cache);
     SkillchainParty.SetCache(cache);
+    SkillchainThreeStep.SetCache(cache);
     SkillchainRenderer.Initialize(gdi, cache.settings);
 
     settings.register('settings', 'settings_update', function(s)
@@ -224,6 +238,7 @@ ashita.events.register('load', 'load_cb', function()
             cache.settings = s;
             applyDefaultsToCache();
             SkillchainRenderer.Initialize(gdi, cache.settings);
+            SkillchainThreeStep.Invalidate();
         end
     end)
 end);
@@ -338,6 +353,18 @@ local function parsePartySkillchains(members, partyFilters)
     renderResults(filtered, true);
 end
 
+-- req: SkillchainThreeStep request with mode == 'threeStep'.
+local function parseThreeStepSkillchains(req)
+    cache.resultsSource = 'threeStep';
+    local groups, count = SkillchainCore.CalculateThreeStepSkillchains(req.rows,
+        { bothChains = req.bothChains, element = req.element }, req.remaEnabled);
+    SkillchainThreeStep.SetResultCount(count);
+    SkillchainRenderer.Clear();
+    if count > 0 then
+        SkillchainRenderer.RenderThreeStep(groups, req.element, cache.settings);
+    end
+end
+
 -- Mouse event handler for drag functionality and combo clicks
 ashita.events.register('mouse', 'mouse_cb', function(e)
     local result = SkillchainRenderer.HandleMouse(e, cache.settings);
@@ -346,7 +373,9 @@ ashita.events.register('mouse', 'mouse_cb', function(e)
         return;
     end
     -- Check if a combo was clicked
-    if result and result.opener and result.closer and result.chainName then
+    if result and result.threeStepEntry then
+        AshitaCore:GetChatManager():QueueCommand(1, Autotranslate.FormatThreeStep(result.threeStepEntry));
+    elseif result and result.opener and result.closer and result.chainName then
         local message;
         if result.openerNames then
             message = Autotranslate.FormatPartyCombo(result.opener, result.openerNames, result.closer, result.closerNames, result.chainName, result.reversible);
@@ -377,6 +406,17 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             end
             cache.step.enabled = false;
             parsePartySkillchains(partyReq.members, partyReq.partyFilters);
+        end
+    end
+
+    local threeStepReq = SkillchainThreeStep.DrawWindow();
+    if threeStepReq then
+        if threeStepReq.saveSettings then
+            settings.save();
+        end
+        if threeStepReq.mode == 'threeStep' then
+            cache.step.enabled = false;
+            parseThreeStepSkillchains(threeStepReq);
         end
     end
 
@@ -431,8 +471,8 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
                 parseSkillchains(false);
             end
         end
-    elseif not SkillchainParty.IsVisible() then
-        -- With both windows closed, results stay up only in step mode.
+    elseif not SkillchainParty.IsVisible() and not SkillchainThreeStep.IsVisible() then
+        -- With every window closed, results stay up only in step mode.
         if not cache.step.enabled and SkillchainRenderer.IsVisible() then
             SkillchainRenderer.Clear();
         end
@@ -491,10 +531,19 @@ local function handleUtilityCommand(args)
             msg('/scc calc - Generic skillchain calculator');
         end
         return true;
+    elseif (args[2] == '3step') then
+        if SkillchainThreeStep.IsVisible() then
+            closeAllWindows();
+        else
+            showThreeStep();
+            msg('/scc 3step - 3-step skillchains: burst one element on both chains, or finish on Light/Darkness');
+        end
+        return true;
     elseif (args[2] == 'help') then
         msg('Commands:');
         msg('  /scc (or /scc party) - Toggle party skillchain calculator');
         msg('  /scc calc - Toggle generic skillchain calculator');
+        msg('  /scc 3step - Toggle 3-step skillchain calculator');
         return true;
     end
 
@@ -637,7 +686,7 @@ ashita.events.register('command', 'command_cb', function(e)
     -- Bare /scc toggles windows; two-arg forms (a lone token, bare "step") reach
     -- resolveTokens, which reports the usage error.
     if (#args == 1) then
-        local anyOpen = SkillchainParty.IsVisible() or SkillchainGUI.IsVisible();
+        local anyOpen = SkillchainParty.IsVisible() or SkillchainGUI.IsVisible() or SkillchainThreeStep.IsVisible();
         if anyOpen then
             closeAllWindows();
         else
@@ -713,11 +762,13 @@ ashita.events.register('command', 'command_cb', function(e)
     cache.step.enabled = isStep;
     cache.step.filter = stepFilter;
     cache.step.filterType = stepFilterType;
+    SkillchainThreeStep.SetResultCount(nil);
 
     parseSkillchains(isStep);
 
     if not isStep then
         SkillchainParty.SetVisible(false);
+        SkillchainThreeStep.SetVisible(false);
         SkillchainGUI.OpenFromCli();
     end
 end);

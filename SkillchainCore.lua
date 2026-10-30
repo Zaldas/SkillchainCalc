@@ -181,6 +181,39 @@ function SkillchainCore.GetWeaponsForJob(jobId)
     return list;
 end
 
+-- Returns the weapon keys this job can wield that have actual WS entries,
+-- primary weapons first (via GetWeaponsForJob ordering).
+--
+-- Main job only. A subjob grants no weapon access -- equipment restrictions
+-- check the main job alone -- only access to weapon skills on a weapon the
+-- character already has skill in, which IsJobAllowedForWs handles.
+--
+-- Not modelled: the game falls back to the subjob's skill rank when the main
+-- job's rank is 0, capped at subjob level (LSB charutils.cpp,
+-- BuildingCharSkillsTable), so a NIN/WAR with an all-jobs axe really can use
+-- low-tier axe WS. Offer only what the job data defines.
+--
+-- PUP automaton frames are included only with includeFrames; their weapon
+-- skills fire on the automaton's own schedule. GetWeaponsForJob appends the
+-- frame keys, and without includeFrames the skills[w] lookup drops them
+-- (frame WS live in skills.frameMelee / skills.frameRanged).
+function SkillchainCore.GetWsWeaponsForJob(jobId, includeFrames)
+    local seen    = {};
+    local options = {};
+    local frames  = includeFrames and jobs[jobId] and jobs[jobId].frames or nil;
+
+    for _, w in ipairs(SkillchainCore.GetWeaponsForJob(jobId)) do
+        local hasWs = (frames and frames[w] ~= nil)
+            or (type(skills[w]) == 'table' and next(skills[w]) ~= nil);
+        if not seen[w] and hasWs then
+            seen[w] = true;
+            table.insert(options, w);
+        end
+    end
+
+    return options;
+end
+
 -- Public: Build a token string from job, weapon selection, and optional subjob
 -- Input: jobId (string), weaponSelection (table like {dagger=true, katana=true}), subJobId (string, optional)
 -- Output: token string like "nin:dagger,katana" or "nin/war:dagger"
@@ -1116,6 +1149,186 @@ function SkillchainCore.CalculatePartySkillchains(members, options)
     end
 
     return results;
+end
+
+-- ============================================================================
+-- Three-Step Skillchain Calculation
+-- ============================================================================
+
+local function chainBurstsElement(chainName, element)
+    local info = skills.ChainInfo[chainName];
+    if not info or not info.burst then
+        return false;
+    end
+    for _, burstElem in ipairs(info.burst) do
+        if burstElem == element then
+            return true;
+        end
+    end
+    return false;
+end
+
+-- Weapon skills a 3-step row can use: MAX_LEVEL, the job's default subjob,
+-- REMA WS only when remaEnabled. Returns an array (possibly empty) or nil.
+function SkillchainCore.BuildThreeStepRowSkillList(jobId, weapon, remaEnabled)
+    if not jobId or not weapon then
+        return nil;
+    end
+    return SkillchainCore.BuildMemberSkillList({
+        jobId    = jobId,
+        subJobId = SkillchainCore.ResolveSubjob(jobId, nil, true),
+        weapon   = weapon,
+        hasRema  = remaEnabled,
+    }, remaEnabled);
+end
+
+-- Every WS1 → WS2 → WS3 sequence from three different rows that passes filter.
+-- rows: array of {jobId, weapon, favWs, step}; a favWs the row can use restricts it to that WS.
+--   step (1-3) locks the row to that step, and a locked step takes only rows locked to it.
+-- filter: { bothChains = bool, element = ChainInfo burst element name or nil }
+--   bothChains: the first skillchain and the one WS3 extends it into both burst element (required).
+--   otherwise:  the final skillchain is tier 3+ (Light/Darkness) and, if element is set, bursts it.
+-- Returns groups, count where count is the total sequence count and groups is
+-- an array in display order (final chain, then first chain):
+--   { chain1, chain2, entries = { {ws1, ws2, ws3, chain1, chain2} } }
+function SkillchainCore.CalculateThreeStepSkillchains(rows, filter, remaEnabled)
+    local element = filter and filter.element or nil;
+    local firstOk, finalOk;
+    if filter and filter.bothChains then
+        firstOk = function(chain) return chainBurstsElement(chain, element); end
+        finalOk = firstOk;
+    else
+        firstOk = function() return true; end
+        finalOk = function(chain)
+            return findChainLevel(chain) >= 3 and (not element or chainBurstsElement(chain, element));
+        end
+    end
+
+    local locked = {};
+    for _, row in ipairs(rows or {}) do
+        if row.step then
+            locked[row.step] = true;
+        end
+    end
+    local function canFill(i, step)
+        local rowStep = rows[i].step;
+        if rowStep then
+            return rowStep == step;
+        end
+        return not locked[step];
+    end
+
+    local active = {};
+    for i, row in ipairs(rows or {}) do
+        local list = SkillchainCore.BuildThreeStepRowSkillList(row.jobId, row.weapon, remaEnabled);
+        if list and row.favWs then
+            for _, ws in ipairs(list) do
+                if ws.en == row.favWs then
+                    list = { ws };
+                    break;
+                end
+            end
+        end
+        active[i] = { skills = (list and #list > 0) and list or nil };
+    end
+
+    -- First-chain property → row k's WS, filtered by finalOk; memoised per (property, row).
+    local extendCache = {};
+    local function extensions(chain1, k)
+        local byRow = extendCache[chain1];
+        if not byRow then
+            byRow = {};
+            extendCache[chain1] = byRow;
+        end
+        local list = byRow[k];
+        if not list then
+            list = {};
+            for _, combo in ipairs(buildCombinations({ chain1 }, active[k].skills)) do
+                if finalOk(combo.chain) then
+                    table.insert(list, combo);
+                end
+            end
+            byRow[k] = list;
+        end
+        return list;
+    end
+
+    -- Both chains resolve first-match, so the WS triple alone identifies an entry.
+    local merged = {};
+    local order  = {};
+
+    for i = 1, #active do
+        if active[i].skills and canFill(i, 1) then
+            for j = 1, #active do
+                if j ~= i and active[j].skills and canFill(j, 2) then
+                    for _, first in ipairs(buildCombinations(active[i].skills, active[j].skills)) do
+                        if firstOk(first.chain) then
+                            for k = 1, #active do
+                                if k ~= i and k ~= j and active[k].skills and canFill(k, 3) then
+                                    for _, second in ipairs(extensions(first.chain, k)) do
+                                        local key = string.format('%s>%s>%s', first.skill1, first.skill2, second.skill2);
+                                        if not merged[key] then
+                                            merged[key] = {
+                                                ws1    = first.skill1,
+                                                ws2    = first.skill2,
+                                                ws3    = second.skill2,
+                                                chain1 = first.chain,
+                                                chain2 = second.chain,
+                                            };
+                                            table.insert(order, key);
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local groups     = {};
+    local groupByKey = {};
+    for _, key in ipairs(order) do
+        local entry    = merged[key];
+        local groupKey = entry.chain1 .. '>' .. entry.chain2;
+        local group    = groupByKey[groupKey];
+        if not group then
+            group = { chain1 = entry.chain1, chain2 = entry.chain2, entries = {} };
+            groupByKey[groupKey] = group;
+            table.insert(groups, group);
+        end
+        table.insert(group.entries, entry);
+    end
+
+    table.sort(groups, function(a, b)
+        local a2, b2 = skills.GetDisplayIndex(a.chain2), skills.GetDisplayIndex(b.chain2);
+        if a2 ~= b2 then
+            return a2 < b2;
+        end
+        return skills.GetDisplayIndex(a.chain1) < skills.GetDisplayIndex(b.chain1);
+    end);
+
+    -- Within a group: highest-level WS first, step by step; names break ties.
+    local stepFields = { 'ws1', 'ws2', 'ws3' };
+    for _, group in ipairs(groups) do
+        table.sort(group.entries, function(a, b)
+            for _, field in ipairs(stepFields) do
+                local la, lb = findSkillLevel(a[field]), findSkillLevel(b[field]);
+                if la ~= lb then
+                    return la > lb;
+                end
+            end
+            for _, field in ipairs(stepFields) do
+                if a[field] ~= b[field] then
+                    return a[field] < b[field];
+                end
+            end
+            return false;
+        end);
+    end
+
+    return groups, #order;
 end
 
 return SkillchainCore;

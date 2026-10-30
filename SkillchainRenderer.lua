@@ -107,6 +107,7 @@ local function placeHeaderDecor(settings)
     local used = 0;
     if gdiObjects.layoutData then
         local rowH = settings.layout.entriesHeight;
+        local columnWidth = gdiObjects.layoutData.columnWidth;
         local textIndex = 1;
         local stripe, stripeRows = nil, 0;
         local function endStripe()
@@ -116,7 +117,7 @@ local function placeHeaderDecor(settings)
             stripe = nil;
         end
         for colIdx, column in ipairs(gdiObjects.layoutData.columns) do
-            local x = settings.anchor.x + 4 + (colIdx - 1) * settings.layout.columnWidth;
+            local x = settings.anchor.x + 4 + (colIdx - 1) * columnWidth;
             local y = settings.anchor.y + 40;
             for _, item in ipairs(column.items) do
                 if textIndex > gdiObjects.lastUsedCount or textIndex == gdiObjects.noticeIndex then
@@ -131,10 +132,11 @@ local function placeHeaderDecor(settings)
                     if not decor then
                         decor = {
                             stripe = gdi:create_rect({ width = 3, height = rowH - 4 }),
-                            line   = gdi:create_rect({ width = settings.layout.columnWidth - 12, height = 1 }),
+                            line   = gdi:create_rect({ width = columnWidth - 12, height = 1 }),
                         };
                         gdiObjects.headerDecor[used] = decor;
                     end
+                    decor.line:set_width(columnWidth - 12);
                     local color = item.color or settings.font.font_color;
                     decor.stripe:set_fill_color(color);
                     decor.stripe:set_position_x(x);
@@ -245,7 +247,7 @@ function SkillchainRenderer.UpdateAnchor(settings)
     if gdiObjects.layoutData then
         local textIndex = 1;
         for colIdx, column in ipairs(gdiObjects.layoutData.columns) do
-            local columnOffset = (colIdx - 1) * settings.layout.columnWidth;
+            local columnOffset = (colIdx - 1) * gdiObjects.layoutData.columnWidth;
             local y_offset = 40;
 
             for _, item in ipairs(column.items) do
@@ -288,11 +290,13 @@ end
 -- Drag Functionality
 -- ============================================================================
 
--- Calculate anchor position limits based on screen size and layout
+-- Calculate anchor position limits based on screen size and layout; uses the
+-- displayed results' column width when results are up.
 function SkillchainRenderer.CalculateAnchorLimits(settings)
     local pad = 20;
     local layoutSettings = settings.layout;
-    local colW = (layoutSettings and layoutSettings.columnWidth) or pad;
+    local colW = (gdiObjects.layoutData and gdiObjects.layoutData.columnWidth)
+        or (layoutSettings and layoutSettings.columnWidth) or pad;
     local colH = (layoutSettings and layoutSettings.entriesPerColumn * layoutSettings.entriesHeight) or pad;
 
     local maxX = scaling.window.w - colW - pad;
@@ -449,27 +453,17 @@ end
 -- Layout Calculation (Pass 1: Determine what goes where)
 -- ============================================================================
 
--- Calculate the layout structure without rendering
--- Returns: array of columns, each containing layout items with positions
-local function calculateLayout(sortedResults, orderedResults, layoutSettings, both)
+-- Splits sections into columns, repeating a section's header when it
+-- continues in a new column.
+-- sections: array of { header = {type='header', chainName, text, color}, items = {combo item, ...} }
+-- Returns: array of columns, each { items = {...}, entriesCount }
+local function paginateSections(sections, layoutSettings)
     local minResultsAfterHeader = layoutSettings.minResultsAfterHeader or 8;
     local columns = {{items = {}, entriesCount = 0}};
     local currentColIdx = 1;
 
-    for _, chainName in ipairs(orderedResults) do
-        local openers = sortedResults[chainName];
-        local chainInfo = skills.ChainInfo[chainName];
-        local burstElements = chainInfo and chainInfo.burst or {};
-        local elementsText = table.concat(burstElements, ', ');
-        local color = skills.GetPropertyColor(chainName);
-
-        -- Count total combo entries for this chain (excluding header)
-        local totalComboCount = 0;
-        for _, openerData in ipairs(openers) do
-            totalComboCount = totalComboCount + #openerData.closers;
-        end
-
-        -- Check if we should start a new column before this chain
+    for _, section in ipairs(sections) do
+        -- Check if we should start a new column before this section
         local currentCol = columns[currentColIdx];
         local spaceLeft = layoutSettings.entriesPerColumn - currentCol.entriesCount;
 
@@ -480,54 +474,73 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
             currentCol = columns[currentColIdx];
         end
 
-        -- Add header item to current column
-        table.insert(currentCol.items, {
-            type = 'header',
-            chainName = chainName,
-            text = string.format('%s [%s]', chainName, elementsText),
-            color = color,
-        });
+        table.insert(currentCol.items, section.header);
         currentCol.entriesCount = currentCol.entriesCount + 1;
 
-        -- Process combo entries for this chain
         local combosInCurrentCol = 0;
-        local combosRemaining = totalComboCount;
+        local combosRemaining = #section.items;
+
+        for _, item in ipairs(section.items) do
+            -- Check if we should split to a new column mid-section
+            local softCap = layoutSettings.entriesPerColumn;
+            local hardCap = softCap + (layoutSettings.softOverflow or 0);
+
+            local shouldSplitSoft = currentCol.entriesCount + 1 > softCap and
+                                   combosInCurrentCol >= minResultsAfterHeader and
+                                   combosRemaining >= 2;
+
+            local shouldSplitHard = currentCol.entriesCount >= hardCap;
+
+            if shouldSplitSoft or shouldSplitHard then
+                -- Start new column and repeat header
+                currentColIdx = currentColIdx + 1;
+                columns[currentColIdx] = {items = {}, entriesCount = 0};
+                currentCol = columns[currentColIdx];
+
+                table.insert(currentCol.items, section.header);
+                currentCol.entriesCount = currentCol.entriesCount + 1;
+                combosInCurrentCol = 0;
+            end
+
+            table.insert(currentCol.items, item);
+            currentCol.entriesCount = currentCol.entriesCount + 1;
+            combosInCurrentCol = combosInCurrentCol + 1;
+            combosRemaining = combosRemaining - 1;
+        end
+    end
+
+    return columns;
+end
+
+-- Calculate the layout structure without rendering
+-- Returns: array of columns, each containing layout items with positions
+local function calculateLayout(sortedResults, orderedResults, layoutSettings, both)
+    local sections = {};
+
+    for _, chainName in ipairs(orderedResults) do
+        local openers = sortedResults[chainName];
+        local chainInfo = skills.ChainInfo[chainName];
+        local burstElements = chainInfo and chainInfo.burst or {};
+        local elementsText = table.concat(burstElements, ', ');
+
+        local section = {
+            header = {
+                type = 'header',
+                chainName = chainName,
+                text = string.format('%s [%s]', chainName, elementsText),
+                color = skills.GetPropertyColor(chainName),
+            },
+            items = {},
+        };
 
         for _, openerData in ipairs(openers) do
             for _, closerData in ipairs(openerData.closers) do
-                -- Check if we should split to a new column mid-chain
-                local softCap = layoutSettings.entriesPerColumn;
-                local hardCap = softCap + (layoutSettings.softOverflow or 0);
-
-                local shouldSplitSoft = currentCol.entriesCount + 1 > softCap and
-                                       combosInCurrentCol >= minResultsAfterHeader and
-                                       combosRemaining >= 2;
-
-                local shouldSplitHard = currentCol.entriesCount >= hardCap;
-
-                if shouldSplitSoft or shouldSplitHard then
-                    -- Start new column and repeat header
-                    currentColIdx = currentColIdx + 1;
-                    columns[currentColIdx] = {items = {}, entriesCount = 0};
-                    currentCol = columns[currentColIdx];
-
-                    table.insert(currentCol.items, {
-                        type = 'header',
-                        chainName = chainName,
-                        text = string.format('%s [%s]', chainName, elementsText),
-                        color = color,
-                    });
-                    currentCol.entriesCount = currentCol.entriesCount + 1;
-                    combosInCurrentCol = 0;
-                end
-
-                -- Add combo item
                 -- Reversibility is per-pair, not per-chain: some Light/Darkness
                 -- pairs only chain one way (see buildCombinations in the core).
                 local reversible = (closerData.reversible and both) == true;
                 local arrow = reversible and '↔' or '→';
 
-                table.insert(currentCol.items, {
+                table.insert(section.items, {
                     type = 'combo',
                     text = string.format('  %s %s %s', openerData.opener, arrow, closerData.closer),
                     opener = openerData.opener,
@@ -538,31 +551,31 @@ local function calculateLayout(sortedResults, orderedResults, layoutSettings, bo
                     openerNames = closerData.openerNames,
                     closerNames = closerData.closerNames,
                 });
-                currentCol.entriesCount = currentCol.entriesCount + 1;
-                combosInCurrentCol = combosInCurrentCol + 1;
-                combosRemaining = combosRemaining - 1;
             end
         end
+
+        table.insert(sections, section);
     end
 
-    return columns;
+    return paginateSections(sections, layoutSettings);
 end
 
 -- ============================================================================
 -- Rendering (Pass 2: Draw the calculated layout)
 -- ============================================================================
 
-function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both)
+local DEFAULT_TRIM_NOTICE = ' !!! Results trimmed. Try: higher skillchain level or set element, fewer weapons, or favorite weaponskill';
+
+-- Draws planned columns. columnWidth is kept in layoutData so anchor updates
+-- and drags reuse it; trimNotice replaces the default truncation message.
+local function renderColumns(columns, settings, columnWidth, trimNotice)
     isVisible = true;
 
     gdiObjects.background:set_visible(true);
     gdiObjects.title:set_visible(true);
 
-    -- Calculate layout structure
-    local columns = calculateLayout(sortedResults, orderedResults, settings.layout, both);
-
     -- Store layout data for anchor updates
-    gdiObjects.layoutData = { columns = columns };
+    gdiObjects.layoutData = { columns = columns, columnWidth = columnWidth };
 
     -- Count total items needed for pool sizing
     local totalItems = 0;
@@ -583,7 +596,7 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
 
     for colIdx, column in ipairs(columns) do
         renderedColumnCount = colIdx;
-        local columnOffset = (colIdx - 1) * settings.layout.columnWidth;
+        local columnOffset = (colIdx - 1) * columnWidth;
         local y_offset = 40;
 
         for _, item in ipairs(column.items) do
@@ -616,6 +629,7 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
                     reversible = item.reversible,
                     openerNames = item.openerNames,   -- nil in normal mode
                     closerNames = item.closerNames,   -- nil in normal mode
+                    threeStepEntry = item.threeStepEntry,  -- nil outside 3-step results
                     x = posX,
                     y = posY,
                     w = rect and rect.right or 0,
@@ -637,7 +651,7 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
 
     -- Show truncation notice if we hit the limit
     if hitLimit and gdiObjects.poolSize > 0 then
-        local errorString = ' !!! Results trimmed. Try: higher skillchain level or set element, fewer weapons, or favorite weaponskill';
+        local errorString = trimNotice or DEFAULT_TRIM_NOTICE;
 
         -- The notice reuses the last pool slot, which may have just rendered a real
         -- combo above -- clear its click-map entry so clicking the notice can't send
@@ -659,10 +673,10 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
     placeHeaderDecor(settings);
 
     -- Adjust background dimensions
-    -- Use renderedColumnCount, not #columns: calculateLayout plans columns for the
+    -- Use renderedColumnCount, not #columns: the planned columns cover the
     -- full untruncated result set, but hitLimit can stop rendering before the last
     -- one, leaving a phantom empty column's worth of background otherwise.
-    local totalWidth = renderedColumnCount * settings.layout.columnWidth;
+    local totalWidth = renderedColumnCount * columnWidth;
     local totalHeight = maxColumnHeight + 5;
     gdiObjects.background:set_height(totalHeight);
     gdiObjects.background:set_width(totalWidth);
@@ -673,6 +687,48 @@ function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both
     if gdiObjects.poolSize > gdiObjects.lastUsedCount + 50 then
         shrinkPool();
     end
+end
+
+function SkillchainRenderer.Render(sortedResults, orderedResults, settings, both)
+    local columns = calculateLayout(sortedResults, orderedResults, settings.layout, both);
+    renderColumns(columns, settings, settings.layout.columnWidth);
+end
+
+-- 3-step lines carry three WS names, so their columns are wider than the setting.
+local THREE_STEP_WIDTH_SCALE = 1.4;
+
+-- groups: SkillchainCore.CalculateThreeStepSkillchains output.
+-- element: the burst filter, or nil to list the final chain's burst elements.
+function SkillchainRenderer.RenderThreeStep(groups, element, settings)
+    local sections = {};
+    for _, group in ipairs(groups) do
+        local burstText = element;
+        if not burstText then
+            local chainInfo = skills.ChainInfo[group.chain2];
+            burstText = table.concat(chainInfo and chainInfo.burst or {}, ', ');
+        end
+        local section = {
+            header = {
+                type = 'header',
+                chainName = group.chain2,
+                text = string.format('%s → %s [%s]', group.chain1, group.chain2, burstText),
+                color = skills.GetPropertyColor(group.chain2),
+            },
+            items = {},
+        };
+        for _, entry in ipairs(group.entries) do
+            table.insert(section.items, {
+                type = 'combo',
+                text = string.format('  %s → %s → %s', entry.ws1, entry.ws2, entry.ws3),
+                threeStepEntry = entry,
+            });
+        end
+        table.insert(sections, section);
+    end
+
+    local columns = paginateSections(sections, settings.layout);
+    renderColumns(columns, settings, math.floor(settings.layout.columnWidth * THREE_STEP_WIDTH_SCALE),
+        ' !!! Results trimmed. Try: set an element, a favorite WS or a step lock');
 end
 
 return SkillchainRenderer;

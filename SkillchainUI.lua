@@ -7,14 +7,41 @@ local SkillchainRenderer = require('SkillchainRenderer');
 
 local SkillchainUI = {};
 
--- Standard window setup shared by both input windows: size constraints,
+-- Human-readable weapon names for dropdown display
+SkillchainUI.WEAPON_DISPLAY_NAMES = {
+    h2h     = 'Hand-to-Hand',
+    dagger  = 'Dagger',
+    sword   = 'Sword',
+    gs      = 'Great Sword',
+    ga      = 'Great Axe',
+    axe     = 'Axe',
+    scythe  = 'Scythe',
+    polearm = 'Polearm',
+    katana  = 'Katana',
+    gkt     = 'Great Katana',
+    staff   = 'Staff',
+    club    = 'Club',
+    archery = 'Archery',
+    mm      = 'Marksmanship',
+    avatar    = 'Avatar (Pet)',
+    blu       = 'Blue Magic',
+    automaton = 'Automaton (Pet)',
+    valoredge  = 'Valoredge (Pet)',
+    sharpshot  = 'Sharpshot (Pet)',
+    stormwaker = 'Stormwaker (Pet)',
+    harlequin  = 'Harlequin (Pet)',
+};
+
+-- Standard window setup shared by the input windows: size constraints,
 -- restore a saved position (or an optional fallback), and the common flag
 -- set. Returns the flags for the caller's own imgui.Begin call (window
 -- titles differ per caller, so imgui.Begin itself stays in the caller).
 -- guiPos      : cache.settings.guiPosition table, or nil/false if unavailable
 -- fallbackPos : {x, y} to use when guiPos is nil, or nil to leave unset
-function SkillchainUI.setupWindow(guiPos, fallbackPos)
-    imgui.SetNextWindowSizeConstraints({ 380, 0 }, { 380, 9999 });
+-- width       : fixed window width, default 380
+function SkillchainUI.setupWindow(guiPos, fallbackPos, width)
+    width = width or 380;
+    imgui.SetNextWindowSizeConstraints({ width, 0 }, { width, 9999 });
 
     if guiPos then
         imgui.SetNextWindowPos({ guiPos.x, guiPos.y }, ImGuiCond_Once);

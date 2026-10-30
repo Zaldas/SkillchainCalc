@@ -444,4 +444,15 @@ function Autotranslate.FormatPartyCombo(opener, openerNames, closer, closerNames
     return string.format('%s [%s] %s %s [%s] > %s', openerFmt, openerStr, sep, closerFmt, closerStr, chainFmt);
 end
 
+-- entry: a SkillchainCore.CalculateThreeStepSkillchains entry.
+-- Output: opener > closer 1 > chain 1 > closer 2 > chain 2
+function Autotranslate.FormatThreeStep(entry)
+    return string.format('%s > %s > %s > %s > %s',
+        Autotranslate.Format(entry.ws1, 'weaponskill'),
+        Autotranslate.Format(entry.ws2, 'weaponskill'),
+        Autotranslate.Format(entry.chain1, 'skillchain'),
+        Autotranslate.Format(entry.ws3, 'weaponskill'),
+        Autotranslate.Format(entry.chain2, 'skillchain'));
+end
+
 return Autotranslate;

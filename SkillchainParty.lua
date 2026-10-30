@@ -71,27 +71,6 @@ local function savedFilters()
     return (cache and cache.settings and cache.settings.partyFilters) or fallbackPartyFilters;
 end
 
--- Human-readable weapon names for dropdown display
-local weaponDisplayNames = {
-    h2h     = 'Hand-to-Hand',
-    dagger  = 'Dagger',
-    sword   = 'Sword',
-    gs      = 'Great Sword',
-    ga      = 'Great Axe',
-    axe     = 'Axe',
-    scythe  = 'Scythe',
-    polearm = 'Polearm',
-    katana  = 'Katana',
-    gkt     = 'Great Katana',
-    staff   = 'Staff',
-    club    = 'Club',
-    archery = 'Archery',
-    mm      = 'Marksmanship',
-    avatar    = 'Avatar (Pet)',
-    blu       = 'Blue Magic',
-    automaton = 'Automaton (Pet)',
-};
-
 -- Weapon types that have at least one REMA weapon skill, sorted for stable display.
 local remaWeaponTypes = {};
 do
@@ -125,36 +104,6 @@ local skillIdToWeapon = {
     [25] = 'archery',
     [26] = 'mm',
 };
-
--- Returns the weapon keys this job can wield that have actual WS entries,
--- primary weapons first (via GetWeaponsForJob ordering).
---
--- Main job only. A subjob grants no weapon access -- equipment restrictions
--- check the main job alone -- only access to weapon skills on a weapon the
--- character already has skill in, which IsJobAllowedForWs handles.
---
--- Not modelled: the game falls back to the subjob's skill rank when the main
--- job's rank is 0, capped at subjob level (LSB charutils.cpp,
--- BuildingCharSkillsTable), so a NIN/WAR with an all-jobs axe really can use
--- low-tier axe WS. Offer only what the job data defines.
-local function buildWeaponOptions(jobId)
-    local seen    = {};
-    local options = {};
-
-    -- PUP automaton frames are excluded on purpose: their weapon skills fire on
-    -- the automaton's own schedule, so a party skillchain plan built around them
-    -- isn't actionable. GetWeaponsForJob appends the frame keys, and the
-    -- skills[w] lookup drops them (frame WS live in skills.frameMelee /
-    -- skills.frameRanged). The Calculator tab supports frames; this window does not.
-    for _, w in ipairs(SkillchainCore.GetWeaponsForJob(jobId)) do
-        if not seen[w] and type(skills[w]) == 'table' and next(skills[w]) ~= nil then
-            seen[w] = true;
-            table.insert(options, w);
-        end
-    end
-
-    return options;
-end
 
 -- Ashita::FFXI::EquipmentSlot values used here.
 local EQUIP_SLOT_MAIN  = 0;
@@ -456,17 +405,17 @@ local function drawMemberRow(member, index, contentWidth)
     -- list is cached on the member.
     local weaponOptions = member.weaponOptions;
     if not weaponOptions then
-        weaponOptions = buildWeaponOptions(member.jobId);
+        weaponOptions = SkillchainCore.GetWsWeaponsForJob(member.jobId);
         member.weaponOptions = weaponOptions;
     end
     if #weaponOptions == 0 then
         imgui.TextDisabled('(no WS)');
     else
-        local displayName = member.weapon and (weaponDisplayNames[member.weapon] or member.weapon) or '(select)';
+        local displayName = member.weapon and (SkillchainUI.WEAPON_DISPLAY_NAMES[member.weapon] or member.weapon) or '(select)';
         if imgui.BeginCombo('##wpn' .. index, displayName) then
             for _, w in ipairs(weaponOptions) do
                 local selected = (member.weapon == w);
-                if imgui.Selectable(weaponDisplayNames[w] or w, selected) then
+                if imgui.Selectable(SkillchainUI.WEAPON_DISPLAY_NAMES[w] or w, selected) then
                     member.weapon = w;
                     member.favWs  = nil;
                     if member.isLocal and cache and cache.settings and cache.settings.localPlayer then
@@ -772,7 +721,7 @@ local function drawSettingsTab(contentWidth)
             imgui.Columns(2, 'localrema_cols', false);
             for _, weaponKey in ipairs(remaWeaponTypes) do
                 local owned = { remaSettings[weaponKey] == true };
-                if imgui.Checkbox(weaponDisplayNames[weaponKey] or weaponKey, owned) then
+                if imgui.Checkbox(SkillchainUI.WEAPON_DISPLAY_NAMES[weaponKey] or weaponKey, owned) then
                     remaSettings[weaponKey] = owned[1] or nil;
                     request = request or {};
                     request.saveSettings = true;
