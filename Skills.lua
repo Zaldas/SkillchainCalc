@@ -195,7 +195,7 @@ skills.polearm = { -- Polearm
     [117] = {en='Vorpal Thrust',   skillchain={'Reverberation','Transfixion'},  skill=175},
     [118] = {en='Skewer',          skillchain={'Transfixion','Induration'},     skill=200,  -- HorizonXI
                 JobRestrictions={'DRG'}},
-    [119] = {en='Wheeling Thrust¹',skillchain={'Fusion'},                       skill=225,
+    [119] = {en='Wheeling Thrust', skillchain={'Fusion'},                       skill=225,
                 JobRestrictions={'DRG'}},
     [120] = {en='Impulse Drive¹',  skillchain={'Gravitation','Induration'},     skill=240,
                 JobRestrictions={'WAR','SAM','DRG'}},
@@ -229,7 +229,7 @@ skills.gkt = { -- Great Katana
                 JobRestrictions={'SAM'}},
     [151] = {en='Tachi: Gekko',   skillchain={'Distortion','Reverberation'},    skill=225,
                 JobRestrictions={'SAM'}},
-    [152] = {en='Tachi: Kasha',   skillchain={'Fusion','Compression'},          skill=250,
+    [152] = {en='Tachi: Kasha¹',  skillchain={'Fusion','Compression'},          skill=250,
                 JobRestrictions={'SAM'}},
     -- Relic WS treat as high end
     [153] = {en='Tachi: Kaiten²', rema=true, skillchain={'Light','Fragmentation'},         skill=250,
