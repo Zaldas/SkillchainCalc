@@ -362,7 +362,7 @@ skills.blu = { -- Physical, ranged and magical; skill is minimum BLU level to ca
     [539] = {en='Terror Touch',      skillchain={'Compression','Reverberation'}, skill=40},
     [543] = {en='Mandibular Bite',   skillchain={'Induration'},                  skill=44},
     [545] = {en='Sickle Slash',      skillchain={'Compression'},                 skill=48},
-    [589] = {en='Dimensional Death', skillchain={'Transfixion','Impaction'},     skill=60},
+    [589] = {en='Dimensional Death', skillchain={'Compression','Reverberation'}, skill=60},  -- HorizonXI
     [652] = {en='Spiral Spin',       skillchain={'Transfixion'},                 skill=60},
     [554] = {en='Death Scissors',    skillchain={'Compression','Reverberation'}, skill=60},
     [650] = {en='Seedspray',         skillchain={'Induration','Detonation'},     skill=61},
