@@ -4,7 +4,6 @@
 require('common');
 local imgui    = require('imgui');
 local jobsData = require('Jobs');
-local skills   = require('Skills');
 local SkillchainCore = require('SkillchainCore');
 local SkillchainUI = require('SkillchainUI');
 local uiTheme = require('libs/uiTheme');
@@ -77,26 +76,23 @@ end
 -- This represents "current dropdown selections, checkbox states, and UI widget values".
 -- When "Calculate" button is clicked, state is used to build a calculation request
 -- which then gets executed and stored in cache (the displayed results).
+
+-- Initial job/subjob/weapon selection for one side (1 or 2).
+local function newJobState(side)
+    return {
+        index      = side,        -- Job dropdown index
+        subIndex   = 3 - side,    -- Subjob dropdown index (different from main job)
+        lastId     = nil,         -- Last selected job ID (for change detection)
+        weapons    = nil,         -- Weapon type checkboxes (table of weaponType = bool)
+        favWsName  = nil,         -- Favorite WS name or nil for "Any"
+    };
+end
+
 local state = {
     initialized   = false,        -- Whether GUI has been initialized
 
     -- Current job/subjob/weapon selections for both players (1 and 2)
-    jobs = {
-        [1] = {
-            index      = 1,       -- Job dropdown index
-            subIndex   = 2,       -- Subjob dropdown index (different from main job)
-            lastId     = nil,     -- Last selected job ID (for change detection)
-            weapons    = nil,     -- Weapon type checkboxes (table of weaponType = bool)
-            favWsName  = nil,     -- Favorite WS name or nil for "Any"
-        },
-        [2] = {
-            index      = 2,       -- Job dropdown index
-            subIndex   = 1,       -- Subjob dropdown index (different from main job)
-            lastId     = nil,     -- Last selected job ID (for change detection)
-            weapons    = nil,     -- Weapon type checkboxes (table of weaponType = bool)
-            favWsName  = nil,     -- Favorite WS name or nil for "Any"
-        },
-    },
+    jobs = { [1] = newJobState(1), [2] = newJobState(2) },
 
     -- Current filter checkbox and dropdown selections
     filters = {
@@ -112,6 +108,7 @@ local state = {
     customLevel = {
         enabled = false,          -- Custom level checkbox
         value   = jobsData.MAX_LEVEL,  -- Level slider value
+        fromCli = false,          -- enabled/value came from a CLI lvl: argument, not the user
     },
 };
 
@@ -130,6 +127,7 @@ local function syncGuiOnlyDefaults(def)
     state.filters.enableFavWs = def.enableFavWs or false;
     state.customLevel.enabled = def.useCharLevel or false;
     state.customLevel.value   = jobsData.MAX_LEVEL;
+    state.customLevel.fromCli = false;
 end
 
 -----------------------------------------------------------------------
@@ -349,7 +347,7 @@ end
 local favWsItemsCache = { [1] = { key = nil, items = nil }, [2] = { key = nil, items = nil } };
 
 -- Build favorite WS dropdown items from selected weapons for a job state object.
--- Returns: table of WS display names, starting with 'Any', in reverse skill order grouped by weapon type.
+-- Returns: table of WS display names, starting with 'Any', then SkillchainCore.BuildFavWsNames.
 -- side: 1 or 2, used as cache slot key.
 local function buildFavWsItems(jobState, side)
     local jobId = jobItems[jobState.index] or jobItems[1];
@@ -373,75 +371,8 @@ local function buildFavWsItems(jobState, side)
     end
 
     local items = { 'Any' };
-
-    if not jobId or not jobState.weapons then
-        favWsItemsCache[side] = { key = cacheKey, items = items };
-        return items;
-    end
-
-    local job = jobsData[jobId];
-    if not job or not job.weapons then
-        favWsItemsCache[side] = { key = cacheKey, items = items };
-        return items;
-    end
-
-    local weaponList = SkillchainCore.GetWeaponsForJob(jobId);
-
-    -- Collect weapon skills grouped by weapon type.
-    --
-    -- PUP automaton frames are excluded on purpose: their weapon skills fire on
-    -- the automaton's own schedule, so pinning results to one of them isn't
-    -- actionable. The skills[weaponKey] lookup drops them (frame WS live in
-    -- skills.frameMelee / skills.frameRanged). Frames still participate in the
-    -- results themselves -- this filter only governs the dropdown.
-    local weaponGroups = {};
-
-    for _, weaponKey in ipairs(weaponList) do
-        if jobState.weapons[weaponKey] then
-            local weaponSkills = skills[weaponKey];
-            if weaponSkills then
-                local wsForWeapon = {};
-
-                for index, ws in pairs(weaponSkills) do
-                    if type(ws) == 'table' and ws.en then
-                        -- Check skill level requirement
-                        local wsSkill = ws.skill or 0;
-                        local weaponCfg = job.weapons[weaponKey];
-                        local skillRank = weaponCfg and weaponCfg.skillRank;
-
-                        local maxSkill = SkillchainCore.GetSkillCapFromRank(skillRank, charLevel);
-
-                        local remaAllowed = SkillchainCore.IsRemaAllowed(state.filters.showRema, charLevel);
-                        if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
-                            and (remaAllowed or not ws.rema) then
-                            table.insert(wsForWeapon, {
-                                name = ws.en,
-                                index = index
-                            });
-                        end
-                    end
-                end
-
-                if #wsForWeapon > 0 then
-                    -- Sort in reverse order (highest index first)
-                    table.sort(wsForWeapon, function(a, b)
-                        return a.index > b.index;
-                    end);
-
-                    weaponGroups[weaponKey] = wsForWeapon;
-                end
-            end
-        end
-    end
-
-    -- Add weapon skills to items list, maintaining weapon type grouping order
-    for _, weaponKey in ipairs(weaponList) do
-        local group = weaponGroups[weaponKey];
-        if group then
-            for _, ws in ipairs(group) do
-                table.insert(items, ws.name);
-            end
-        end
+    for _, name in ipairs(SkillchainCore.BuildFavWsNames(jobId, jobState.weapons, subJobId, charLevel, state.filters.showRema)) do
+        table.insert(items, name);
     end
 
     favWsItemsCache[side] = { key = cacheKey, items = items };
@@ -492,6 +423,7 @@ local function buildCalculationRequest()
         token2    = token2,
         scLevel   = state.filters.scLevel or 1,
         both      = state.filters.both,
+        includeSubjob = state.filters.includeSubjob,
         scElement = (elemTok ~= '' and elemTok) or nil,
         charLevel = state.customLevel.enabled and state.customLevel.value or nil,
         favWs1    = favWs1,
@@ -765,6 +697,7 @@ local function drawFiltersTab()
         local useCustomLevel = { state.customLevel.enabled };
         if imgui.Checkbox('Enable custom character level', useCustomLevel) then
             state.customLevel.enabled = useCustomLevel[1];
+            state.customLevel.fromCli = false;
         end
         uiTheme.helpMarker('When enabled, adds a level dropdown in Calculator tab\nfor skill-based weapon skill filtering.');
 
@@ -839,7 +772,9 @@ local function drawFiltersTab()
         def.scLevel = state.filters.scLevel;
         def.both  = state.filters.both;
         def.includeSubjob = state.filters.includeSubjob;
-        def.useCharLevel = state.customLevel.enabled;
+        if not state.customLevel.fromCli then
+            def.useCharLevel = state.customLevel.enabled;
+        end
         def.enableFavWs = state.filters.enableFavWs;
         def.showRema = state.filters.showRema;
         cache.settings.default = def;
@@ -965,6 +900,7 @@ function SkillchainGUI.OpenFromCli()
     if cache.filters.charLevel then
         state.customLevel.enabled = true;
         state.customLevel.value = cache.filters.charLevel;
+        state.customLevel.fromCli = true;
     end
 
     -- REMA filter from defaults (CLI doesn't support setting this directly)
@@ -981,6 +917,13 @@ function SkillchainGUI.SetVisible(v)
     if showWindow[1] then
         state.initialized = false;
     end
+end
+
+-- Clears the per-side picks and re-syncs the window from settings on its next draw (character switch).
+function SkillchainGUI.Invalidate()
+    state.jobs[1] = newJobState(1);
+    state.jobs[2] = newJobState(2);
+    state.initialized = false;
 end
 
 function SkillchainGUI.IsVisible()
@@ -1002,6 +945,7 @@ end
 -- token2               (string)      Closer job token (always paired with token1)
 -- scLevel              (number 1-3)  Skillchain level filter override
 -- both                 (bool)        Calculate both opener→closer and closer→opener directions
+-- includeSubjob        (bool)        "Enable subjob" checkbox state for the run
 -- scElement            (string|nil)  Burst element filter token (lowercase); nil = Any
 -- charLevel            (number|nil)  Character level cap; nil = use maximum
 -- favWs1               (string|nil)  Opener favorite WS name filter; nil = Any

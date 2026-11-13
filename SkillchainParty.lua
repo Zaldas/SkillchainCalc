@@ -54,6 +54,7 @@ local defaultDisabledJobs = { BLM=true, WHM=true, SMN=true, BRD=true, RDM=true }
 local partyState = {
     loaded    = false,
     members   = {},  -- array of {name, jobId, subJobId, level, subLevel, enabled, weapon, hasRema, favWs}
+    held      = {},  -- name -> last calculable row, for current members loaded without one
     filters   = {
         remaOpen      = false,
         favWsOpen     = false,
@@ -250,7 +251,21 @@ end
 local function loadParty()
     local party = AshitaCore:GetMemoryManager():GetParty();
     if party == nil then return nil; end
+
+    -- Rows rebuilt for the same name and job keep the user's choices. Members loaded
+    -- without a calculable row (out of zone, no job) keep theirs in partyState.held
+    -- until they get one; only current members are held.
+    local previous = {};
+    for name, row in pairs(partyState.held) do
+        previous[name] = row;
+    end
+    for _, m in ipairs(partyState.members) do
+        if not m.outOfZone then
+            previous[m.name] = m;
+        end
+    end
     partyState.members = {};
+    partyState.held    = {};
 
     local localZone      = party:GetMemberZone(0);
     local loadedNames    = {};
@@ -282,6 +297,7 @@ local function loadParty()
                 -- weapon=nil each independently exclude them from
                 -- SkillchainCore.CalculatePartySkillchains.
                 table.insert(notLoadedNames, name);
+                partyState.held[name] = previous[name];
                 table.insert(partyState.members, {
                     name       = name,
                     jobId      = jobId,
@@ -304,7 +320,7 @@ local function loadParty()
                 -- Avatar jobs keep Avatar: the staff in hand isn't what they chain with.
                 if i == 0 and defaultWeapon ~= 'avatar' then
                     local equipped = readLocalPlayerWeapon(jobId);
-                    if equipped then
+                    if equipped and job.weapons[equipped] then
                         defaultWeapon = equipped;
                     end
                 end
@@ -316,8 +332,7 @@ local function loadParty()
                     isRema = defaultWeapon ~= nil and (remaOwned[defaultWeapon] == true);
                 end
 
-                table.insert(loadedNames, name);
-                table.insert(partyState.members, {
+                local member = {
                     name       = name,
                     jobId      = jobId,
                     subJobId   = subId,
@@ -330,13 +345,40 @@ local function loadParty()
                     favWs      = nil,
                     outOfZone  = false,
                     partyIndex = math.ceil((i + 1) / 6),  -- 1, 2, or 3
-                });
+                };
+
+                -- The local player's weapon and REMA come from equipment and saved ownership;
+                -- others keep their selection.
+                local old = previous[name];
+                if old and old.jobId == jobId then
+                    member.enabled = old.enabled;
+                    if not isLocal then
+                        member.weapon = old.weapon;
+                    end
+                    if member.weapon == old.weapon then
+                        if not isLocal then
+                            member.hasRema = old.hasRema;
+                        end
+                        if old.favWs then
+                            for _, ws in ipairs(SkillchainCore.BuildMemberSkillList(member, true) or {}) do
+                                if ws.en == old.favWs then
+                                    member.favWs = old.favWs;
+                                    break;
+                                end
+                            end
+                        end
+                    end
+                end
+
+                table.insert(loadedNames, name);
+                table.insert(partyState.members, member);
             else
                 -- In zone but the job didn't resolve: their 0x00DD hasn't landed
                 -- yet, they're /anon (the server omits job for anonymous
                 -- players), or it's a job this build has no data for. No row,
                 -- but still reported as not loaded.
                 table.insert(notLoadedNames, name);
+                partyState.held[name] = previous[name];
             end
         end
     end
@@ -475,6 +517,7 @@ local function drawPartyTab(contentWidth)
         if uiTheme.button('Clear party', btnW, 'ghost') then
             partyState.loaded  = false;
             partyState.members = {};
+            partyState.held    = {};
         end
     end
 
@@ -613,13 +656,14 @@ local function drawPartyTab(contentWidth)
                         elseif imgui.BeginCombo('##favws' .. i, curLabel) then
                             -- Only resolve the skill list while the combo is actually
                             -- open, not every frame the Fav WS panel is expanded.
-                            local wsList = SkillchainCore.BuildMemberSkillList(member, savedFilters().showRema);
+                            local wsList = SkillchainCore.BuildMemberSkillList(member, savedFilters().showRema) or {};
+                            table.sort(wsList, SkillchainCore.CompareFavWs);
 
                             if imgui.Selectable('(Any)', member.favWs == nil) then
                                 member.favWs = nil;
                             end
                             if member.favWs == nil then imgui.SetItemDefaultFocus(); end
-                            for _, ws in ipairs(wsList or {}) do
+                            for _, ws in ipairs(wsList) do
                                 local selected = (member.favWs == ws.en);
                                 if imgui.Selectable(string.format('%s##fw%d', ws.en, i), selected) then
                                     member.favWs = ws.en;
@@ -819,6 +863,13 @@ end
 
 function SkillchainParty.SetCache(cacheRef)
     cache = cacheRef;
+end
+
+-- Drops the loaded party snapshot (character switch).
+function SkillchainParty.Reset()
+    partyState.loaded  = false;
+    partyState.members = {};
+    partyState.held    = {};
 end
 
 function SkillchainParty.SetVisible(v)

@@ -29,14 +29,14 @@ function SkillchainCore.IsRemaWsName(wsName)
     return wsName ~= nil and remaWsNameSet[wsName] == true;
 end
 
--- Skill cap for a weapon rank at a level (nil level = MAX_LEVEL); 999 for an unknown rank.
+-- Skill cap for a weapon rank at a level (nil level = MAX_LEVEL); 0 for an unknown rank or level.
 function SkillchainCore.GetSkillCapFromRank(skillRank, level)
     if not skillRank or not SkillRanks.Cap[skillRank] then
-        return 999;
+        return 0;
     end
 
     local levelToUse = level or jobs.MAX_LEVEL;
-    return SkillRanks.Cap[skillRank][levelToUse] or 999;
+    return SkillRanks.Cap[skillRank][levelToUse] or 0;
 end
 local getSkillCapFromRank = SkillchainCore.GetSkillCapFromRank;
 
@@ -68,11 +68,17 @@ local function appendFramesToWeaponList(jobId, job, list, listed)
         return list;
     end
 
+    -- Sorted: pairs order varies between loads.
+    local frameNames = {};
     for frameName, _ in pairs(job.frames) do
         if not listed[frameName] then
-            table.insert(list, frameName);
+            table.insert(frameNames, frameName);
             listed[frameName] = true;
         end
+    end
+    table.sort(frameNames);
+    for _, frameName in ipairs(frameNames) do
+        table.insert(list, frameName);
     end
 
     return list;
@@ -100,25 +106,6 @@ local function buildFrameSkillList(frameName, frameConfig, charLevel)
         local rangedCap = getSkillCapFromRank(frameConfig.ranged, levelToUse);
         for _, ws in pairs(skills.frameRanged) do
             if ws.skill < rangedCap and isFrameAllowed(ws, frameName) then
-                table.insert(result, ws);
-            end
-        end
-    end
-
-    return result;
-end
-
--- Append frame skills to result list for PUP job
--- Returns modified result table
-local function appendFrameSkills(jobId, job, weaponFilter, charLevel, result)
-    if jobId ~= 'PUP' or not job.frames then
-        return result;
-    end
-
-    for frameName, frameConfig in pairs(job.frames) do
-        if (not weaponFilter) or weaponFilter[frameName] then
-            local frameSkills = buildFrameSkillList(frameName, frameConfig, charLevel);
-            for _, ws in ipairs(frameSkills) do
                 table.insert(result, ws);
             end
         end
@@ -166,12 +153,17 @@ function SkillchainCore.GetWeaponsForJob(jobId)
         end
     end
 
-    -- Then all remaining weapons
+    -- Then all remaining weapons, sorted: pairs order varies between loads.
+    local rest = {};
     for w, _ in pairs(job.weapons) do
         if not listed[w] then
-            table.insert(list, w);
+            table.insert(rest, w);
             listed[w] = true;
         end
+    end
+    table.sort(rest);
+    for _, w in ipairs(rest) do
+        table.insert(list, w);
     end
 
     -- TOAU: Append PUP frames to weapon list
@@ -219,7 +211,6 @@ end
 -- Output: token string like "nin:dagger,katana" or "nin/war:dagger"
 -- Weapons outside GetWeaponsForJob(jobId) are dropped, and a selection with
 -- none left yields the bare job token, which resolves to its primaryWeapons.
--- Party members holding an off-job weapon use BuildMemberSkillList instead.
 function SkillchainCore.BuildTokenFromSelection(jobId, weaponSelection, subJobId)
     if not jobId then
         return nil;
@@ -432,6 +423,90 @@ function SkillchainCore.IsJobAllowedForWs(ws, mainJobId, subJobId)
     end
 end
 
+-- Weapon skills on weaponKey that jobId (with subJobId) can use at level (nil = MAX_LEVEL):
+-- within the job's rank cap and the WS job/subjob restrictions.
+-- opts.rema: nil keeps REMA WS; a boolean keeps them only when IsRemaAllowed(opts.rema, level).
+-- opts.includeFrames: a PUP frame key returns that frame's automaton skills; otherwise frames return none.
+-- Returns an array (possibly empty), unsorted.
+function SkillchainCore.GetEligibleWeaponSkills(jobId, weaponKey, subJobId, level, opts)
+    local result = {};
+    local job = jobs[jobId];
+    if not job or not weaponKey then
+        return result;
+    end
+    opts = opts or {};
+    local keepRema = opts.rema == nil or SkillchainCore.IsRemaAllowed(opts.rema, level);
+
+    local frameConfig = job.frames and job.frames[weaponKey];
+    if frameConfig then
+        if opts.includeFrames and jobId == 'PUP' then
+            result = buildFrameSkillList(weaponKey, frameConfig, level);
+        end
+        return result;
+    end
+
+    local cfg = job.weapons and job.weapons[weaponKey];
+    local weaponSkills = skills[weaponKey];
+    if not cfg or type(weaponSkills) ~= 'table' then
+        return result;
+    end
+
+    local maxSkill = getSkillCapFromRank(cfg.skillRank, level);
+    for _, ws in pairs(weaponSkills) do
+        if type(ws) == 'table' and (ws.skill or 0) <= maxSkill
+            and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId)
+            and (keepRema or not ws.rema) then
+            table.insert(result, ws);
+        end
+    end
+    return result;
+end
+
+-- Favorite-WS dropdown order: skill requirement descending; at equal skill, REMA, then quested (¹), then name.
+local QUESTED_SUFFIX = '\xC2\xB9';  -- UTF-8 ¹
+local function favWsRank(ws)
+    if ws.rema then
+        return 2;
+    end
+    if ws.en:sub(-#QUESTED_SUFFIX) == QUESTED_SUFFIX then
+        return 1;
+    end
+    return 0;
+end
+
+function SkillchainCore.CompareFavWs(a, b)
+    local sa, sb = a.skill or 0, b.skill or 0;
+    if sa ~= sb then
+        return sa > sb;
+    end
+    local ra, rb = favWsRank(a), favWsRank(b);
+    if ra ~= rb then
+        return ra > rb;
+    end
+    return a.en < b.en;
+end
+
+-- Calculator favorite-WS names for the weapons set in weaponSet (weaponKey = true):
+-- grouped by weapon in GetWeaponsForJob order, CompareFavWs within each group.
+-- PUP frames are left out: their WS fire on the automaton's own schedule, so
+-- pinning results to one isn't actionable. Frames still take part in results.
+function SkillchainCore.BuildFavWsNames(jobId, weaponSet, subJobId, level, showRema)
+    local names = {};
+    if not jobId or type(weaponSet) ~= 'table' then
+        return names;
+    end
+    for _, weaponKey in ipairs(SkillchainCore.GetWeaponsForJob(jobId)) do
+        if weaponSet[weaponKey] then
+            local group = SkillchainCore.GetEligibleWeaponSkills(jobId, weaponKey, subJobId, level, { rema = showRema or false });
+            table.sort(group, SkillchainCore.CompareFavWs);
+            for _, ws in ipairs(group) do
+                table.insert(names, ws.en);
+            end
+        end
+    end
+    return names;
+end
+
 -- allow optional weapon filter set
 -- subJobId is optional; if provided, it will be used to filter weaponskills that have subjob restrictions
 -- charLevel is optional; if provided, it will be used to calculate skill caps instead of jobs.MAX_LEVEL
@@ -451,26 +526,23 @@ function SkillchainCore.BuildSkillListForJob(jobId, allowedWeapons, subJobId, ch
     end
 
     local result = {};
-    local levelToUse = charLevel or jobs.MAX_LEVEL;
-
-    for weaponKey, cfg in pairs(job.weapons) do
+    local function append(weaponKey)
         if (not weaponFilter) or weaponFilter[weaponKey] then
-            local maxSkill = getSkillCapFromRank(cfg.skillRank, levelToUse);
-            local weaponSkills = skills[weaponKey];
-
-            if weaponSkills then
-                for _, ws in pairs(weaponSkills) do
-                    local wsSkill = ws.skill or 0;
-                    if wsSkill <= maxSkill and SkillchainCore.IsJobAllowedForWs(ws, jobId, subJobId) then
-                        table.insert(result, ws);
-                    end
-                end
+            for _, ws in ipairs(SkillchainCore.GetEligibleWeaponSkills(jobId, weaponKey, subJobId, charLevel, { includeFrames = true })) do
+                table.insert(result, ws);
             end
         end
     end
 
-    -- TOAU: Append PUP frame skills
-    result = appendFrameSkills(jobId, job, weaponFilter, charLevel, result);
+    for weaponKey in pairs(job.weapons) do
+        append(weaponKey);
+    end
+    -- TOAU: PUP frame skills follow the weapon skills
+    if jobId == 'PUP' and job.frames then
+        for frameName in pairs(job.frames) do
+            append(frameName);
+        end
+    end
 
     return (#result > 0) and result or nil;
 end
@@ -592,6 +664,7 @@ local function normalizeChainSource(source)
     return {};
 end
 
+-- Returns { chainName } plus the link level (4 = Light/Darkness II), or {} when nothing forms.
 local function resolveChainProperties(source1, source2)
     local props1 = normalizeChainSource(source1);
     local props2 = normalizeChainSource(source2);
@@ -602,7 +675,7 @@ local function resolveChainProperties(source1, source2)
             for _, chain2 in ipairs(props2) do
                 local link = chainInfo[chain2];
                 if link then
-                    return { link.skillchain };
+                    return { link.skillchain }, link.level;
                 end
             end
         end
@@ -633,7 +706,7 @@ local function buildCombinations(list1, list2, opts)
     end
 
     local function addCombo(src1, src2)
-        local chains = resolveChainProperties(src1, src2);
+        local chains, level = resolveChainProperties(src1, src2);
         local name1  = getSourceName(src1);
         local name2  = getSourceName(src2);
 
@@ -646,6 +719,7 @@ local function buildCombinations(list1, list2, opts)
                         skill1 = name1,
                         skill2 = name2,
                         chain  = chain,
+                        level  = level,
                     });
                 end
             end
@@ -669,8 +743,8 @@ local function buildCombinations(list1, list2, opts)
     end
 
     -- A Light/Darkness pair merges into one ↔ row only when both directions
-    -- resolve to that chain; first-match resolution can give the reverse a
-    -- lower tier (knowledge/skillchain-resolution.md). `seen` holds both passes.
+    -- resolve to that chain; the first opener/closer property pair that links
+    -- wins regardless of tier, so the reverse can resolve lower. `seen` holds both passes.
     if both then
         local ldSeen    = {};
         local filtered  = {};
@@ -689,6 +763,7 @@ local function buildCombinations(list1, list2, opts)
                             skill1     = a,
                             skill2     = b,
                             chain      = combo.chain,
+                            level      = combo.level,
                             reversible = true,
                         });
                     end
@@ -926,8 +1001,8 @@ function SkillchainCore.BuildResultsTable(entries)
             table.insert(chainGroup.openerOrder, opener);
         end
 
-        -- Names are kept per closer so names pruned for one closer don't
-        -- bleed into other closers sharing the same opener WS.
+        -- Names are kept per closer so names for one closer don't bleed
+        -- into other closers sharing the same opener WS.
         local closerEntry = openerGroup.closers[closer];
         if not closerEntry then
             closerEntry = { closer = closer, reversible = entry.reversible };
@@ -1003,28 +1078,17 @@ function SkillchainCore.GetMemberSkillLevel(member)
     return nil;
 end
 
--- Weapon skills a party member can use with their selected weapon, capped by
--- their level; REMA WS only when remaEnabled and the member has REMA.
--- Returns an array (possibly empty), or nil if the job can't use the weapon.
+-- Weapon skills a party member can use with their selected weapon (or PUP
+-- frame), capped by their level; REMA WS only when remaEnabled and the member
+-- has REMA. Returns an array, or nil when nothing is usable.
 function SkillchainCore.BuildMemberSkillList(member, remaEnabled)
     if not member or not member.jobId or not member.weapon then
         return nil;
     end
     local level = SkillchainCore.GetMemberSkillLevel(member);
-    local list = SkillchainCore.BuildSkillListForJob(member.jobId, { [member.weapon] = true }, member.subJobId, level);
-    if not list then
-        return nil;
-    end
-    if SkillchainCore.IsRemaAllowed(remaEnabled and member.hasRema, level) then
-        return list;
-    end
-    local noRema = {};
-    for _, ws in ipairs(list) do
-        if not ws.rema then
-            table.insert(noRema, ws);
-        end
-    end
-    return noRema;
+    local list = SkillchainCore.GetEligibleWeaponSkills(member.jobId, member.weapon, member.subJobId, level,
+        { rema = (remaEnabled and member.hasRema) or false, includeFrames = true });
+    return (#list > 0) and list or nil;
 end
 
 -- Calculate all skillchains between every ordered pair of active members. This
@@ -1125,29 +1189,6 @@ function SkillchainCore.CalculatePartySkillchains(members, options)
         table.insert(results, merged[key]);
     end
 
-    -- If a name is the SOLE contributor to one position and also appears in the
-    -- other, they must fill their unique role — remove them from the other side.
-    -- When multiple names share a position, leave all of them (party decides).
-    local function inList(list, name)
-        for _, n in ipairs(list) do if n == name then return true; end end
-        return false;
-    end
-    local function removeFrom(list, name)
-        local out = {};
-        for _, n in ipairs(list) do if n ~= name then table.insert(out, n); end end
-        return out;
-    end
-    for _, entry in ipairs(results) do
-        if #entry.closerNames == 1 and inList(entry.openerNames, entry.closerNames[1]) then
-            local pruned = removeFrom(entry.openerNames, entry.closerNames[1]);
-            if #pruned > 0 then entry.openerNames = pruned; end
-        end
-        if #entry.openerNames == 1 and inList(entry.closerNames, entry.openerNames[1]) then
-            local pruned = removeFrom(entry.closerNames, entry.openerNames[1]);
-            if #pruned > 0 then entry.closerNames = pruned; end
-        end
-    end
-
     return results;
 end
 
@@ -1169,7 +1210,7 @@ local function chainBurstsElement(chainName, element)
 end
 
 -- Weapon skills a 3-step row can use: MAX_LEVEL, the job's default subjob,
--- REMA WS only when remaEnabled. Returns an array (possibly empty) or nil.
+-- REMA WS only when remaEnabled. Returns an array, or nil when nothing is usable.
 function SkillchainCore.BuildThreeStepRowSkillList(jobId, weapon, remaEnabled)
     if not jobId or not weapon then
         return nil;
@@ -1262,7 +1303,8 @@ function SkillchainCore.CalculateThreeStepSkillchains(rows, filter, remaEnabled)
             for j = 1, #active do
                 if j ~= i and active[j].skills and canFill(j, 2) then
                     for _, first in ipairs(buildCombinations(active[i].skills, active[j].skills)) do
-                        if firstOk(first.chain) then
+                        -- Light/Darkness II (level 4) cannot be extended.
+                        if firstOk(first.chain) and first.level ~= 4 then
                             for k = 1, #active do
                                 if k ~= i and k ~= j and active[k].skills and canFill(k, 3) then
                                     for _, second in ipairs(extensions(first.chain, k)) do

@@ -143,6 +143,7 @@ The results window appears after any calculation and displays all valid skillcha
 | `/scc party` | Toggle the Party Calculator |
 | `/scc calc` | Toggle the Calculator |
 | `/scc 3step` | Toggle the 3-Step Calculator |
+| `/scc help` | List the commands and the command-line usage in chat |
 
 ---
 
@@ -191,6 +192,30 @@ job[/subjob][:weapon,weapon,...]
 | `/scc war mnk 2 both` | Tier 2+ only, both directions |
 | `/scc sam drk lvl:66 sc:ice` | Level-capped at 66, results filtered to Ice burst |
 
+An invalid token, or one with no weapon skills at the `lvl:` given, prints an error and leaves the current results as they are.
+
+### Step mode
+
+Step mode takes one token and lists the weapon skills that continue each skillchain property already on the target — for example, which of your weapon skills close a Distortion.
+
+```
+/scc step[:tier|:property] <token> [options]
+```
+
+| Form | What it lists |
+|------|---------------|
+| `/scc step <token>` | Every property |
+| `/scc step:<tier> <token>` | Properties of tier 1, 2 or 3 and above (e.g. `step:2` = Tier 2 and Light/Darkness) |
+| `/scc step:<property> <token>` | One property, e.g. `step:distortion` |
+
+The `sc:` and `lvl:` options apply as in a normal calculation; `both` has no meaning in step mode. Step results stay on screen after the windows close, and opening any window clears them.
+
+| Command | What it does |
+|---------|-------------|
+| `/scc step sam` | Every property SAM's weapon skills can continue |
+| `/scc step:distortion drk:scythe` | DRK scythe weapon skills that continue Distortion |
+| `/scc step:3 war lvl:60` | WAR weapon skills that continue Light or Darkness at level 60 |
+
 ---
 
 ## Files
@@ -201,7 +226,8 @@ job[/subjob][:weapon,weapon,...]
 | `SkillchainParty.lua` | Party window UI and party data logic |
 | `SkillchainGui.lua` | Calculator window UI |
 | `SkillchainThreeStep.lua` | 3-Step window UI |
-| `SkillchainUI.lua` | Shared ImGui helpers (styled buttons, gradient headers, window scaffolding) |
+| `SkillchainUI.lua` | Shared window helpers: weapon display names, window setup and position tracking, results window settings |
+| `libs/uiTheme.lua` | ImGui theme: palette, styled buttons, gradient headers, help markers |
 | `SkillchainCore.lua` | Filtering, skillchain calculation, party pair and 3-step logic |
 | `SkillchainRenderer.lua` | GDI results window rendering |
 | `Skills.lua` | Weapon skill data, properties, and colors |
@@ -210,3 +236,13 @@ job[/subjob][:weapon,weapon,...]
 | `SkillRanks.lua` | Skill rank progression tables (A+, A−, B+, etc.) |
 | `Autotranslate.lua` | Auto-translate formatting for chat output |
 | `retail/` | Data variants (`Jobs.lua`, `Skills.lua`) swapped in for the retail release build |
+| `gdifonts/` | GDI font and rectangle rendering library used by the results window |
+| `ci/` | Release check that the retail data files export every key the shared code uses |
+
+---
+
+## License
+
+SkillchainCalc is released under the MIT License — see [LICENSE](LICENSE).
+
+The bundled `gdifonts/` library is MIT licensed, Copyright (c) 2023 ThornyFFXI — see [gdifonts/LICENSE](gdifonts/LICENSE).

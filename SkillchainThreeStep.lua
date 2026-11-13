@@ -142,30 +142,6 @@ local function getRow(index)
     return row;
 end
 
--- Favorite WS order: skill requirement descending; at equal skill, REMA, then quested (¹), then name.
-local QUESTED_SUFFIX = '\xC2\xB9';  -- UTF-8 ¹
-local function favWsRank(ws)
-    if ws.rema then
-        return 2;
-    end
-    if ws.en:sub(-#QUESTED_SUFFIX) == QUESTED_SUFFIX then
-        return 1;
-    end
-    return 0;
-end
-
-local function compareFavWs(a, b)
-    local sa, sb = a.skill or 0, b.skill or 0;
-    if sa ~= sb then
-        return sa > sb;
-    end
-    local ra, rb = favWsRank(a), favWsRank(b);
-    if ra ~= rb then
-        return ra > rb;
-    end
-    return a.en < b.en;
-end
-
 -- Draws one step + job + weapon + favorite WS row. Returns true when any changed.
 local function drawRow(index)
     local row     = getRow(index);
@@ -226,7 +202,7 @@ local function drawRow(index)
     if imgui.BeginCombo('##3sFav' .. index, row.favWs or '(Any)') then
         -- Only resolved while the dropdown is open.
         local wsList = SkillchainCore.BuildThreeStepRowSkillList(row.job, row.weapon, saved().showRema == true) or {};
-        table.sort(wsList, compareFavWs);
+        table.sort(wsList, SkillchainCore.CompareFavWs);
 
         if imgui.Selectable('(Any)', row.favWs == nil) and row.favWs ~= nil then
             row.favWs = nil;

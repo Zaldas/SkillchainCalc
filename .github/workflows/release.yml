@@ -32,24 +32,26 @@ jobs:
       - name: Create release zips
         run: |
           # --- Horizon build ---
-          mkdir -p release/horizon/skillchaincalc
-          find . -maxdepth 1 -name "*.lua" -exec cp {} release/horizon/skillchaincalc/ \;
-          cp -r gdifonts release/horizon/skillchaincalc/gdifonts
-          cp -r libs release/horizon/skillchaincalc/libs
+          mkdir -p release/horizon/SkillchainCalc
+          find . -maxdepth 1 -name "*.lua" -exec cp {} release/horizon/SkillchainCalc/ \;
+          cp -r gdifonts release/horizon/SkillchainCalc/gdifonts
+          cp -r libs release/horizon/SkillchainCalc/libs
+          cp LICENSE release/horizon/SkillchainCalc/
           cd release/horizon
-          zip -r ../SkillchainCalc-horizon.zip skillchaincalc
+          zip -r ../SkillchainCalc-horizon.zip SkillchainCalc
           cd ../..
 
           # --- Retail build ---
-          mkdir -p release/retail/skillchaincalc
-          find . -maxdepth 1 -name "*.lua" -exec cp {} release/retail/skillchaincalc/ \;
-          cp -r gdifonts release/retail/skillchaincalc/gdifonts
-          cp -r libs release/retail/skillchaincalc/libs
+          mkdir -p release/retail/SkillchainCalc
+          find . -maxdepth 1 -name "*.lua" -exec cp {} release/retail/SkillchainCalc/ \;
+          cp -r gdifonts release/retail/SkillchainCalc/gdifonts
+          cp -r libs release/retail/SkillchainCalc/libs
+          cp LICENSE release/retail/SkillchainCalc/
           # Overwrite with retail versions
-          cp retail/Skills.lua release/retail/skillchaincalc/
-          cp retail/Jobs.lua release/retail/skillchaincalc/
+          cp retail/Skills.lua release/retail/SkillchainCalc/
+          cp retail/Jobs.lua release/retail/SkillchainCalc/
           cd release/retail
-          zip -r ../SkillchainCalc-retail.zip skillchaincalc
+          zip -r ../SkillchainCalc-retail.zip SkillchainCalc
           cd ../..
 
           # Copy font to release root

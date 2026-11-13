@@ -150,32 +150,75 @@ local cache = {
         filterType = nil,  -- "tier" or "property"
     },
 
+    -- The committed run (see newRun) the fields above are derived from; nil until something runs
+    run = nil,
+
     -- Application settings and state
     settings = sccSettings,
     resultsSource = nil,      -- 'calc', 'party' or 'threeStep': which window produced the last results
     cliCommand = nil,         -- Command text while a weapon-only CLI run locks the Calculator
 };
 
-local function applyDefaultsToCache()
-    local def = cache.settings.default or sccSettings.default or {};
-    cache.filters.scLevel = def.scLevel or 1;
-    cache.filters.both = def.both or false;
-    cache.filters.includeSubjob = def.includeSubjob or false;
-    cache.filters.showRema = def.showRema or false;
+local function savedDefaults()
+    return cache.settings.default or sccSettings.default or {};
+end
+
+-- A run is one complete Calculator or CLI calculation:
+--   { token1, token2 (nil in step mode), scLevel, both, includeSubjob, scElement,
+--     charLevel, showRema, favWs1, favWs2, cliCommand, step = { enabled, filter, filterType } }
+-- charLevel is this run's level cap, separate from the Calculator's saved customLevel preference.
+
+-- A run from the saved defaults with overrides applied; fields absent from overrides keep the default.
+local function newRun(overrides)
+    local def = savedDefaults();
+    local run = {
+        scLevel       = def.scLevel or 1,
+        both          = def.both or false,
+        includeSubjob = def.includeSubjob or false,
+        showRema      = def.showRema or false,
+        step          = { enabled = false },
+    };
+    for k, v in pairs(overrides) do
+        run[k] = v;
+    end
+    return run;
+end
+
+-- Stores run as cache.run and derives the cache.jobs/filters/step/cliCommand
+-- fields the windows read. A nil run leaves the defaults with nothing run.
+local function commitRun(run)
+    cache.run = run;
+    local r = run or newRun({});
+    cache.jobs.token1 = r.token1;
+    cache.jobs.token2 = r.token2;
+    cache.jobs.favWs1 = r.favWs1;
+    cache.jobs.favWs2 = r.favWs2;
+    cache.filters.scLevel = r.scLevel;
+    cache.filters.both = r.both;
+    cache.filters.includeSubjob = r.includeSubjob;
+    cache.filters.scElement = r.scElement;
+    cache.filters.charLevel = r.charLevel;
+    cache.filters.showRema = r.showRema;
+    cache.step.enabled = r.step.enabled;
+    cache.step.filter = r.step.filter;
+    cache.step.filterType = r.step.filterType;
+    cache.cliCommand = r.cliCommand;
 end
 
 local function resetCacheFull()
-    cache.jobs.token1 = nil;
-    cache.jobs.token2 = nil;
-    cache.jobs.favWs1 = nil;
-    cache.jobs.favWs2 = nil;
-    cache.filters.scElement = nil;
-    cache.filters.charLevel = nil;
-    cache.step.enabled = false;
-    cache.step.filter = nil;
-    cache.step.filterType = nil;
-    cache.cliCommand = nil;
-    applyDefaultsToCache();
+    commitRun(nil);
+end
+
+-- run with the default-driven result filters (tier, both, REMA) taken from the saved defaults.
+local function withNewDefaults(run)
+    local overrides = {};
+    for k, v in pairs(run) do
+        overrides[k] = v;
+    end
+    overrides.scLevel  = nil;
+    overrides.both     = nil;
+    overrides.showRema = nil;
+    return newRun(overrides);
 end
 
 -- Only one input window is open at a time; these helpers enforce it.
@@ -226,7 +269,7 @@ end
 -- Event handler for addon loading
 ashita.events.register('load', 'load_cb', function()
     cache.settings = settings.load(sccSettings);
-    applyDefaultsToCache();
+    resetCacheFull();
     SkillchainGUI.SetCache(cache);
     SkillchainParty.SetCache(cache);
     SkillchainThreeStep.SetCache(cache);
@@ -236,9 +279,13 @@ ashita.events.register('load', 'load_cb', function()
         if (s ~= nil) then
             SkillchainRenderer.Destroy();
             cache.settings = s;
-            applyDefaultsToCache();
+            resetCacheFull();
             SkillchainRenderer.Initialize(gdi, cache.settings);
+            cache.resultsSource = nil;
+            SkillchainThreeStep.SetResultCount(nil);
             SkillchainThreeStep.Invalidate();
+            SkillchainGUI.Invalidate();
+            SkillchainParty.Reset();
         end
     end)
 end);
@@ -269,36 +316,15 @@ local function displaySkillchainResults(combinations, label)
     end
 end
 
-local function parseSkillchains(isStep)
+-- skills1/skills2: validateRun's lists for cache.jobs tokens at cache.filters.charLevel (skills2 nil in step mode).
+local function parseSkillchains(isStep, skills1, skills2)
     cache.resultsSource = 'calc';
     if isStep then
-        if (not cache.jobs.token1) then
-            return;
-        end
+        local combinations = SkillchainCore.CalculateStepSkillchains(skills1, cache.step.filter, cache.step.filterType);
 
-        local wsList = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, cache.filters.charLevel);
-        if (not wsList) then
-            err('Invalid weapon/job token for step mode: ' .. tostring(cache.jobs.token1));
-            SkillchainRenderer.Clear();
-            return;
-        end
-
-        local combinations = SkillchainCore.CalculateStepSkillchains(wsList, cache.step.filter, cache.step.filterType);
-
-        -- No combinations: a valid property with no matches, or an invalid property name
+        -- validateRun has already rejected invalid property names.
         if cache.step.filterType == 'property' and #combinations == 0 then
-            if SkillchainCore.IsChainName(cache.step.filter) then
-                msg(string.format('No skillchains from %s with the %s property.', tostring(cache.jobs.token1), tostring(cache.step.filter)));
-                SkillchainRenderer.Clear();
-                return;
-            end
-            if tonumber(cache.step.filter) then
-                err('Step tier must be 1, 2 or 3.');
-                SkillchainRenderer.Clear();
-                return;
-            end
-            err(string.format('Invalid property name "%s".', tostring(cache.step.filter)));
-            msg('Valid properties: ' .. table.concat(SkillchainCore.CHAIN_NAMES, ', '));
+            msg(string.format('No skillchains from %s with the %s property.', tostring(cache.jobs.token1), tostring(cache.step.filter)));
             SkillchainRenderer.Clear();
             return;
         end
@@ -309,22 +335,74 @@ local function parseSkillchains(isStep)
         return;
     end
 
-    if (not cache.jobs.token1 or not cache.jobs.token2) then
-        return;
-    end
-
-    local skills1 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token1, cache.filters.charLevel);
-    local skills2 = SkillchainCore.ResolveTokenToSkills(cache.jobs.token2, cache.filters.charLevel);
-
-    if (not skills1 or not skills2) then
-        err(string.format('Invalid weapon/job token(s): %s, %s', tostring(cache.jobs.token1), tostring(cache.jobs.token2)));
-        SkillchainRenderer.Clear();
-        return;
-    end
-
     local combinations = SkillchainCore.CalculateSkillchains(skills1, skills2, cache.filters.both);
 
     displaySkillchainResults(combinations);
+end
+
+-- Resolves the run's tokens at its charLevel and checks its step filter.
+-- Returns skills1, skills2 (nil in step mode), or nil after printing the errors.
+local function validateRun(run)
+    if not run.step.enabled and not run.token2 then
+        err('Normal mode requires two tokens.');
+        return nil;
+    end
+
+    local tokens = { run.token1 };
+    if not run.step.enabled and run.token2 ~= run.token1 then
+        table.insert(tokens, run.token2);
+    end
+
+    local lists, invalid, emptyAtLevel = {}, {}, {};
+    for i, token in ipairs(tokens) do
+        lists[i] = SkillchainCore.ResolveTokenToSkills(token, run.charLevel);
+        if not lists[i] then
+            if run.charLevel and SkillchainCore.ResolveTokenToSkills(token) then
+                table.insert(emptyAtLevel, token);
+            else
+                table.insert(invalid, tostring(token));
+            end
+        end
+    end
+    if #invalid > 0 then
+        err(string.format('Invalid weapon/job token: %s', table.concat(invalid, ', ')));
+    end
+    if #emptyAtLevel > 0 then
+        err(string.format('No weapon skills at level %d: %s', run.charLevel, table.concat(emptyAtLevel, ', ')));
+    end
+    if #invalid > 0 or #emptyAtLevel > 0 then
+        return nil;
+    end
+
+    local skills1 = lists[1];
+    local skills2 = nil;
+    if not run.step.enabled then
+        skills2 = lists[2] or skills1;
+    end
+    local filter = run.step.filter;
+    if run.step.enabled and run.step.filterType == 'property' and not SkillchainCore.IsChainName(filter) then
+        if tonumber(filter) then
+            err('Step tier must be 1, 2 or 3.');
+        else
+            err(string.format('Invalid property name "%s".', tostring(filter)));
+            msg('Valid properties: ' .. table.concat(SkillchainCore.CHAIN_NAMES, ', '));
+        end
+        return nil;
+    end
+    return skills1, skills2;
+end
+
+-- Validates run, commits it to cache and displays its results.
+-- Returns false, leaving cache and the display untouched, when the run is invalid.
+local function applyRun(run)
+    local skills1, skills2 = validateRun(run);
+    if not skills1 then
+        return false;
+    end
+
+    commitRun(run);
+    parseSkillchains(run.step.enabled, skills1, skills2);
+    return true;
 end
 
 local function parsePartySkillchains(members, partyFilters)
@@ -433,11 +511,21 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             end
 
             if req.updateDefaults then
-                applyDefaultsToCache();
                 settings.save();
-                -- Re-run visible Calculator results so new scLevel/both/showRema defaults apply
-                if SkillchainRenderer.IsVisible() and cache.resultsSource == 'calc' then
-                    parseSkillchains(cache.step.enabled);
+                -- The committed run takes the new tier/both/REMA defaults; its tokens and
+                -- includeSubjob stay. Visible Calculator results are recalculated.
+                if cache.run then
+                    local run = withNewDefaults(cache.run);
+                    if SkillchainRenderer.IsVisible() and cache.resultsSource == 'calc' then
+                        if not applyRun(run) then
+                            resetCacheFull();
+                            SkillchainRenderer.Clear();
+                        end
+                    else
+                        commitRun(run);
+                    end
+                else
+                    resetCacheFull();
                 end
             end
 
@@ -448,27 +536,25 @@ ashita.events.register('d3d_present', 'scc_present_cb', function()
             end
 
             if req.token1 ~= nil then
-                cache.jobs.token1 = req.token1;
-                cache.jobs.token2 = req.token2;
-
-                applyDefaultsToCache();
-                if req.scLevel ~= nil then
-                    cache.filters.scLevel = req.scLevel;
+                -- GUI-initiated requests are always normal mode; a locked Calculator keeps its CLI command.
+                local run = newRun({
+                    token1        = req.token1,
+                    token2        = req.token2,
+                    scLevel       = req.scLevel,
+                    both          = req.both,
+                    includeSubjob = req.includeSubjob,
+                    scElement     = req.scElement and req.scElement:lower() or nil,
+                    charLevel     = req.charLevel,
+                    showRema      = req.showRema or false,
+                    favWs1        = req.favWs1,
+                    favWs2        = req.favWs2,
+                    cliCommand    = cache.cliCommand,
+                });
+                -- Results that no longer match the controls are cleared.
+                if not applyRun(run) then
+                    resetCacheFull();
+                    SkillchainRenderer.Clear();
                 end
-                if req.both ~= nil then
-                    cache.filters.both = req.both;
-                end
-
-                cache.filters.scElement = req.scElement and req.scElement:lower() or nil;
-                cache.filters.charLevel = req.charLevel;
-                cache.jobs.favWs1 = req.favWs1;
-                cache.jobs.favWs2 = req.favWs2;
-                cache.filters.showRema = req.showRema or false;
-
-                -- GUI-initiated requests are always normal mode (tied to GUI)
-                cache.step.enabled = false;
-
-                parseSkillchains(false);
             end
         end
     elseif not SkillchainParty.IsVisible() and not SkillchainThreeStep.IsVisible() then
@@ -544,6 +630,9 @@ local function handleUtilityCommand(args)
         msg('  /scc (or /scc party) - Toggle party skillchain calculator');
         msg('  /scc calc - Toggle generic skillchain calculator');
         msg('  /scc 3step - Toggle 3-step skillchain calculator');
+        msg('  /scc <token1> <token2> [1|2|3] [both] [sc:<element>] [lvl:<n>] - Calculate from the command line');
+        msg('  /scc step[:<tier>|:<property>] <token> [options] - Weapon skills that continue a skillchain property');
+        msg('  Token: job[/subjob][:weapon,...] or a weapon type, e.g. sam/war:gkt, thf:dagger, katana');
         return true;
     end
 
@@ -711,60 +800,38 @@ ashita.events.register('command', 'command_cb', function(e)
         return;
     end
 
-    -- An invalid token leaves the windows and displayed results untouched.
-    if not isStep then
-        local invalid = {};
-        if not SkillchainCore.ResolveTokenToSkills(token1) then
-            table.insert(invalid, token1);
-        end
-        if token2 ~= token1 and not SkillchainCore.ResolveTokenToSkills(token2) then
-            table.insert(invalid, token2);
-        end
-        if #invalid > 0 then
-            err(string.format('Invalid weapon/job token: %s', table.concat(invalid, ', ')));
-            return;
-        end
-    end
-
-    applyDefaultsToCache();
     -- Mirrors the Calculator: subjobs are on when the default says so or either
     -- token names one, and a side without one then uses its default subjob.
     local job1, _, sub1 = SkillchainCore.GetJobAndWeaponsFromToken(token1);
     local job2, _, sub2 = SkillchainCore.GetJobAndWeaponsFromToken(token2);
     local namesSubjob = (sub1 ~= nil and sub1 ~= job1) or (sub2 ~= nil and sub2 ~= job2);
-    if not isStep and (cache.filters.includeSubjob or namesSubjob) then
+    local def = savedDefaults();
+    if not isStep and (def.includeSubjob or namesSubjob) then
         token1 = withDefaultSubjob(token1);
         token2 = withDefaultSubjob(token2);
     end
 
-    cache.jobs.token1 = token1;
-    cache.jobs.token2 = token2;
+    -- Fav WS is a Calculator-only filter; a CLI run starts without one.
+    local run = newRun({
+        token1        = token1,
+        token2        = token2,
+        scLevel       = scLevel,
+        both          = both,
+        includeSubjob = (def.includeSubjob or namesSubjob) and true or false,
+        scElement     = scElement and scElement:lower() or nil,
+        charLevel     = charLevel,
+        step          = { enabled = isStep, filter = stepFilter, filterType = stepFilterType },
+    });
     -- A weapon-only token has no job to select, so the Calculator shows the command instead.
     if not isStep and not (job1 and job2) then
-        cache.cliCommand = table.concat(args, ' ');
-    else
-        cache.cliCommand = nil;
-    end
-    -- Fav WS is a Calculator-only filter; a CLI run starts without one.
-    cache.jobs.favWs1 = nil;
-    cache.jobs.favWs2 = nil;
-
-    if scLevel ~= nil then
-        cache.filters.scLevel = scLevel;
-    end
-    if both ~= nil then
-        cache.filters.both = both;
+        run.cliCommand = table.concat(args, ' ');
     end
 
-    cache.filters.scElement = scElement and scElement:lower() or nil;
-    cache.filters.charLevel = charLevel;
-    -- step filters
-    cache.step.enabled = isStep;
-    cache.step.filter = stepFilter;
-    cache.step.filterType = stepFilterType;
+    -- An invalid run leaves the windows and displayed results untouched.
+    if not applyRun(run) then
+        return;
+    end
     SkillchainThreeStep.SetResultCount(nil);
-
-    parseSkillchains(isStep);
 
     if not isStep then
         SkillchainParty.SetVisible(false);
@@ -780,6 +847,9 @@ ashita.events.register('unload', 'unload_cb', function()
     ashita.events.unregister('d3d_present', 'scc_present_cb');
     ashita.events.unregister('command', 'command_cb');
     ashita.events.unregister('unload', 'unload_cb');
+    settings.unregister('settings', 'settings_update');
 
     SkillchainRenderer.Destroy();
+    gdi:set_auto_render(false);
+    gdi:destroy_interface();
 end);
