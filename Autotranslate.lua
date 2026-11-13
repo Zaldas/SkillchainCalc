@@ -289,6 +289,9 @@ Autotranslate.Weaponskills = {
     ['Nether Blast']       = '\xFD\x02\x02\x24\x43\xFD',
     ['Flaming Crush']      = '\xFD\x02\x02\x24\x14\xFD',
     ['Mountain Buster']    = '\xFD\x02\x02\x24\x1C\xFD',
+    ['Eclipse Bite']       = '\xFD\x02\x02\x24\x3B\xFD',
+    ['Chaotic Strike']     = '\xFD\x02\x02\x24\x0E\xFD',
+    ['Camisado']           = '\xFD\x02\x02\x24\x3D\xFD',
 
     -----------------------------------------------------------------------
     -- TOAU – Blue Magic physical spells

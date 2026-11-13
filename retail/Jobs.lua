@@ -57,7 +57,7 @@ jobs.WAR = {
         club     = { skillRank = 'B-' },
         h2h      = { skillRank = 'D' },
         archery  = { skillRank = 'D' },
-        mm       = { skillRank = 'E' },
+        mm       = { skillRank = 'D' },
     },
 }
 
@@ -87,7 +87,7 @@ jobs.BLM = {
         staff  = { skillRank = 'B-' },
         club   = { skillRank = 'C+' },
         dagger = { skillRank = 'D' },
-        scythe = { skillRank = 'F' },
+        scythe = { skillRank = 'E' },
     },
 }
 
@@ -99,7 +99,6 @@ jobs.RDM = {
         sword   = { skillRank = 'B' },
         club    = { skillRank = 'D' },
         archery = { skillRank = 'D' },
-        mm      = { skillRank = 'F' },
     },
 }
 
@@ -125,7 +124,7 @@ jobs.PLD = {
         staff   = { skillRank = 'A-' },
         gs      = { skillRank = 'B' },
         dagger  = { skillRank = 'C-' },
-        polearm = { skillRank = 'F' },
+        polearm = { skillRank = 'E' },
     },
 }
 
@@ -152,7 +151,7 @@ jobs.BST = {
         scythe = { skillRank = 'B-' },
         dagger = { skillRank = 'C+' },
         club   = { skillRank = 'D' },
-        sword  = { skillRank = 'F' },
+        sword  = { skillRank = 'E' },
     },
 }
 
@@ -226,7 +225,7 @@ jobs.SMN = {
     weapons = {
         avatar = { skillRank = 'Level' },
         staff  = { skillRank = 'B' },
-        club   = { skillRank = 'C' },
+        club   = { skillRank = 'C+' },
         dagger = { skillRank = 'E' },
     },
 }
@@ -241,7 +240,7 @@ jobs.BLU = {
     weapons = {
         sword = { skillRank = 'A+' },
         club  = { skillRank = 'B-' },
-        blu   = { skillRank = 'A+' },  -- Blue Magic Skill follows the A+ weapon-rank curve (verified vs bg-wiki: 150@lv49, 424@lv99)
+        blu   = { skillRank = 'Level' },  -- blue magic spells are based on level
     },
 }
 

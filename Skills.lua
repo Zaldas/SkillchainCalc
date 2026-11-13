@@ -60,7 +60,7 @@ skills.h2h = { -- Hand-to-Hand
                 JobRestrictions={'MNK','PUP'}},
     -- Relic WS treat as high end
     [10] = {en='Final Heaven²', rema=true,     skillchain={'Light','Fusion'},              skill=250,
-                JobRestrictions={'MNK','PUP'}},
+                JobRestrictions={'MNK'}},
 };
 
 
@@ -71,7 +71,9 @@ skills.dagger = { -- Dagger
     [17] = {en='Viper Bite',      skillchain={'Scission'},                       skill=100,
                 JobRestrictions={'THF','RDM','BRD','RNG','NIN','DNC'},
                 allowSubjob=true},
-    [20] = {en='Cyclone',         skillchain={'Detonation','Impaction'},         skill=125},
+    [20] = {en='Cyclone',         skillchain={'Detonation','Impaction'},         skill=125,
+                JobRestrictions={'THF','RDM','BRD','RNG','NIN','DNC'},
+                allowSubjob=true},
     [23] = {en='Dancing Edge',    skillchain={'Scission','Detonation'},          skill=200,
                 JobRestrictions={'THF','DNC'}},
     [24] = {en='Shark Bite',      skillchain={'Fragmentation'},                  skill=225,
@@ -87,12 +89,12 @@ skills.sword = { -- Sword
     [32] = {en='Fast Blade',       skillchain={'Scission'},                      skill=5},
     [33] = {en='Burning Blade',    skillchain={'Liquefaction'},                  skill=30},
     [34] = {en='Red Lotus Blade',  skillchain={'Liquefaction','Detonation'},     skill=50,
-                JobRestrictions={'WAR','RDM','PLD','DRK'},
+                JobRestrictions={'WAR','RDM','PLD','DRK','BLU'},
                 allowSubjob=true},
     [35] = {en='Flat Blade',       skillchain={'Impaction'},                     skill=75},
     [36] = {en='Shining Blade',    skillchain={'Scission'},                      skill=100},
     [37] = {en='Seraph Blade',     skillchain={'Scission','Transfixion'},        skill=125,
-                JobRestrictions={'WAR','RDM','PLD','DRK'},
+                JobRestrictions={'WAR','RDM','PLD','DRK','BLU'},
                 allowSubjob=true},
     [38] = {en='Circle Blade',     skillchain={'Reverberation','Impaction'},     skill=150},
     [40] = {en='Vorpal Blade',     skillchain={'Scission','Impaction'},          skill=200,
@@ -101,7 +103,7 @@ skills.sword = { -- Sword
     [41] = {en='Swift Blade',      skillchain={'Gravitation'},                   skill=225,
                 JobRestrictions={'PLD'}},
     [42] = {en='Savage Blade¹',    skillchain={'Fragmentation','Scission'},      skill=240,
-                JobRestrictions={'WAR','RDM','PLD','DRK','BLU'}},
+                JobRestrictions={'WAR','RDM','PLD','DRK','BLU','COR'}},
     -- Relic WS treat as high end
     [43] = {en='Knights of Round²', rema=true,skillchain={'Light','Fusion'},                skill=240,
                 JobRestrictions={'PLD','RDM'}},
@@ -121,7 +123,7 @@ skills.gs = { -- Great Sword
     [56] = {en='Ground Strike¹',  skillchain={'Fragmentation','Distortion'},     skill=250},
     -- Relic WS treat as high end
     [57] = {en='Scourge²', rema=true,        skillchain={'Light','Fusion'},                 skill=250,
-                JobRestrictions={'PLD','DRK'}},
+                JobRestrictions={'WAR','PLD','DRK'}},
 };
 
 skills.axe = { -- Axe
@@ -240,15 +242,17 @@ skills.club = { -- Club
     [160] = {en='Shining Strike', skillchain={'Transfixion'},                   skill=5},
     [162] = {en='Brainshaker',    skillchain={'Reverberation'},                 skill=70},
     [161] = {en='Seraph Strike',  skillchain={'Scission'},                      skill=100,
-                JobRestrictions={'WAR','WHM','PLD','DRK','SAM'},
+                JobRestrictions={'WAR','WHM','PLD','DRK','SAM','BLU'},
                 allowSubjob=true},
     [165] = {en='Skullbreaker',   skillchain={'Induration','Reverberation'},    skill=150},
     [166] = {en='True Strike',    skillchain={'Detonation','Impaction'},        skill=175},
-    [167] = {en='Judgment',       skillchain={'Impaction'},                     skill=200},
-    [168] = {en='Hexa Strike',    skillchain={'Fusion'},                        skill=225,
+    [167] = {en='Judgment',       skillchain={'Impaction'},                     skill=200,
+                JobRestrictions={'WAR','WHM','PLD','DRK','SAM','BLU'},
+                allowSubjob=true},
+    [168] = {en='Hexa Strike',    skillchain={'Fusion'},                        skill=220,
                 JobRestrictions={'WHM'}},
     [169] = {en='Black Halo¹',    skillchain={'Fragmentation','Compression'},   skill=230,
-                JobRestrictions={'WAR','MNK','WHM','BLM','PLD','SMN'}},
+                JobRestrictions={'WAR','MNK','WHM','BLM','PLD','SMN','BLU'}},
     -- Relic WS treat as high end
     [170] = {en='Randgrith²', rema=true,     skillchain={'Light','Fragmentation'},         skill=230,
                 JobRestrictions={'WHM'}},
@@ -258,10 +262,12 @@ skills.staff = { -- Staff
     [176] = {en='Heavy Swing',     skillchain={'Impaction'},                    skill=5},
     [177] = {en='Rock Crusher',    skillchain={'Impaction'},                    skill=40},
     [178] = {en='Earth Crusher',   skillchain={'Detonation','Impaction'},       skill=70,
-                JobRestrictions={'WAR','MNK','WHM','PLD'}},
+                JobRestrictions={'WAR','MNK','WHM','PLD'},
+                allowSubjob=true},
     [179] = {en='Starburst',       skillchain={'Compression','Transfixion'},    skill=100},
     [180] = {en='Sunburst',        skillchain={'Transfixion','Reverberation'},  skill=150,
-                JobRestrictions={'WAR','MNK','WHM','PLD'}},
+                JobRestrictions={'WAR','MNK','WHM','PLD'},
+                allowSubjob=true},
     [181] = {en='Shell Crusher',   skillchain={'Detonation'},                   skill=175},
     [182] = {en='Full Swing',      skillchain={'Liquefaction','Impaction'},     skill=200},
     [184] = {en='Retribution¹',    skillchain={'Gravitation','Reverberation'},  skill=230},
@@ -290,7 +296,7 @@ skills.archery = { -- Archery
     [199] = {en='Empyreal Arrow¹', skillchain={'Fusion','Transfixion'},         skill=250,
                 JobRestrictions={'RNG'}},
     -- Relic WS treat as high end
-    [200] = {en='Namas Arrow²', rema=true,    skillchain={'Light','Distortion'},           skill=250,
+    [200] = {en='Namas Arrow²', rema=true,    skillchain={'Light','Distortion'},           skill=230,
                 JobRestrictions={'RNG','SAM'}},
 };
 
@@ -320,6 +326,7 @@ skills.mm = { -- Marksmanship
 
 -- Pet skills as triggered by player.
 skills.avatar = { -- SMN Player Pet Skills; skill is based on level
+    -- Eclipse Bite, Flaming Crush, Mountain Buster, Spinning Dive, Predator Claws, Rush and Chaotic Strike have no skillchain properties on HorizonXI
     [513] = {en='[C]Poison Nails',      skillchain={'Transfixion'},     skill=5},
     [528] = {en='[F]Moonlit Charge',    skillchain={'Compression'},     skill=5},
     [529] = {en='[F]Crescent Fang',     skillchain={'Transfixion'},     skill=10},
@@ -363,9 +370,7 @@ skills.blu = { -- Physical, ranged and magical; skill is minimum BLU level to ca
     [543] = {en='Mandibular Bite',   skillchain={'Induration'},                  skill=44},
     [545] = {en='Sickle Slash',      skillchain={'Compression'},                 skill=48},
     [589] = {en='Dimensional Death', skillchain={'Compression','Reverberation'}, skill=60},  -- HorizonXI
-    [652] = {en='Spiral Spin',       skillchain={'Transfixion'},                 skill=60},
     [554] = {en='Death Scissors',    skillchain={'Compression','Reverberation'}, skill=60},
-    [650] = {en='Seedspray',         skillchain={'Induration','Detonation'},     skill=61},
     [564] = {en='Body Slam',         skillchain={'Impaction'},                   skill=62},
     [631] = {en='Hydro Shot',        skillchain={'Reverberation'},               skill=63},
     [628] = {en='Frypan',            skillchain={'Impaction'},                   skill=63},
@@ -373,7 +378,6 @@ skills.blu = { -- Physical, ranged and magical; skill is minimum BLU level to ca
     [540] = {en='Spinal Cleave',     skillchain={'Scission','Detonation'},       skill=63},
     [640] = {en='Tail Slap',         skillchain={'Reverberation'},               skill=69},
     [641] = {en='Hysteric Barrage',  skillchain={'Detonation'},                  skill=69},
-    [653] = {en='Asuran Claws',      skillchain={'Liquefaction','Impaction'},    skill=70},
     [643] = {en='Cannonball',        skillchain={'Fusion'},                      skill=70},
     [611] = {en='Disseverment',      skillchain={'Distortion'},                  skill=72},
     [654] = {en='Sub-zero Smash',    skillchain={'Fragmentation'},               skill=72},

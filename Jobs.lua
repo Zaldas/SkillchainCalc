@@ -49,7 +49,7 @@ jobs.WAR = {
         club     = { skillRank = 'B-' },
         h2h      = { skillRank = 'D' },
         archery  = { skillRank = 'D' },
-        mm       = { skillRank = 'E' },
+        mm       = { skillRank = 'D' },
     },
 }
 
@@ -91,7 +91,6 @@ jobs.RDM = {
         sword   = { skillRank = 'B' },
         club    = { skillRank = 'D' },
         archery = { skillRank = 'D' },
-        mm      = { skillRank = 'F' },
     },
 }
 
